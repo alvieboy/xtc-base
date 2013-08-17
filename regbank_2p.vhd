@@ -23,6 +23,7 @@ end entity regbank_2p;
 architecture behave of regbank_2p is
 
   signal rb1_we: std_logic;
+  signal ssra, ssrb: std_logic;
 
 begin
   -- Register bank.
@@ -38,20 +39,26 @@ begin
     end if;
   end process;
 
-  rb: generic_dp_ram
+  ssra<='1' when rb1_addr="000" else '0';
+  ssrb<='1' when rb2_addr="000" else '0';
+
+  rb: generic_dp_ram_r
   generic map (
     address_bits  => 3,
-    data_bits     => 32
+    srval_1 => x"00000000",
+    srval_2 => x"00000000"
   )
   port map (
     clka    => clk,
     ena     => rb1_en,
     wea     => rb1_we,
+    ssra    => ssra,
     addra   => rb1_addr,
     dia     => rb2_wr,
     doa     => rb1_rd,
     clkb    => clk,
     enb     => rb2_en,
+    ssrb    => ssrb,
     web     => rb2_we,
     addrb   => rb2_addr,
     dib     => rb2_wr,

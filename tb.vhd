@@ -32,7 +32,38 @@ architecture sim of tb is
   signal rom_wb_cti:       std_logic_vector(2 downto 0);
   signal rom_wb_stall:     std_logic;
 
+  component wb_singleport_ram is
+  generic (
+    bits: natural := 8
+  );
+  port (
+    wb_clk_i: in std_logic;
+	 	wb_rst_i: in std_logic;
+    wb_dat_o: out std_logic_vector(31 downto 0);
+    wb_dat_i: in std_logic_vector(31 downto 0);
+    wb_adr_i: in std_logic_vector(31 downto 0);
+    wb_we_i:  in std_logic;
+    wb_cyc_i: in std_logic;
+    wb_stb_i: in std_logic;
+    wb_ack_o: out std_logic;
+    wb_inta_o:out std_logic
+  );
+  end component;
+
 begin
+
+  ram: wb_singleport_ram
+  port map (
+    wb_clk_i    => w_clk,
+    wb_rst_i    => w_rst,
+    wb_dat_i    => wb_write,
+    wb_dat_o    => wb_read,
+    wb_adr_i    => wb_address,
+    wb_stb_i    => wb_stb,
+    wb_cyc_i    => wb_cyc,
+    wb_we_i    => wb_we,
+    wb_ack_o   => wb_ack
+  );
 
   w_clk <= not w_clk after period/2;
 
@@ -85,11 +116,11 @@ begin
 
       if rom_wb_cyc='1' and rom_wb_stb='1' then
         case rom_wb_adr(29 downto 2) is
-          when x"0000000" => rom_wb_read <= x"00008000";
-          when x"0000001" => rom_wb_read <= x"00009010";
-          when x"0000002" => rom_wb_read <= x"0000F109"; -- 1sss0Xddd -- MOVE A, R1
-          when x"0000003" => rom_wb_read <= x"00008010"; -- Load 1
-          when x"0000004" => rom_wb_read <= x"00008010"; -- Load 1
+          when x"0000000" => rom_wb_read <= x"80FF" & x"9010";
+          when x"0000001" => rom_wb_read <= x"1088" & x"80FF";
+          when x"0000002" => rom_wb_read <= x"1090" & x"0000";
+          when x"0000003" => rom_wb_read <=  "0011" & "11" & "1" & "011" & "001" & "010"  & x"0000";
+          when x"0000004" => rom_wb_read <=  "0011" & "11" & "1" & "011" & "000" & "000"  & x"0000";
           when x"0000005" => rom_wb_read <= x"0000112A"; -- Add A to R1, store to R2 -- 1sss01ddd
           when x"0000006" => rom_wb_read <= x"00001838"; -- Sub R1 to A, store in Zero   -- GPR, AZ, AZ 0sss110__
           when x"0000007" => rom_wb_read <= x"00001938"; -- Sub A to R1, store in Zero   -- AZ, GPR, AZ 1sss110__

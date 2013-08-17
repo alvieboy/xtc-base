@@ -16,7 +16,10 @@ entity fetch is
     read:   in std_logic_vector(31 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
-    
+    -- Control
+    freeze:    in std_logic;
+    jump:     in std_logic;
+    jumpaddr: in word_type;
     -- Outputs for next stages
     fuo:  out fetch_output_type
   );
@@ -27,35 +30,52 @@ architecture behave of fetch is
 begin
 
   fuo.r <= fr;
-  fuo.opcode <= read(15 downto 0);
+  fuo.opcode <= read(31 downto 0);
   fuo.valid <= valid;
 
   process(fr, rst, clk, stall, valid)
     variable fw: fetch_regs_type;
+    variable npc: word_type;
   begin
     fw := fr;
+    npc := fr.fpc + 4;
 
     address <= std_logic_vector(fr.fpc);
 
-    enable <= '1';
-    strobe <= '1';
+    enable <= not freeze;
+    strobe <= not freeze;
 
-    if stall='0' then
-      fw.fpc := fr.fpc + 4;
-    end if;
+    case fr.state is
+      when running =>
+        if jump='0' then
+          --and freeze='0'
+          if stall='0' and freeze='0' then
+            fw.fpc := npc;
+          end if;
+      
+          if valid='1' then
+            fw.pc := fr.ipc;
+            fw.ipc := fr.fpc;
+          end if;
+        else
+          -- Jump request
+          fw.fpc := jumpaddr;
+          fw.state := jumping;
 
-    if valid='1' then
-      fw.pc := fw.npc;
-      fw.npc := fw.pc + 4;
-    end if;
+        end if;
+      when jumping =>
+          fw.fpc := npc;
+          fw.ipc := fr.fpc;
+      when others =>
+    end case;
 
     if rst='1' then
       fw.pc := (others => '0');
-      fw.npc := (others => '0');
-      fw.npc(2) := '1';
+      fw.ipc := (others => '0');
       fw.fpc := (others => '0');
       strobe <= '0';
       enable <= '0';
+      fw.state := running;
     end if;
 
     if rising_edge(clk) then

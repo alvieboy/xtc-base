@@ -47,17 +47,19 @@ architecture behave of newcpu is
   signal euo:  execute_output_type;
   signal muo:  memory_output_type;
 
+  signal rbw_addr: std_logic_vector(2 downto 0);
+  signal rbw_wr:   std_logic_vector(31 downto 0);
+  signal rbw_we:   std_logic;
+  signal rbw_en:   std_logic;
+
   signal rb1_addr: std_logic_vector(2 downto 0);
-  signal rb2_addr: std_logic_vector(2 downto 0);
-  signal rb1_wr:   std_logic_vector(31 downto 0);
-  signal rb2_wr:   std_logic_vector(31 downto 0);
-  signal rb1_we:   std_logic;
-  signal rb2_we:   std_logic;
   signal rb1_en:   std_logic;
-  signal rb2_en:   std_logic;
   signal rb1_rd:   std_logic_vector(31 downto 0);
+  signal rb2_addr: std_logic_vector(2 downto 0);
+  signal rb2_en:   std_logic;
   signal rb2_rd:   std_logic_vector(31 downto 0);
 
+  signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
   signal cache_flush:          std_logic;
   signal cache_data:           std_logic_vector(31 downto 0);
@@ -66,21 +68,31 @@ architecture behave of newcpu is
   signal cache_enable:         std_logic;
   signal cache_stall:          std_logic;
 
+  signal decode_freeze:       std_logic;
+
+  signal w_en:                std_logic;
+  signal w_addr:              regaddress_type;
+
+  signal memory_busy:         std_logic;
+  signal execute_busy:        std_logic;
 
 begin
 
   -- Register bank.
 
-  rb: regbank_2p
+  rbe: regbank_3p
   port map (
     clk     => wb_clk_i,
     rb1_en  => rb1_en,
     rb1_addr=> rb1_addr,
     rb1_rd  => rb1_rd,
     rb2_en  => rb2_en,
-    rb2_we  => rb2_we,
     rb2_addr=> rb2_addr,
-    rb2_wr  => rb2_wr
+    rb2_rd  => rb2_rd,
+    rb3_en  => rbw_en,
+    rb3_we  => rbw_we,
+    rb3_addr=> rbw_addr,
+    rb3_wr  => rbw_wr
   );
 
   cache: icache
@@ -118,6 +130,10 @@ begin
       read      => cache_data,
       enable    => cache_enable,
       strobe    => cache_strobe,
+
+      freeze    => decode_freeze,
+      jump      => euo.jump,
+      jumpaddr  => euo.jumpaddr,
       -- Outputs for next stages
       fuo       => fuo
     );
@@ -129,28 +145,52 @@ begin
       -- Input from fetch unit
       fui       => fuo,
       -- Outputs for next stages
-      duo       => duo
+      duo       => duo,
+      busy    => decode_freeze,
+      freeze  => execute_busy
     );
 
   fetchdata_unit: fetchdata
     port map (
       clk       => wb_clk_i,
       rst       => wb_rst_i,
-      r_en      => rb1_en,
-      --r_we      => rb1_we,
-      r_addr    => rb1_addr,
-      --r_write   => rb1_wr,
-      r_read    => rb1_rd,
+      r1_en      => rb1_en,
+      r1_addr    => rb1_addr,
+      r1_read    => rb1_rd,
+      r2_en      => rb2_en,
+      r2_addr    => rb2_addr,
+      r2_read    => rb2_rd,
+      freeze     => execute_busy,
+
+      w_addr     => w_addr,
+      w_en       => w_en,
       -- Input from decode unit
       dui       => duo,
       -- Outputs for next stages
       fduo       => fduo
+    );
+  taintcheck: taint
+    port map (
+      clk     => wb_clk_i,
+      rst     => wb_rst_i,
+      req1_en => rb1_en,
+      req1_r  => rb1_addr,
+      req2_en => rb2_en,
+      req2_r  => rb2_addr,
+      -- Set
+      set_en  => w_en,
+      set_r   => w_addr,
+      -- Clear
+      clr_en  => rbw_we,
+      clr_r   => rbw_addr
     );
 
   execute_unit: execute
     port map (
       clk       => wb_clk_i,
       rst       => wb_rst_i,
+      busy      => execute_busy,
+      mem_busy  => memory_busy,
       -- Input from fetchdata unit
       fdui      => fduo,
       -- Outputs for next stages
@@ -170,6 +210,7 @@ begin
     wb_stb_o        => wb_stb_o,
     wb_sel_o        => wb_sel_o,
     wb_we_o         => wb_we_o,
+    busy            => memory_busy,
     -- Input for previous stages
     eui             => euo,
     -- Output for next stages
@@ -180,11 +221,11 @@ begin
     port map (
       clk       => wb_clk_i,
       rst       => wb_rst_i,
-      r_en      => rb2_en,
-      r_we      => rb2_we,
-      r_addr    => rb2_addr,
-      r_write   => rb2_wr,
-      r_read    => rb2_rd,
+      r_en      => rbw_en,
+      r_we      => rbw_we,
+      r_addr    => rbw_addr,
+      r_write   => rbw_wr,
+      --r_read    => rbw_rd,
       -- Input from previous stage
       mui       => muo,
       eui       => euo -- for fast register write

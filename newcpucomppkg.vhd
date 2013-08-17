@@ -26,7 +26,31 @@ package newcpucomppkg is
     dob:              out std_logic_vector(data_bits-1 downto 0)
   );
 
-  end component generic_dp_ram;
+  end component;
+
+  component generic_dp_ram_r is
+  generic (
+    address_bits: integer := 8;
+    srval_1: std_logic_vector(31 downto 0);
+    srval_2: std_logic_vector(31 downto 0)
+  );
+  port (
+    clka:             in std_logic;
+    ena:              in std_logic;
+    wea:              in std_logic;
+    addra:            in std_logic_vector(address_bits-1 downto 0);
+    ssra:             in std_logic;
+    dia:              in std_logic_vector(31 downto 0);
+    doa:              out std_logic_vector(31 downto 0);
+    clkb:             in std_logic;
+    enb:              in std_logic;
+    ssrb:             in std_logic;
+    web:              in std_logic;
+    addrb:            in std_logic_vector(address_bits-1 downto 0);
+    dib:              in std_logic_vector(31 downto 0);
+    dob:              out std_logic_vector(31 downto 0)
+  );
+  end component;
 
   component newcpu is
   port (
@@ -111,7 +135,7 @@ package newcpucomppkg is
   );
   end component mux32_2;
 
-  component alu is
+  component alu_A is
   port (
     clk: in std_logic;
     rst: in std_logic;
@@ -120,7 +144,7 @@ package newcpucomppkg is
     b:  in unsigned(31 downto 0);
     o: out unsigned(31 downto 0);
 
-    op: in alu_op_type;
+    op: in alu1_op_type;
 
     ci: in std_logic;
     busy: out std_logic;
@@ -144,6 +168,11 @@ package newcpucomppkg is
     read: in     std_logic_vector(31 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
+
+    -- Control
+    freeze:   in std_logic;
+    jump:     in std_logic;
+    jumpaddr: in word_type;
     
     -- Outputs for next stages
     fuo:  out fetch_output_type
@@ -159,7 +188,9 @@ package newcpucomppkg is
     fui:  in fetch_output_type;
 
     -- Output for next stages
-    duo:  out decode_output_type
+    duo:  out decode_output_type;
+    busy: out std_logic;
+    freeze: in std_logic
   );
   end component;
 
@@ -168,15 +199,19 @@ package newcpucomppkg is
     clk:  in std_logic;
     rst:  in std_logic;
     -- Register access
-    r_en:   out std_logic;
-    r_we:   out std_logic;
-    r_addr:   out regaddress_type;
-    r_write:   out word_type_std;
-    r_read:   in word_type_std;
+    r1_en:   out std_logic;
+    r1_addr:   out regaddress_type;
+    r1_read:   in word_type_std;
 
+    r2_en:   out std_logic;
+    r2_addr:   out regaddress_type;
+    r2_read:   in word_type_std;
+
+    w_addr: out regaddress_type;
+    w_en:     out std_logic;
     -- Input for previous stages
     dui:  in decode_output_type;
-
+    freeze: in std_logic;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );
@@ -186,6 +221,8 @@ package newcpucomppkg is
   port (
     clk:  in std_logic;
     rst:  in std_logic;
+    mem_busy: in std_logic;
+    busy: out std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
     -- Output for next stages
@@ -206,6 +243,9 @@ package newcpucomppkg is
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
     wb_we_o:        out std_logic;
+
+    busy:           out std_logic;
+
     -- Input for previous stages
     eui:  in execute_output_type;
     -- Output for next stages
@@ -222,7 +262,6 @@ package newcpucomppkg is
     r_we:   out std_logic;
     r_addr:   out regaddress_type;
     r_write:   out word_type_std;
-    r_read:   in word_type_std;
     -- Input for previous stages
     mui:  in memory_output_type;
     eui:  in execute_output_type
@@ -244,6 +283,65 @@ package newcpucomppkg is
   );
   end component;
 
+  component regbank_3p is
+  port (
+    clk:      in std_logic;
 
+    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_en:   in std_logic;
+    rb1_rd:   out std_logic_vector(31 downto 0);
+
+    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_en:   in std_logic;
+    rb2_rd:   out std_logic_vector(31 downto 0);
+
+    rb3_addr: in std_logic_vector(2 downto 0);
+    rb3_wr:   in std_logic_vector(31 downto 0);
+    rb3_we:   in std_logic;
+    rb3_en:   in std_logic
+  );
+  end component;
+
+  component alu_B is
+  port (
+    clk: in std_logic;
+    rst: in std_logic;
+
+    a:  in unsigned(31 downto 0);
+    b:  in unsigned(31 downto 0);
+    o: out unsigned(31 downto 0);
+
+    op: in alu2_op_type
+  );
+  end component;
+
+  component opdec is
+  port (
+    opcode:   in std_logic_vector(15 downto 0);
+    dec:      out opdec_type
+  );
+  end component;
+
+  component taint is
+  port (
+    clk: in std_logic;
+    rst: in std_logic;
+
+    req1_en: in std_logic;
+    req1_r: in regaddress_type;
+
+    req2_en: in std_logic;
+    req2_r: in regaddress_type;
+
+    ready:  out std_logic;
+
+    set_en:  in std_logic;
+    set_r:   in regaddress_type;
+    clr_en:  in std_logic;
+    clr_r:   in regaddress_type;
+
+    taint:  out std_logic_vector(7 downto 0)
+  );
+  end component;
 
 end package;

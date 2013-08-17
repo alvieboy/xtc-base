@@ -9,14 +9,19 @@ entity fetchdata is
     clk:  in std_logic;
     rst:  in std_logic;
     -- Register access
-    r_en:   out std_logic;
-    r_we:   out std_logic;
-    r_addr:   out regaddress_type;
-    r_write:   out word_type_std;
-    r_read:   in word_type_std;
+    r1_en:   out std_logic;
+    r1_addr:   out regaddress_type;
+    r1_read:   in word_type_std;
+    -- Register access
+    r2_en:   out std_logic;
+    r2_addr:   out regaddress_type;
+    r2_read:   in word_type_std;
+    w_addr: out regaddress_type;
+    w_en:     out std_logic;
     -- Input for previous stages
     dui:  in decode_output_type;
 
+    freeze: in std_logic;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );
@@ -29,18 +34,23 @@ architecture behave of fetchdata is
 begin
 
   fduo.r <= fdr;
-  fduo.rr <= r_read;
+  fduo.rr1 <= r1_read;
+  fduo.rr2 <= r2_read;
 
   process(dui,clk,rst,fdr)
     variable fdw: fetchdata_regs_type;
   begin
     fdw := fdr;
-    fdw.drq := dui.r;
-
-    r_we <= '0';
-    r_write <= (others => DontCareValue);
-    r_en <= dui.r.rd1;
-    r_addr <= dui.r.source.gpr;
+    if freeze='0' then
+      fdw.drq := dui.r;
+    end if;
+    -- This is only to check for conflicts
+    w_addr <= dui.r.dreg;
+    w_en   <= dui.r.regwe;
+    r1_en <= dui.r.rd1;
+    r2_en <= dui.r.rd2;
+    r1_addr <= dui.r.sra1;
+    r2_addr <= dui.r.sra2;
 
     if rising_edge(clk) then
       fdr <= fdw;
