@@ -156,7 +156,7 @@ case $os in
 	-convergent* | -ncr* | -news | -32* | -3600* | -3100* | -hitachi* |\
 	-c[123]* | -convex* | -sun | -crds | -omron* | -dg | -ultra | -tti* | \
 	-harris | -dolphin | -highlevel | -gould | -cbm | -ns | -masscomp | \
-	-apple | -axis | -knuth | -cray | -microblaze)
+	-apple | -axis | -knuth | -cray | -microblaze | -newcpu )
 		os=
 		basic_machine=$1
 		;;
@@ -297,6 +297,7 @@ case $basic_machine in
 	| mt \
 	| msp430 \
 	| nds32 | nds32le | nds32be \
+        | newcpu \
 	| nios | nios2 \
 	| ns16k | ns32k \
 	| open8 \
@@ -412,6 +413,7 @@ case $basic_machine in
 	| mt-* \
 	| msp430-* \
 	| nds32-* | nds32le-* | nds32be-* \
+        | newcpu-* \
 	| nios-* | nios2-* \
 	| none-* | np1-* | ns16k-* | ns32k-* \
 	| open8-* \
@@ -850,6 +852,9 @@ case $basic_machine in
 	netwinder)
 		basic_machine=armv4l-rebel
 		os=-linux
+		;;
+	newcpu)
+		basic_machine=newcpu-unknown
 		;;
 	news | news700 | news800 | news900)
 		basic_machine=m68k-sony

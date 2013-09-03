@@ -2192,6 +2192,7 @@ enum bfd_architecture
 #define bfd_mach_tilegx32  2
   bfd_arch_aarch64,   /* AArch64  */
 #define bfd_mach_aarch64 0
+  bfd_arch_newcpu,
   bfd_arch_last
   };
 
@@ -5480,6 +5481,11 @@ giving a 16 bit signed byte offset.  */
 
 /* Adapteva EPIPHANY - 8 bit immediate for 16 bit mov instruction.  */
   BFD_RELOC_EPIPHANY_IMM8,
+  /* Newcpu */
+  BFD_RELOC_NEWCPU_IMM12,
+  BFD_RELOC_NEWCPU_IMM24,
+  BFD_RELOC_NEWCPU_IMM8,
+
   BFD_RELOC_UNUSED };
 typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
 reloc_howto_type *bfd_reloc_type_lookup

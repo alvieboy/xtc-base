@@ -375,6 +375,7 @@
 /* old S/390 backend magic number. Written in the absence of an ABI.  */
 #define EM_S390_OLD		0xa390
 
+#define EM_NEWCPU               0x91fe
 /* Old, unofficial value for Xtensa.  */
 #define EM_XTENSA_OLD		0xabc7
 

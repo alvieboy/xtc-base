@@ -2031,7 +2031,7 @@ md_apply_fix (fixS *   fixP,
     }
   return;
 }
-
+}
 void
 md_operand (expressionS * expressionP)
 {
