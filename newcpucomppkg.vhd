@@ -190,7 +190,10 @@ package newcpucomppkg is
     -- Output for next stages
     duo:  out decode_output_type;
     busy: out std_logic;
-    freeze: in std_logic
+    freeze: in std_logic;
+    flush:  in std_logic;
+    jump:   in std_logic;
+    jumpmsb: in std_logic
   );
   end component;
 
@@ -212,6 +215,8 @@ package newcpucomppkg is
     -- Input for previous stages
     dui:  in decode_output_type;
     freeze: in std_logic;
+    flush: in std_logic;
+    refetch: in std_logic;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );
@@ -223,6 +228,7 @@ package newcpucomppkg is
     rst:  in std_logic;
     mem_busy: in std_logic;
     busy: out std_logic;
+    wb_busy: in std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
     -- Output for next stages
@@ -245,6 +251,7 @@ package newcpucomppkg is
     wb_we_o:        out std_logic;
 
     busy:           out std_logic;
+    refetch:        out std_logic;
 
     -- Input for previous stages
     eui:  in execute_output_type;
@@ -257,6 +264,7 @@ package newcpucomppkg is
   port (
     clk:  in std_logic;
     rst:  in std_logic;
+    busy: out std_logic;
     -- Register access
     r_en:   out std_logic;
     r_we:   out std_logic;
@@ -269,14 +277,17 @@ package newcpucomppkg is
   end component;
 
   component regbank_2p is
+  generic (
+    ADDRESS_BITS: integer := 4
+  );
   port (
     clk:      in std_logic;
 
-    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb1_en:   in std_logic;
     rb1_rd:   out std_logic_vector(31 downto 0);
 
-    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
     rb2_en:   in std_logic
@@ -284,18 +295,21 @@ package newcpucomppkg is
   end component;
 
   component regbank_3p is
+  generic (
+    ADDRESS_BITS: integer := 4
+  );
   port (
     clk:      in std_logic;
 
-    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb1_en:   in std_logic;
     rb1_rd:   out std_logic_vector(31 downto 0);
 
-    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_en:   in std_logic;
     rb2_rd:   out std_logic_vector(31 downto 0);
 
-    rb3_addr: in std_logic_vector(2 downto 0);
+    rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb3_wr:   in std_logic_vector(31 downto 0);
     rb3_we:   in std_logic;
     rb3_en:   in std_logic
@@ -311,7 +325,12 @@ package newcpucomppkg is
     b:  in unsigned(31 downto 0);
     o: out unsigned(31 downto 0);
 
-    op: in alu2_op_type
+    op: in alu2_op_type;
+
+    co: out std_logic;
+    zero: out std_logic;
+    bo:   out std_logic;
+    sign: out std_logic
   );
   end component;
 
@@ -323,6 +342,9 @@ package newcpucomppkg is
   end component;
 
   component taint is
+  generic (
+    COUNT: integer := 16
+  );
   port (
     clk: in std_logic;
     rst: in std_logic;
@@ -340,7 +362,7 @@ package newcpucomppkg is
     clr_en:  in std_logic;
     clr_r:   in regaddress_type;
 
-    taint:  out std_logic_vector(7 downto 0)
+    taint:  out std_logic_vector(COUNT-1 downto 0)
   );
   end component;
 

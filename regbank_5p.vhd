@@ -6,26 +6,29 @@ use work.newcpupkg.all;
 use work.newcpucomppkg.all;
 
 entity regbank_5p is
+   generic (
+    ADDRESS_BITS: integer := 4
+  );
   port (
     clk:      in std_logic;
 
-    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb1_en:   in std_logic;
     rb1_rd:   out std_logic_vector(31 downto 0);
 
-    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_en:   in std_logic;
     rb2_rd:   out std_logic_vector(31 downto 0);
 
-    rb3_addr: in std_logic_vector(2 downto 0);
+    rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb3_en:   in std_logic;
     rb3_rd:   out std_logic_vector(31 downto 0);
 
-    rb4_addr: in std_logic_vector(2 downto 0);
+    rb4_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb4_en:   in std_logic;
     rb4_rd:   out std_logic_vector(31 downto 0);
 
-    rbw_addr: in std_logic_vector(2 downto 0);
+    rbw_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rbw_wr:   in std_logic_vector(31 downto 0);
     rbw_we:   in std_logic;
     rbw_en:   in std_logic
@@ -35,14 +38,17 @@ end entity regbank_5p;
 architecture behave of regbank_5p is
 
   component regbank_2p is
+  generic (
+    ADDRESS_BITS: integer := 4
+  );
   port (
     clk:      in std_logic;
 
-    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb1_en:   in std_logic;
     rb1_rd:   out std_logic_vector(31 downto 0);
 
-    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
     rb2_en:   in std_logic
@@ -52,6 +58,9 @@ architecture behave of regbank_5p is
 begin
 
   rba: regbank_2p
+  generic map (
+    ADDRESS_BITS => ADDRESS_BITS
+  )
   port map (
     clk       => clk,
     rb1_addr  => rb1_addr,
@@ -65,6 +74,9 @@ begin
   );
 
   rbb: regbank_2p
+  generic map (
+    ADDRESS_BITS => ADDRESS_BITS
+  )
   port map (
     clk       => clk,
     rb1_addr  => rb2_addr,
@@ -78,6 +90,9 @@ begin
   );
 
   rbc: regbank_2p
+  generic map (
+    ADDRESS_BITS => ADDRESS_BITS
+  )
   port map (
     clk       => clk,
     rb1_addr  => rb3_addr,
@@ -91,6 +106,9 @@ begin
   );
 
   rbd: regbank_2p
+  generic map (
+    ADDRESS_BITS => ADDRESS_BITS
+  )
   port map (
     clk       => clk,
     rb1_addr  => rb4_addr,

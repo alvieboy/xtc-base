@@ -6,14 +6,17 @@ use work.newcpupkg.all;
 use work.newcpucomppkg.all;
 
 entity regbank_2p is
+  generic (
+    ADDRESS_BITS: integer := 4
+  );
   port (
     clk:      in std_logic;
 
-    rb1_addr: in std_logic_vector(2 downto 0);
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb1_en:   in std_logic;
     rb1_rd:   out std_logic_vector(31 downto 0);
 
-    rb2_addr: in std_logic_vector(2 downto 0);
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
     rb2_en:   in std_logic
@@ -22,9 +25,12 @@ end entity regbank_2p;
 
 architecture behave of regbank_2p is
 
+  constant NUMADDRESSES: integer := 2 ** ADDRESS_BITS;
+
   signal rb1_we: std_logic;
   signal ssra, ssrb: std_logic;
-
+  constant srval: std_logic_vector(31 downto 0)  := (others => '0');
+  constant addrzero: std_logic_vector(ADDRESS_BITS-1 downto 0):= (others => '0');
 begin
   -- Register bank.
 
@@ -39,14 +45,14 @@ begin
     end if;
   end process;
 
-  ssra<='1' when rb1_addr="000" else '0';
-  ssrb<='1' when rb2_addr="000" else '0';
+  ssra<='1' when rb1_addr=addrzero else '0';
+  ssrb<='1' when rb2_addr=addrzero else '0';
 
   rb: generic_dp_ram_r
   generic map (
-    address_bits  => 3,
-    srval_1 => x"00000000",
-    srval_2 => x"00000000"
+    address_bits  => ADDRESS_BITS,
+    srval_1 => srval,
+    srval_2 => srval
   )
   port map (
     clka    => clk,

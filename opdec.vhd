@@ -17,195 +17,418 @@ end entity opdec;
 
 architecture behave of opdec is
 
+  signal decoded_op: decoded_opcode_type;
+  signal mtype: memory_access_type;
 
 begin
+
+  -- Top level instruction decoder.
   process(opcode)
-  -- synthesis translate_off
+    variable op: decoded_opcode_type;
+  begin
+    case opcode(15 downto 12) is
+      when "0000" =>
+        --
+        op := O_NOP;
+      when "0001" =>
+        -- ALU operations
+        case opcode(11 downto 9) is
+          when "000" => op := O_ADD;
+          when "001" => op := O_ADDC;
+          when "010" => op := O_SUB;
+          --when "011" => op := O_SUBC;
+          when "100" => op := O_AND;
+          when "101" => op := O_OR;
+          when others => op := O_NOP;
+        end case;
+      when "0010" =>
+        op := O_ST;
+
+      when "0100" =>
+        op := O_LD;
+
+      when "0110" =>
+        op := O_ADDI;
+
+      when "0111" =>
+        op := O_NOP; -- UNIMPL
+
+      when "1000" =>
+        op := O_IM;
+
+      when "1001" =>
+        op := O_NOP;
+
+      when "1010" =>
+        if opcode(3)='0' then
+          op := O_BRI;
+        else
+          case opcode(2 downto 0) is
+            when "000" => op := O_BRIE;
+            when "001" => op := O_BRINE;
+            when "010" => op := O_BRIG;
+            when "011" => op := O_BRIGE;
+            when "100" => op := O_BRIL;
+            when "101" => op := O_BRILE;
+            when others => op := O_NOP;
+          end case;
+        end if;
+      when "1011" =>
+        op := O_BRR;
+
+      when "1100" =>
+        op := O_CALLR;
+      when "1101" =>
+        op := O_CALLI;
+
+      when "1110" =>
+        op := O_LIMR;
+
+      when "1111" =>
+        -- TODO: change this
+        op := O_RET;
+
+      when others =>
+        op := O_NOP;
+
+    end case;
+
+    decoded_op <= op;
+
+  end process;
+
+  -- Decode memory access type, if applicable
+  process(opcode)
+  begin
+    case opcode(11 downto 8) is
+      when "0000" => mtype <= M_WORD;
+      when "0001" => mtype <= M_WORD_PREINC;
+      when "0010" => mtype <= M_WORD_POSTINC;
+      when "0011" => mtype <= M_WORD_PREDEC;
+      when "0100" => mtype <= M_WORD_POSTDEC;
+      when "0101" => mtype <= M_HWORD;
+      when "0110" => mtype <= M_HWORD_PREINC;
+      when "0111" => mtype <= M_HWORD_POSTINC;
+      when "1000" => mtype <= M_BYTE;
+      when "1001" => mtype <= M_BYTE_PREINC;
+      when "1010" => mtype <= M_BYTE_POSTINC;
+      when "1011" => mtype <= M_WORD_IND;
+      when "1100" => mtype <= M_HWORD_IND;
+      when "1101" => mtype <= M_BYTE_IND;
+      when others => mtype <= M_WORD;
+    end case;
+  end process;
+
+
+  process(opcode, decoded_op, mtype)
+    -- synthesis translate_off
     variable targetstr: string(1 to 2);
     variable sourcestr: string(1 to 5);
     variable opstr: string(1 to 7);
     variable rnum:  string(1 to 1);
-  -- synthesis translate_on
+    -- synthesis translate_on
+    variable d: opdec_type;
   begin
-    dec.opcode <= opcode;
-    dec.sreg <= opcode(2 downto 0);
-    dec.dreg <= opcode(5 downto 3);
-    dec.memory_access<='0';
-    dec.memory_write<='0';
-    dec.rd1 <= '0';
-    dec.rd2 <= '0';
+    --d := dec;
+    d.opcode := opcode;
+    d.sreg1 := opcode(3 downto 0);
+    d.sreg2 := opcode(7 downto 4);
 
-    case opcode(11 downto 10) is
-      --when "00" => dec.mask <= MASK_0;
-      when "01" => dec.mask <= MASK_8;
-      when "10" => dec.mask <= MASK_16;
-      when "11" => dec.mask <= MASK_32;
-      when others => null;
-    end case;
+    d.dreg := d.sreg1;
 
-    dec.prepost <= opcode(9);
-    --dec.delta   <= opcode(unsigned(2 downto 0);
+    d.memory_access := '0';
+    d.memory_write := 'X';
+    d.rd1 := '0';
+    d.rd2 := '0';
 
     -- synthesis translate_off
     dec.strasm <= opcode_txt_pad("UNKNOWN");
     -- synthesis translate_on
 
     -- Default values
-    dec.blocking    <= true;
-    dec.modify_a    <= false;
-    dec.modify_gpr  <= false;
-    dec.modify_mem  <= false;
-    dec.uses        <= uses_alu2;
-    dec.a_source    <= a_source_alu2;
-    dec.alu2_source <= ALU2_SOURCE_A;
-    dec.alu2_op     <= ALU2_IMMFIRST;
-    dec.alu1_source <= ALU1_SOURCE_AR;
-    dec.alu1_op     <= ALU1_UNKNOWN;
-    dec.reg_source  <= reg_source_alu1;
+    d.blocking    := true;
+    d.modify_gpr  := false;
+    d.uses        := uses_alu1;
+    d.alu2_op     := ALU_UNKNOWN;
+    d.alu1_op     := ALU_UNKNOWN;
+    d.imm8        := opcode(11 downto 4);
+    d.imm12       := opcode(11 downto 0);
+    d.imm4        := opcode(11 downto 8);
+    d.op          := decoded_op;
+    d.macc        := mtype;
+    d.reg_source  := reg_source_alu1;
+    d.modify_flags:= false;
 
-    if opcode(15 downto 12)="1000" then
-      -- IMM
-      --dec.op := O_IMM;
-      dec.blocking    <= false;
-      dec.modify_a    <= true;
-      dec.modify_gpr  <= false;
-      dec.modify_mem  <= false;
-      dec.uses        <= uses_alu2;
-      dec.a_source    <= a_source_alu2;
-      dec.alu2_source <= ALU2_SOURCE_A;
-      dec.alu2_op     <= ALU2_IMMFIRST;
-      -- synthesis translate_off
-      dec.strasm      <= opcode_txt_pad("IMFIRST 0x" & hstr(opcode(10 downto 0)));
-      -- synthesis translate_on
+    case decoded_op is
 
-    elsif opcode(15 downto 12)="1001" then
-      -- NEXTIMM
-      --op := O_IMMN;
-      dec.blocking    <= false;
-      dec.modify_a    <= true;
-      dec.modify_gpr  <= false;
-      dec.modify_mem  <= false;
-      dec.uses        <= uses_alu2;
-      dec.a_source    <= a_source_alu2;
-      dec.alu2_source <= ALU2_SOURCE_A;
-      dec.alu2_op     <= ALU2_IMMNEXT;
-      -- synthesis translate_off
-      dec.strasm      <= opcode_txt_pad("IMNEXT  0x" & hstr(opcode(10 downto 0)));
-      -- synthesis translate_on
-    elsif opcode(15 downto 12)="0001" then
+      when O_NOP =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("NOP ");
+        -- synthesis translate_on
+      when O_IM =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("IM 0x" & hstr(d.imm12));
+        -- synthesis translate_on
 
-      -- ALU operations
-      dec.blocking    <= false;
-      if opcode(8)='1' then
-        dec.modify_a    <= true;
-        dec.modify_gpr  <= false;
-        -- synthesis translate_off
-        targetstr := "A ";
-        -- synthesis translate_on
-      else
-        dec.modify_a    <= false;
-        dec.modify_gpr  <= true;
-        -- synthesis translate_off
-        targetstr := regname(opcode(5 downto 3));
-        -- synthesis translate_on
-      end if;
+      when O_LIMR =>
+        -- Load IMMediate into register target
+        d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_imm;
+        
 
-      dec.modify_mem  <= false;
-      dec.uses        <= uses_alu1;
-      dec.a_source    <= a_source_alu1;
-      dec.reg_source  <= reg_source_alu1;
-      dec.rd1 <= '1';
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("LIMR 0x" & hstr(d.imm8) &", "& regname(d.dreg));
+        -- synthesis translate_on
+      when O_ADD =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("ADD " & regname(d.sreg1) & ", " & regname(d.sreg2) );
+        -- synthesis translate_on
 
-      case opcode(11 downto 9) is
-        when "000" => dec.alu1_op     <= ALU1_ADD;
+      when O_ADDC =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADDC; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
         -- synthesis translate_off
-        opstr :="ADD    ";
+        d.strasm := opcode_txt_pad("ADDC " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
-        when "001" => dec.alu1_op     <= ALU1_ADDC;
-        -- synthesis translate_off
-        opstr :="ADDC   ";
-        -- synthesis translate_on
-        when "010" => dec.alu1_op     <= ALU1_SUB;
-        -- synthesis translate_off
-        opstr :="SUB    ";
-        -- synthesis translate_on
-        when "011" => dec.alu1_op     <= ALU1_AND;
-        -- synthesis translate_off
-        opstr :="AND    ";
-        -- synthesis translate_on
-        when "100" => dec.alu1_op     <= ALU1_OR;
-        -- synthesis translate_off
-        opstr :="OR     ";
-        -- synthesis translate_on
-        when others => dec.alu1_op     <= ALU1_UNKNOWN;
-      end case;
 
-      if opcode(7)='1' then
-        dec.alu1_source <= ALU1_SOURCE_AR;
+      when O_AND =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_AND; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
         -- synthesis translate_off
-        sourcestr := "A, " & regname(opcode(2 downto 0));
+        d.strasm := opcode_txt_pad("AND " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
-      else
+
+      when O_OR =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_OR; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
         -- synthesis translate_off
-        sourcestr := regname(opcode(2 downto 0)) & ", A";
+        d.strasm := opcode_txt_pad("OR " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
-        dec.alu1_source <= ALU1_SOURCE_RA;
-      end if;
-      -- synthesis translate_off
-      dec.strasm <= opcode_txt_pad(opstr & sourcestr & ", " & targetstr);
-      -- synthesis translate_on
---          if dst.a_or_gpr='0' then
---            dec.a_source := a_source_none_but_wrreg;
---          else
---            dec.a_source := a_source_alu;
---          end if;
-      --op := O_ALU;
-      
-    elsif opcode(15 downto 12)="0011" then
 
-      -- Store GPR to *GPR
-      dec.rd1 <= '1';
-      dec.rd2 <= '1';
-      dec.blocking    <= true; -- we use both ALU
-      dec.modify_a    <= false;
-      dec.modify_gpr  <= true;
-      dec.modify_mem  <= true;
-      dec.uses        <= uses_alu1;
-      dec.a_source    <= a_source_idle;
-      dec.alu2_source <= ALU2_SOURCE_R;
-      dec.alu2_op     <= ALU2_SADD;
-      dec.alu1_source <= ALU1_SOURCE_RA;
-      dec.alu1_op     <= ALU1_COPY_A;     -- We can change this ...
-      --dec.dreg <= opcode(2 downto 0);
-      dec.reg_source  <= reg_source_alu2;
-      dec.memory_access<='1';
-      dec.memory_write<='1';
-      -- synthesis translate_off
-      dec.strasm      <= opcode_txt_pad("ST  " & regname(opcode(2 downto 0)) & ", [" &
-                      regname(opcode(5 downto 3)) & "]");
-      -- synthesis translate_on
-    elsif opcode(15 downto 12)="0100" then
+      when O_SUB =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_SUB; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("SUB " & regname(d.sreg1) & ", " & regname(d.sreg2) );
+        -- synthesis translate_on
 
-      -- Load *GPR to A
-      dec.rd1<='1';
-      dec.blocking    <= false;
-      dec.modify_a    <= false;
-      dec.modify_gpr  <= true;
-      dec.modify_mem  <= true;
-      dec.uses        <= uses_alu2;
-      dec.a_source    <= a_source_memory;
-      dec.alu2_source <= ALU2_SOURCE_R;
-      dec.alu2_op     <= ALU2_SADD;
-     -- dec.alu1_source <= ALU1_SOURCE_RA;
-     -- dec.alu1_op     <= ALU1_COPY_A;     -- We can change this ...
-      --dec.dreg <= opcode(2 downto 0);
-      dec.reg_source  <= reg_source_alu2;
-      dec.memory_access<='1';
-      dec.memory_write<='0';
-      -- synthesis translate_off
-      dec.strasm      <= opcode_txt_pad("LD  [" & regname(opcode(2 downto 0)) & "], A");
-      -- synthesis translate_on
-    end if;
+      when O_ADDI =>
+        d.modify_flags := true;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("ADDI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
+        -- synthesis translate_on
+
+      when O_BRR =>
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
+        -- synthesis translate_on
+
+      when O_CALLR =>
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("CALLR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
+        -- synthesis translate_on
+
+      when O_ST =>
+        d.alu2_op := ALU_ADD; 
+        d.memory_access := '1';
+        d.memory_write := '1';
+        d.rd1:='1'; d.rd2:='1';
+        case mtype is
+
+          when M_WORD =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("ST " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("ST " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_PREDEC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("ST " & regname(d.sreg2) & ", [--" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("ST " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_WORD_POSTDEC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("ST " & regname(d.sreg2) & ", [" & regname(d.dreg) & "--]" );
+            -- synthesis translate_on
+          when M_HWORD =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_HWORD_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_HWORD_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_BYTE_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_HWORD_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STSI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STBI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when others =>
+        end case;
+
+
+      when O_LD =>
+        d.alu2_op := ALU_ADD; 
+        d.memory_access := '1';
+        d.memory_write := '0';
+        d.rd1:='1'; d.rd2:='1';
+        case mtype is
+
+          when M_WORD =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_PREDEC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [--" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_WORD_POSTDEC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "--]" );
+            -- synthesis translate_on
+          when M_HWORD =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_HWORD_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_HWORD_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE_POSTINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            -- synthesis translate_on
+          when M_BYTE_PREINC =>
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_WORD_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_HWORD_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STSI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when M_BYTE_IND =>
+            -- synthesis translate_off
+            d.strasm := opcode_txt_pad("STBI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            -- synthesis translate_on
+          when others =>
+        end case;
+
+      when O_BRI =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRI 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRIE =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRIE 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRINE =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRINE 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRIG =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRIG 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRIGE =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRIGE 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRIL =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRIL 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+      when O_BRILE =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("BRILE 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+
+      when O_RET =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("RET ");
+        -- synthesis translate_on
+
+      when O_CALLI =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
+        -- synthesis translate_on
+
+
+      when others =>
+        -- synthesis translate_off
+        d.strasm      := opcode_txt_pad("UNKNOWN");
+        -- synthesis translate_on
+    end case;
+
+    dec <= d;
+
   end process;
 
 

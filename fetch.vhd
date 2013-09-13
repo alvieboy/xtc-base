@@ -31,9 +31,8 @@ begin
 
   fuo.r <= fr;
   fuo.opcode <= read(31 downto 0);
-  fuo.valid <= valid;
 
-  process(fr, rst, clk, stall, valid)
+  process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr)
     variable fw: fetch_regs_type;
     variable npc: word_type;
   begin
@@ -41,6 +40,7 @@ begin
     npc := fr.fpc + 4;
 
     address <= std_logic_vector(fr.fpc);
+    fuo.valid <= valid;
 
     enable <= not freeze;
     strobe <= not freeze;
@@ -60,12 +60,20 @@ begin
         else
           -- Jump request
           fw.fpc := jumpaddr;
+          fw.fpc(1 downto 0) := "00";
           fw.state := jumping;
+          strobe <= '0';
+          enable <= '0';
+          --fuo.valid <= '0';
 
         end if;
       when jumping =>
           fw.fpc := npc;
+          strobe <= '1';
+          enable <= '1';
+          fuo.valid<='0';
           fw.ipc := fr.fpc;
+          fw.state := running;
       when others =>
     end case;
 

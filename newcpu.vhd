@@ -47,15 +47,15 @@ architecture behave of newcpu is
   signal euo:  execute_output_type;
   signal muo:  memory_output_type;
 
-  signal rbw_addr: std_logic_vector(2 downto 0);
+  signal rbw_addr: regaddress_type;
   signal rbw_wr:   std_logic_vector(31 downto 0);
   signal rbw_we:   std_logic;
   signal rbw_en:   std_logic;
 
-  signal rb1_addr: std_logic_vector(2 downto 0);
+  signal rb1_addr: regaddress_type;
   signal rb1_en:   std_logic;
   signal rb1_rd:   std_logic_vector(31 downto 0);
-  signal rb2_addr: std_logic_vector(2 downto 0);
+  signal rb2_addr: regaddress_type;
   signal rb2_en:   std_logic;
   signal rb2_rd:   std_logic_vector(31 downto 0);
 
@@ -75,12 +75,18 @@ architecture behave of newcpu is
 
   signal memory_busy:         std_logic;
   signal execute_busy:        std_logic;
+  signal wb_busy:             std_logic;
+
+  signal refetch:             std_logic;
 
 begin
 
   -- Register bank.
 
   rbe: regbank_3p
+  generic map (
+    ADDRESS_BITS => 4
+  )
   port map (
     clk     => wb_clk_i,
     rb1_en  => rb1_en,
@@ -132,8 +138,8 @@ begin
       strobe    => cache_strobe,
 
       freeze    => decode_freeze,
-      jump      => euo.jump,
-      jumpaddr  => euo.jumpaddr,
+      jump      => euo.r.jump,
+      jumpaddr  => euo.r.jumpaddr,
       -- Outputs for next stages
       fuo       => fuo
     );
@@ -147,7 +153,10 @@ begin
       -- Outputs for next stages
       duo       => duo,
       busy    => decode_freeze,
-      freeze  => execute_busy
+      freeze  => execute_busy,
+      flush   => euo.r.jump, -- DELAY SLOT when fetchdata is passthrough
+      jump    => euo.r.jump,
+      jumpmsb => euo.r.jumpaddr(1)
     );
 
   fetchdata_unit: fetchdata
@@ -161,7 +170,8 @@ begin
       r2_addr    => rb2_addr,
       r2_read    => rb2_rd,
       freeze     => execute_busy,
-
+      flush      => '0',-- euo.jump, -- DELAY SLOT
+      refetch    => refetch,
       w_addr     => w_addr,
       w_en       => w_en,
       -- Input from decode unit
@@ -170,6 +180,9 @@ begin
       fduo       => fduo
     );
   taintcheck: taint
+    generic map (
+      COUNT => 16
+    )
     port map (
       clk     => wb_clk_i,
       rst     => wb_rst_i,
@@ -178,8 +191,8 @@ begin
       req2_en => rb2_en,
       req2_r  => rb2_addr,
       -- Set
-      set_en  => w_en,
-      set_r   => w_addr,
+      set_en  => fduo.r.drq.regwe,--w_en,
+      set_r   => fduo.r.drq.dreg,--w_addr,
       -- Clear
       clr_en  => rbw_we,
       clr_r   => rbw_addr
@@ -191,6 +204,7 @@ begin
       rst       => wb_rst_i,
       busy      => execute_busy,
       mem_busy  => memory_busy,
+      wb_busy   => wb_busy,
       -- Input from fetchdata unit
       fdui      => fduo,
       -- Outputs for next stages
@@ -210,6 +224,8 @@ begin
     wb_stb_o        => wb_stb_o,
     wb_sel_o        => wb_sel_o,
     wb_we_o         => wb_we_o,
+
+    refetch         => refetch,
     busy            => memory_busy,
     -- Input for previous stages
     eui             => euo,
@@ -221,6 +237,7 @@ begin
     port map (
       clk       => wb_clk_i,
       rst       => wb_rst_i,
+      busy      => wb_busy,
       r_en      => rbw_en,
       r_we      => rbw_we,
       r_addr    => rbw_addr,

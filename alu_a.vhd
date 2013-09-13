@@ -47,21 +47,21 @@ begin
   begin
 
     case op is
-      when ALU1_ADD => alu_r <= alu_add_r;
-      when ALU1_ADDC => alu_r <= alu_add_r + carryext;
-      when ALU1_AND => alu_r <= alu_a and alu_b;
-      when ALU1_OR => alu_r <= alu_a or alu_b;
-      when ALU1_SUB => alu_r <= alu_sub_r;
-      when ALU1_COPY_A => alu_r <= alu_a;
+      when ALU_ADD  => alu_r <= alu_add_r;
+      when ALU_ADDC => alu_r <= alu_add_r + carryext;
+      when ALU_AND  => alu_r <= alu_a and alu_b;
+      when ALU_OR   => alu_r <= alu_a or alu_b;
+      when ALU_SUB  => alu_r <= alu_sub_r;
+--      when ALU1_COPY_A => alu_r <= alu_a;
       when others => alu_r <= (others =>'X');
     end case;
 
   end process;
 
-  co <= alu_add_r(32);
-  sign <= alu_r(31);
-  bo <= alu_sub_r(32);
-  o <= alu_r(31 downto 0);
-  zero <= '1' when alu_r(31 downto 0)=x"00000000" else '0';
+  co    <= alu_add_r(32);
+  sign  <= alu_r(31);
+  bo    <= alu_sub_r(32);
+  o     <= alu_r(31 downto 0);
+  zero  <= '1' when alu_r(31 downto 0)=x"00000000" else '0';
 
 end behave;

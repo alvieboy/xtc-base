@@ -63,7 +63,7 @@ architecture behave of wb_singleport_ram is
 
   shared variable ram: ramtype;
   signal selected: std_logic;
-  signal read_ended: std_logic;
+  signal ack: std_logic;
 
 begin
 
@@ -75,14 +75,17 @@ begin
   begin
     if rising_edge(wb_clk_i) then
       if wb_rst_i='1' then
-        read_ended<='0';
+        ack<='0';
       else
-        read_ended<=selected;
+        ack <= '0';
+        if selected='1' and ack='0' then
+          ack <= '1';
+        end if;
       end if;
     end if;
   end process;
 
-  wb_ack_o <= selected and (read_ended);
+  wb_ack_o <= ack;
 
   process(wb_clk_i)
   begin
