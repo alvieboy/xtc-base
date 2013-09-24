@@ -462,6 +462,7 @@ DESCRIPTION
 .#define bfd_mach_tilegx    1
 .#define bfd_mach_tilegx32  2
 .  bfd_arch_aarch64,   {* AArch64  *}
+.  bfd_arch_newcpu,{* Alvie Newcpu *}
 .#define bfd_mach_aarch64 0
 .  bfd_arch_last
 .  };

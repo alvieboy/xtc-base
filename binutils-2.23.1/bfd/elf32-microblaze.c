@@ -1380,7 +1380,8 @@ microblaze_elf_relax_section (bfd *abfd,
 	  else
 	    sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
 
-	  symval = _bfd_elf_rela_local_sym (abfd, isym, &sym_sec, irel);
+          symval = _bfd_elf_rela_local_sym (abfd, isym, &sym_sec, irel);
+          printf("SYMVAL here is %ld\n", (long)symval);
 	}
       else
 	{
@@ -1400,13 +1401,17 @@ microblaze_elf_relax_section (bfd *abfd,
 
 	  symval = (h->root.u.def.value
 		    + h->root.u.def.section->output_section->vma
-		    + h->root.u.def.section->output_offset);
+                    + h->root.u.def.section->output_offset);
+          printf("SYMVAL here is %lx\n", (long)symval);
+
 	}
 
       /* If this is a PC-relative reloc, subtract the instr offset from
          the symbol value.  */
       if (ELF32_R_TYPE (irel->r_info) == (int) R_MICROBLAZE_64_PCREL)
-	{
+      {
+          printf("SYMVAL adjust, addend %ld, offset %lx VMA %lx out offset %lx\n", (long)irel->r_addend, irel->r_offset,
+                 sec->output_section->vma, sec->output_offset);
 	  symval = symval + irel->r_addend
 	    - (irel->r_offset
 	       + sec->output_section->vma
@@ -1422,6 +1427,9 @@ microblaze_elf_relax_section (bfd *abfd,
 	  sec->relax[sec->relax_count].addr = irel->r_offset;
 	  sec->relax[sec->relax_count].size = INST_WORD_SIZE;
 	  sec->relax_count++;
+
+          printf("ADD relocation at %lx, size %u, symval is %ld\n", irel->r_offset, INST_WORD_SIZE,
+                (long)symval);
 
 	  /* Rewrite relocation type.  */
           switch ((enum elf_microblaze_reloc_type) ELF32_R_TYPE (irel->r_info))
@@ -1470,8 +1478,10 @@ microblaze_elf_relax_section (bfd *abfd,
 		  isym = isymbuf + ELF32_R_SYM (irel->r_info);
 		  /* Only handle relocs against .text.  */
 		  if (isym->st_shndx == shndx
-		      && ELF32_ST_TYPE (isym->st_info) == STT_SECTION)
-		    irel->r_addend -= calc_fixup (irel->r_addend, sec);
+                      && ELF32_ST_TYPE (isym->st_info) == STT_SECTION) {
+                      printf("Adjust addend %ld\n",(long)calc_fixup(irel->r_addend, sec));
+                      irel->r_addend -= calc_fixup (irel->r_addend, sec);
+                  }
 	        }
 	      break;
 	    case R_MICROBLAZE_NONE:
@@ -1491,7 +1501,8 @@ microblaze_elf_relax_section (bfd *abfd,
 	    case R_MICROBLAZE_64_NONE:
 	      {
 	        /* This was a PC-relative 64-bit instruction that was
- 		   completely resolved.  */
+                 completely resolved.  */
+                  printf("NONE\n");
 	        int sfix, efix;
 	        bfd_vma target_address;
 		target_address = irel->r_addend + irel->r_offset + INST_WORD_SIZE;
@@ -1503,7 +1514,9 @@ microblaze_elf_relax_section (bfd *abfd,
 	      }
 	      break;
 	    }
+          printf("New offset %08lx from %08lx\n", nraddr, irel->r_offset);
           irel->r_offset = nraddr;
+
         } /* Change all relocs in this section.  */
 
       /* Look through all other sections.  */

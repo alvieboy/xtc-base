@@ -22,8 +22,7 @@
 #ifndef NEWCPU_DIS_H
 #define NEWCPU_DIS_H 1
 
-extern enum newcpu_instr newcpu_decode_insn (long, int *, int *, 
-						     int *, int *);
+extern enum newcpu_instr newcpu_decode_insn (long, int *, int *, int *);
 extern unsigned long newcpu_get_target_address (long, bfd_boolean, int,
 			       long, long, bfd_boolean *, bfd_boolean *);
 

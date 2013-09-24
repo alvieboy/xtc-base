@@ -171,7 +171,7 @@ begin
       r2_read    => rb2_rd,
       freeze     => execute_busy,
       flush      => '0',-- euo.jump, -- DELAY SLOT
-      refetch    => refetch,
+      refetch    => execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
       -- Input from decode unit
@@ -179,6 +179,9 @@ begin
       -- Outputs for next stages
       fduo       => fduo
     );
+
+  tb: if false generate
+
   taintcheck: taint
     generic map (
       COUNT => 16
@@ -197,6 +200,7 @@ begin
       clr_en  => rbw_we,
       clr_r   => rbw_addr
     );
+  end generate;
 
   execute_unit: execute
     port map (

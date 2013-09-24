@@ -54,7 +54,9 @@ begin
           end if;
       
           if valid='1' then
+            --if freeze='0' then
             fw.pc := fr.ipc;
+            --end if;
             fw.ipc := fr.fpc;
           end if;
         else
@@ -68,12 +70,15 @@ begin
 
         end if;
       when jumping =>
+        if stall='0' then
           fw.fpc := npc;
           strobe <= '1';
           enable <= '1';
-          fuo.valid<='0';
-          fw.ipc := fr.fpc;
+          fw.ipc := npc;
+          fw.pc := npc;
           fw.state := running;
+        end if;
+        fuo.valid<='0';
       when others =>
     end case;
 

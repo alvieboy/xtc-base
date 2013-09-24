@@ -14,19 +14,12 @@
 #define streq(a,b) (strcmp (a, b) == 0)
 #endif
 
-static segT sbss_segment = 0; 	/* Small bss section.  */
-static segT sbss2_segment = 0; 	/* Section not used.  */
-static segT sdata_segment = 0; 	/* Small data section.  */
-static segT sdata2_segment = 0; /* Small read-only section.  */
-//static segT rodata_segment = 0; /* read-only section.  */
-
-
 /* Several places in this file insert raw instructions into the
    object. They should generate the instruction
    and then use these four macros to crack the instruction value into
    the appropriate byte values.  */
-#define	INST_BYTE0(x)  (target_big_endian ? (((x) >> 24) & 0xFF) : ((x) & 0xFF))
-#define	INST_BYTE1(x)  (target_big_endian ? (((x) >> 16) & 0xFF) : (((x) >> 8) & 0xFF))
+#define	INST_BYTE0(x)  (((x) >> 8) & 0xFF)
+#define	INST_BYTE1(x)  (((x) >> 0) & 0xFF)
 
 /* This array holds the chars that always start a comment.  If the
    pre-processor is disabled, these aren't very useful.  */
@@ -60,7 +53,6 @@ const char FLT_CHARS[] = "rRsSfFdDxXpP";
 #define PLT_OFFSET           9
 #define GOTOFF_OFFSET        10
 
-
 /* Initialize the relax table.  */
 const relax_typeS md_relax_table[] =
 {
@@ -68,21 +60,20 @@ const relax_typeS md_relax_table[] =
   {          1,          1,                0, 0 },  /*  1: Unused.  */
   {          1,          1,                0, 0 },  /*  2: Unused.  */
   {          1,          1,                0, 0 },  /*  3: Unused.  */
-  {      32767,   -32768, INST_WORD_SIZE, LARGE_DEFINED_PC_OFFSET }, /* 4: DEFINED_PC_OFFSET.  */
+  {      32767,   -32768, INST_WORD_SIZE*3, LARGE_DEFINED_PC_OFFSET }, /* 4: DEFINED_PC_OFFSET.  */
   {    1,     1,       0, 0 },                      /*  5: Unused.  */
   {    1,     1,       0, 0 },                      /*  6: Unused.  */
-  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*2, 0 },  /*  7: LARGE_DEFINED_PC_OFFSET.  */
-  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*2, 0 },  /*  8: GOT_OFFSET.  */
-  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*2, 0 },  /*  9: PLT_OFFSET.  */
-  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*2, 0 },  /* 10: GOTOFF_OFFSET.  */
+  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*3, 0 },  /*  7: LARGE_DEFINED_PC_OFFSET.  */
+  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*3, 0 },  /*  8: GOT_OFFSET.  */
+  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*3, 0 },  /*  9: PLT_OFFSET.  */
+  { 0x7fffffff, 0x80000000, INST_WORD_SIZE*3, 0 },  /* 10: GOTOFF_OFFSET.  */
 };
-
 
 static bfd_boolean check_gpr_reg (unsigned *p)
 {
-    if (p)
+    if ((*p)<32)
         return 1;
-    return 1;
+    return 0;
 }
 
 static struct hash_control * opcode_hash_control;	/* Opcode mnemonics.  */
@@ -126,6 +117,7 @@ md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
 long
 md_pcrel_from_section (fixS * fixp, segT sec ATTRIBUTE_UNUSED)
 {
+    printf("md_pcrel_from_section: enter\n");
 #ifdef OBJ_ELF
   /* If the symbol is undefined or defined in another section
      we leave the add number alone for the linker to fix it later.
@@ -139,9 +131,9 @@ md_pcrel_from_section (fixS * fixp, segT sec ATTRIBUTE_UNUSED)
     {
       /* The case where we are going to resolve things... */
       if (fixp->fx_r_type == BFD_RELOC_64_PCREL)
-        return  fixp->fx_where + fixp->fx_frag->fr_address + INST_WORD_SIZE;
+        return  fixp->fx_where + fixp->fx_frag->fr_address + INST_WORD_SIZE*3;
       else
-        return  fixp->fx_where + fixp->fx_frag->fr_address;
+        return  fixp->fx_where + fixp->fx_frag->fr_address + INST_WORD_SIZE*3;
     }
 #endif
 }
@@ -166,7 +158,7 @@ const pseudo_typeS md_pseudo_table[] =
   {NULL, NULL, 0}
 };
 
-
+#if 0
 void
 md_operand (expressionS * expressionP)
 {
@@ -177,6 +169,7 @@ md_operand (expressionS * expressionP)
       expression (expressionP);
     }
 }
+#endif
 
 extern void
 parse_cons_expression_newcpu (expressionS *exp, int size)
@@ -351,10 +344,20 @@ parse_reg (char * s, unsigned * reg)
   while (ISSPACE (* s))
     ++ s;
 
-  if (strncasecmp (s, "rpc", 3) == 0)
+  if (strncasecmp (s, "pc", 2) == 0)
     {
       *reg = REG_PC;
-      return s + 3;
+      return s + 2;
+    }
+  else if (strncasecmp (s, "y", 1) == 0)
+    {
+      *reg = REG_Y;
+      return s + 1;
+    }
+  else if (strncasecmp (s, "br", 2) == 0)
+    {
+      *reg = REG_BR;
+      return s + 2;
     }
   else
     {
@@ -379,7 +382,9 @@ parse_reg (char * s, unsigned * reg)
 	    {
               as_bad (_("Invalid register number at '%.6s'"), s);
               *reg = 0;
-	    }
+            }
+          printf("REG %s -> %d\n", s, *reg);
+
           return s;
         }
     }
@@ -491,216 +496,378 @@ parse_imm (char * s, expressionS * e, int min, int max)
   return new_pointer;
 }
 
-
-
-
+static int newcpu_count_bits(unsigned int immed)
+{
+    int count=31;
+    int bsign;
+    int sign = !!(immed & 0x80000000);
+    do {
+        immed<<=1;
+        bsign = !!(immed&0x80000000);
+        if (bsign!=sign)
+            break;
+    } while (--count);
+    return count+1;
+}
+static inline int newcpu_can_represent_as_imm8(int immed)
+{
+    return immed <= 127 && immed >= -128;
+}
 
 void
 md_assemble (char * str)
 {
-  char * op_start;
-  char * op_end;
-  struct op_code_struct * opcode, *opcode1;
-  char * output = NULL;
-  int nlen = 0;
-  //int i;
-  unsigned long inst, inst1;
-  unsigned reg1;
-  unsigned reg2;
-  //unsigned reg3;
-  unsigned isize;
-  unsigned int immed, temp;
-  expressionS exp;
-  char name[20];
+    char * op_start;
+    char * op_end;
+    struct op_code_struct * opcode, *opcode1;
+    char * output = NULL;
+    int nlen = 0;
+    //int i;
+    unsigned long inst, inst1;
+    unsigned reg1;
+    unsigned reg2;
+    //unsigned reg3;
+    unsigned isize;
+    unsigned int immed, temp;
+    expressionS exp;
+    char name[20];
 
-  /* Drop leading whitespace.  */
-  while (ISSPACE (* str))
-    str ++;
+    /* Drop leading whitespace.  */
+    while (ISSPACE (* str))
+        str ++;
 
-  /* Find the op code end.  */
-  for (op_start = op_end = str;
-       *op_end && !is_end_of_line[(unsigned char) *op_end] && *op_end != ' ';
-       op_end++)
+    /* Find the op code end.  */
+    for (op_start = op_end = str;
+         *op_end && !is_end_of_line[(unsigned char) *op_end] && *op_end != ' ';
+         op_end++)
     {
-      name[nlen] = op_start[nlen];
-      nlen++;
-      if (nlen == sizeof (name) - 1)
-	break;
+        name[nlen] = op_start[nlen];
+        nlen++;
+        if (nlen == sizeof (name) - 1)
+            break;
     }
 
-  name [nlen] = 0;
+    name [nlen] = 0;
 
-  if (nlen == 0)
+    if (nlen == 0)
     {
-      as_bad (_("can't find opcode "));
-      return;
+        as_bad (_("can't find opcode "));
+        return;
     }
 
-  opcode = (struct op_code_struct *) hash_find (opcode_hash_control, name);
-  if (opcode == NULL)
+    opcode = (struct op_code_struct *) hash_find (opcode_hash_control, name);
+    if (opcode == NULL)
     {
-      as_bad (_("unknown opcode \"%s\""), name);
-      return;
+        as_bad (_("unknown opcode \"%s\""), name);
+        return;
     }
 
-  inst = opcode->bit_sequence;
-  isize = 4;
+    inst = opcode->bit_sequence;
+    printf("At start: bit sequence %04lx\n", opcode->bit_sequence);
+    isize = 2;
 
-  switch (opcode->inst_type)
+    //int ismem = 0;
+
+    switch (opcode->inst_type)
     {
-    case INST_TYPE_R1_R2:
-      if (strcmp (op_end, ""))
-        op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
-      else
+
+    case INST_TYPE_SR:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+        else
         {
-          as_fatal (_("Error in statement syntax"));
-          reg1 = 0;
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
         }
-      if (strcmp (op_end, ""))
-        op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
-      else
-	{
-          as_fatal (_("Error in statement syntax"));
-          reg2 = 0;
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg2 = 0;
         }
+        printf("R1 %d, R2 %d\n", reg1, reg2);
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (& reg1))
+            as_fatal (_("Cannot use special register with this instruction"));
 
-      /* Check for spl registers.  */
-      if (!check_gpr_reg (& reg1))
-        as_fatal (_("Cannot use special register with this instruction"));
-      if (!check_gpr_reg (& reg2))
-        as_fatal (_("Cannot use special register with this instruction"));
+        if (check_gpr_reg (& reg2))
+            as_fatal (_("Cannot use GPR register with this instruction"));
 
-      inst |= (reg1 << RA_LOW) & RA_MASK;
-      inst |= (reg2 << RB_LOW) & RB_MASK;
-        
-      output = frag_more (isize);
-      break;
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+        inst |= ((reg2-32) << SPR_LOW) & SPR_MASK;
+        printf("now: bit sequence %04lx\n", inst);
 
-    case INST_TYPE_IMM:
-      if (strcmp (op_end, ""))
-	op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
-      else
-	as_fatal (_("Error in statement syntax"));
+        output = frag_more (isize);
+        break;
 
-      if (exp.X_op != O_constant)
-      {
-          as_fatal("Dont know how to handle this");
-	  immed = 0;
+    case INST_TYPE_MEM:
+        //ismem=1;
+        // Keep goiing...
+
+    case INST_TYPE_R1_R2:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
         }
-      else
-	{
-          output = frag_more (isize);
-          immed = exp.X_add_number;
-        }
-
-
-      temp = immed & 0xFFFF8000;
-      if ((temp != 0) && (temp != 0xFFFF8000))
-      {
-          /* Needs an immediate inst.  */
-          opcode1 = (struct op_code_struct *) hash_find (opcode_hash_control, "imm");
-          if (opcode1 == NULL)
-          {
-              as_bad (_("unknown opcode \"%s\""), "imm");
-              return;
-          }
-
-          inst1 = opcode1->bit_sequence;
-          inst1 |= ((immed & 0xFFFF0000) >> 16) & IMM_MASK;
-          output[0] = INST_BYTE0 (inst1);
-          output[1] = INST_BYTE1 (inst1);
-          output = frag_more (isize);
-      }
-      inst |= (immed << IMM_LOW) & IMM_MASK;
-
-      break;
-
-    case INST_TYPE_R1_IMM:
-      if (strcmp (op_end, ""))
-        op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
-      else
-	{
-          as_fatal (_("Error in statement syntax"));
-          reg1 = 0;
-        }
-      if (strcmp (op_end, ""))
-        op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
-      else
-        as_fatal (_("Error in statement syntax"));
-
-      /* Check for spl registers.  */
-      if (!check_gpr_reg (&reg1))
-        as_fatal (_("Cannot use special register with this instruction"));
-
-      if (exp.X_op != O_constant)
-	{
-          char *opc = NULL;
-          relax_substateT subtype;
-                  /*
-	  if (exp.X_md == IMM_GOT)
-	    subtype = GOT_OFFSET;
-	  else if (exp.X_md == IMM_PLT)
-	    subtype = PLT_OFFSET;
-	  else      */
-	    subtype = opcode->inst_offset_type;
-	  output = frag_var (rs_machine_dependent,
-			     isize * 2, /* maxm of 2 words.  */
-			     isize,     /* minm of 1 word.  */
-			     subtype,   /* PC-relative or not.  */
-			     exp.X_add_symbol,
-			     exp.X_add_number,
-			     opc);
-	  immed = 0;
-	}
-      else
-	{
-          output = frag_more (isize);
-          immed = exp.X_add_number;
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg2 = 0;
         }
 
-      temp = immed & 0xFFFF8000;
-      if ((temp != 0) && (temp != 0xFFFF8000))
-	{
-          /* Needs an immediate inst.  */
-          opcode1 = (struct op_code_struct *) hash_find (opcode_hash_control, "imm");
-          if (opcode1 == NULL)
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (& reg1))
+            as_fatal (_("Cannot use special register with this instruction"));
+        if (!check_gpr_reg (& reg2))
+            as_fatal (_("Cannot use special register with this instruction"));
+
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+        inst |= (reg2 << RB_LOW) & RB_MASK;
+        printf("now: bit sequence %04lx\n", inst);
+
+        output = frag_more (isize);
+        break;
+
+    case INST_TYPE_IMM8:
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
+        else
+            as_fatal (_("Error in statement syntax"));
+
+        if (exp.X_op != O_constant)
+        {
+#if 0
+            relax_substateT subtype;
+            subtype = opcode->inst_offset_type;
+            output = frag_var (rs_machine_dependent,
+                               isize * 3, /* maxm of 3 words.  */
+                               isize * 1,     /* minm of 1 word.  */
+                               subtype,   /* PC-relative or not.  */
+                               exp.X_add_symbol,
+                               exp.X_add_number,
+                               NULL);
+#endif
+            //expressionS ex;
+            //expression (&ex);
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
+                            BFD_RELOC_NEWCPU_IMM_12_12_8 );
+
+            fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
+            output = frag_more(2);
+
+            output[0] = 0x80;
+            output[1] = 0x0;
+            output = frag_more(2*INST_WORD_SIZE);
+            output[0] = 0x80;
+            output[1] = 0x00;
+            output[2] = INST_BYTE0(inst);
+            output[3] = INST_BYTE1(inst);
+
+            return;
+
+            immed = 0;
+        }
+        else
+        {
+            abort();
+            output = frag_more (isize);
+            immed = exp.X_add_number;
+        }
+
+        temp = immed & 0xFFFF8000;
+        if ((temp != 0) && (temp != 0xFFFF8000))
+        {
+            /* Needs an immediate inst.  */
+            opcode1 = (struct op_code_struct *) hash_find (opcode_hash_control, "imm");
+            if (opcode1 == NULL)
             {
-              as_bad (_("unknown opcode \"%s\""), "imm");
-	      return;
+                as_bad (_("unknown opcode \"%s\""), "imm");
+                return;
             }
 
-          inst1 = opcode1->bit_sequence;
-          inst1 |= ((immed & 0xFFFF0000) >> 16) & IMM_MASK;
-          output[0] = INST_BYTE0 (inst1);
-          output[1] = INST_BYTE1 (inst1);
-          output = frag_more (isize);
+            inst1 = opcode1->bit_sequence;
+            inst1 |= ((immed & 0xFFFF0000) >> 16) & IMM_MASK;
+            output[0] = INST_BYTE0 (inst1);
+            output[1] = INST_BYTE1 (inst1);
+            output = frag_more (isize);
+        }
+        inst |= (immed << IMM_LOW) & IMM_MASK;
+        //output = frag_more(isize*2);
+        break;
+
+    case INST_TYPE_IMM:
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
+        else
+            as_fatal (_("Error in statement syntax"));
+
+        as_fatal("NYI");
+
+        if (exp.X_op != O_constant)
+        {
+            as_fatal("Dont know how to handle this");
+            immed = 0;
+        }
+        else
+        {
+            output = frag_more (isize);
+            immed = exp.X_add_number;
         }
 
-      inst |= (reg1 << RA_LOW) & RA_MASK;
-      inst |= (immed << IMM_LOW) & IMM_MASK;
-      break;
+
+        temp = immed & 0xFFFF8000;
+        if ((temp != 0) && (temp != 0xFFFF8000))
+        {
+            /* Needs an immediate inst.  */
+            opcode1 = (struct op_code_struct *) hash_find (opcode_hash_control, "imm");
+            if (opcode1 == NULL)
+            {
+                as_bad (_("unknown opcode \"%s\""), "imm");
+                return;
+            }
+
+            inst1 = opcode1->bit_sequence;
+            inst1 |= ((immed & 0xFFFF0000) >> 16) & IMM_MASK;
+            output[0] = INST_BYTE0 (inst1);
+            output[1] = INST_BYTE1 (inst1);
+            output = frag_more (isize);
+        }
+        inst |= (immed << IMM_LOW) & IMM_MASK;
+
+        break;
+
+    case INST_TYPE_IMM8_R:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
+        else
+            as_fatal (_("Error in statement syntax"));
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
+        }
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (&reg1))
+            as_fatal (_("Cannot use special register with this instruction"));
+
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+
+        if (exp.X_op != O_constant)
+        {
 #if 0
-    case INST_TYPE_NONE:
-      output = frag_more (isize);
-      break;
+            char *opc = NULL;
+            relax_substateT subtype = opcode->inst_offset_type;
+
+            printf("Call FRAG var\n");
+            output = frag_var (rs_machine_dependent,
+                               isize, /* maxm of 3 words.  */
+                               isize,     /* minm of 1 word.  */
+                               subtype,   /* PC-relative or not.  */
+                               exp.X_add_symbol,
+                               exp.X_add_number,
+                               opc);
 #endif
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
+                            BFD_RELOC_NEWCPU_IMM_12_12_8 );
+
+            fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
+            output = frag_more(2);
+
+            output[0] = 0x80;
+            output[1] = 0x0;
+            output = frag_more(2*INST_WORD_SIZE);
+            output[0] = 0x80;
+            output[1] = 0x00;
+            output[2] = INST_BYTE0(inst);
+            output[3] = INST_BYTE1(inst);
+            printf("EMIT INST %04lx\n",inst);
+            return;
+            immed = 0;
+            abort();
+        }
+        else
+        {
+            int bits = newcpu_count_bits(exp.X_add_number);
+
+            output = frag_more (isize);
+            printf("Need to emit constant IMM, value %08x\n", (unsigned)exp.X_add_number);
+            immed = exp.X_add_number >> 8;
+
+            if (bits>=20) {
+                // emit very high IM12
+                unsigned inst2;
+                // this is WRONG - we're outputting high values
+                // and not the correct ones.
+
+                inst2 = 0x8000 | (((immed>>12) << IMM_LOW) & IMM_MASK);
+                printf("IMM EMIT %04x\n",inst2);
+                output[0] = INST_BYTE0 (inst2);
+                output[1] = INST_BYTE1 (inst2);
+                dwarf2_emit_insn (2);
+
+                output = frag_more (isize);
+                immed<<=12;
+                bits-=12;
+            }
+            if (bits>8) {
+                // emit very high IM12
+                unsigned inst2;
+                inst2 = 0x8000 | (((immed) << IMM_LOW) & IMM_MASK);
+                printf("IMM EMIT %04x\n",inst2);
+                output[0] = INST_BYTE0 (inst2);
+                output[1] = INST_BYTE1 (inst2);
+                dwarf2_emit_insn (2);
+                output = frag_more (isize);
+                bits-=8;
+            }
+
+            inst |= (reg1 << RA_LOW) & RA_MASK;
+            inst |= (exp.X_add_number << IMM8_LOW) & IMM8_MASK;
+            printf("IMM EMIT %04lx\n",inst);
+                
+            output[0] = INST_BYTE0 (inst);
+            output[1] = INST_BYTE1 (inst);
+            //output = frag_more (isize);
+
+            //abort();
+        }
+
+        break;
+
+    case INST_TYPE_NOARGS:
+        output = frag_more (isize);
+        break;
+
     default:
-      as_fatal (_("unimplemented opcode \"%s\""), name);
+        as_fatal (_("BUG: unimplemented opcode \"%s\" typed %d"), name, opcode->inst_type);
     }
 
-  /* Drop whitespace after all the operands have been parsed.  */
-  while (ISSPACE (* op_end))
-    op_end ++;
+    /* Drop whitespace after all the operands have been parsed.  */
+    while (ISSPACE (* op_end))
+        op_end ++;
 
-  /* Give warning message if the insn has more operands than required.  */
-  if (strcmp (op_end, opcode->name) && strcmp (op_end, ""))
-    as_warn (_("ignoring operands: %s "), op_end);
+    /* Give warning message if the insn has more operands than required.  */
+    if (strcmp (op_end, opcode->name) && strcmp (op_end, ""))
+        as_warn (_("ignoring operands: %s "), op_end);
 
-  output[0] = INST_BYTE0 (inst);
-  output[1] = INST_BYTE1 (inst);
+    printf("outputting %02lx%02lx\n", INST_BYTE0(inst),INST_BYTE1(inst));
+    output[0] = INST_BYTE0 (inst);
+    output[1] = INST_BYTE1 (inst);
 
 #ifdef OBJ_ELF
-  dwarf2_emit_insn (2);
+    dwarf2_emit_insn (2);
 #endif
 }
 
@@ -708,85 +875,125 @@ md_assemble (char * str)
 
 void
 md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
-	         segT sec ATTRIBUTE_UNUSED,
-		 fragS * fragP ATTRIBUTE_UNUSED)
+                 segT sec ATTRIBUTE_UNUSED,
+                 fragS * fragP)
 {
-#if 0
-  fixS *fixP;
+    //fixS *fixP;
 
-  switch (fragP->fr_subtype)
+    printf("md_convert_frag: converting frag subtype %d, fix at %lu\n", fragP->fr_subtype,
+           fragP->fr_fix);
+
+    switch (fragP->fr_subtype)
     {
     case UNDEFINED_PC_OFFSET:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	       fragP->fr_offset, TRUE, BFD_RELOC_64_PCREL);
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
+        printf("md_convert_frag: undefined PC offset\n");
+
+        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 3, fragP->fr_symbol,
+                 fragP->fr_offset, TRUE, BFD_RELOC_NEWCPU_IMM_12_12_8);
+        fragP->fr_fix += INST_WORD_SIZE * 2;
+        fragP->fr_var = 0;
+        //abort();
+        break;
+
     case DEFINED_ABS_SEGMENT:
-      if (fragP->fr_symbol == GOT_symbol)
-        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	         fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_64_GOTPC);
-      else
-        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	         fragP->fr_offset, FALSE, BFD_RELOC_64);
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
-    case DEFINED_RO_SEGMENT:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
-	       fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_32_ROSDA);
-      fragP->fr_fix += INST_WORD_SIZE;
-      fragP->fr_var = 0;
-      break;
-    case DEFINED_RW_SEGMENT:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
-	       fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_32_RWSDA);
-      fragP->fr_fix += INST_WORD_SIZE;
-      fragP->fr_var = 0;
-      break;
+        printf("md_convert_frag: defined ABS segment\n");
+
+        //if (fragP->fr_symbol == GOT_symbol) {
+        //    as_fatal("md_convert_frag: GOT not supported");
+        //}
+
+        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
+                 fragP->fr_offset, FALSE, BFD_RELOC_NEWCPU_IMM_12_12_8);
+        fragP->fr_fix += INST_WORD_SIZE * 2;
+        fragP->fr_var = 0;
+        break;
+
+
     case DEFINED_PC_OFFSET:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
-	       fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_32_LO_PCREL);
-      fragP->fr_fix += INST_WORD_SIZE;
-      fragP->fr_var = 0;
-      break;
-    case LARGE_DEFINED_PC_OFFSET:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	       fragP->fr_offset, TRUE, BFD_RELOC_64_PCREL);
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
-    case GOT_OFFSET:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	       fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_64_GOT);
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
-    case PLT_OFFSET:
-      fixP = fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	              fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_64_PLT);
-      /* fixP->fx_plt = 1; */
-      (void) fixP;
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
-    case GOTOFF_OFFSET:
-      fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
-	       fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_64_GOTOFF);
-      fragP->fr_fix += INST_WORD_SIZE * 2;
-      fragP->fr_var = 0;
-      break;
+
+        printf("md_convert_frag: defined PC offset  -reloc type %d\n", BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL);
+
+        //fragP->fr_fix += INST_WORD_SIZE*2;
+        //fragP->fr_fix -= 4;
+
+        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE*3, fragP->fr_symbol,
+                 fragP->fr_offset, TRUE, BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL);
+
+        fragP->fr_fix += INST_WORD_SIZE * 2;
+
+        fragP->fr_var = 0;
+        break;
 
     default:
-      abort ();
+
+        as_fatal("dont know how to convert_frag %d", fragP->fr_subtype);
     }
+
+#if 0
+case DEFINED_ABS_SEGMENT:
+    if (fragP->fr_symbol == GOT_symbol)
+        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+                 fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_64_GOTPC);
+    else
+        fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+                 fragP->fr_offset, FALSE, BFD_RELOC_64);
+    fragP->fr_fix += INST_WORD_SIZE * 2;
+    fragP->fr_var = 0;
+    break;
+case DEFINED_RO_SEGMENT:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
+             fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_32_ROSDA);
+    fragP->fr_fix += INST_WORD_SIZE;
+    fragP->fr_var = 0;
+    break;
+case DEFINED_RW_SEGMENT:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
+             fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_32_RWSDA);
+    fragP->fr_fix += INST_WORD_SIZE;
+    fragP->fr_var = 0;
+    break;
+case DEFINED_PC_OFFSET:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
+             fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_32_LO_PCREL);
+    fragP->fr_fix += INST_WORD_SIZE;
+    fragP->fr_var = 0;
+    break;
+case LARGE_DEFINED_PC_OFFSET:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+             fragP->fr_offset, TRUE, BFD_RELOC_64_PCREL);
+    fragP->fr_fix += INST_WORD_SIZE * 2;
+    fragP->fr_var = 0;
+    break;
+case GOT_OFFSET:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+             fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_64_GOT);
+    fragP->fr_fix += INST_WORD_SIZE * 2;
+    fragP->fr_var = 0;
+    break;
+case PLT_OFFSET:
+    fixP = fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+                    fragP->fr_offset, TRUE, BFD_RELOC_MICROBLAZE_64_PLT);
+    /* fixP->fx_plt = 1; */
+    (void) fixP;
+    fragP->fr_fix += INST_WORD_SIZE * 2;
+    fragP->fr_var = 0;
+    break;
+case GOTOFF_OFFSET:
+    fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 2, fragP->fr_symbol,
+             fragP->fr_offset, FALSE, BFD_RELOC_MICROBLAZE_64_GOTOFF);
+    fragP->fr_fix += INST_WORD_SIZE * 2;
+    fragP->fr_var = 0;
+    break;
+
+default:
+    abort ();
+}
 #endif
-  as_fatal("dont know");
 }
 
 /* Create a fixup for a cons expression.  If parse_cons_expression_microblaze
-   found a machine specific op in an expression,
-   then we create relocs accordingly.  */
+ found a machine specific op in an expression,
+ then we create relocs accordingly.  */
 
 void
 cons_fix_new_newcpu (fragS * frag,
@@ -831,15 +1038,17 @@ cons_fix_new_newcpu (fragS * frag,
           r = BFD_RELOC_32;
           break;
         }
+        printf("cons_fix_new_newcpu: %d\n", r);
 #if 0
     }
 #endif
   fix_new_exp (frag, where, size, exp, 0, r);
 }
-
+#if 0
 int
 tc_newcpu_fix_adjustable (struct fix *fixP ATTRIBUTE_UNUSED)
 {
+    printf("tc_newcpu_fix_adjustable: enter\n");
 #if 0
   if (GOT_symbol && fixP->fx_subsy == GOT_symbol)
     return 0;
@@ -852,6 +1061,7 @@ tc_newcpu_fix_adjustable (struct fix *fixP ATTRIBUTE_UNUSED)
 #endif
   return 1;
 }
+#endif
 
 #define F(SZ,PCREL)		(((SZ) << 1) + (PCREL))
 #define MAP(SZ,PCREL,TYPE)	case F (SZ, PCREL): code = (TYPE); break
@@ -862,16 +1072,29 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   arelent * rel;
   bfd_reloc_code_real_type code;
 
+  printf("tc_gen_reloc: called, type %d size %d pcrel %d\n", fixp->fx_r_type, fixp->fx_size,
+        fixp->fx_pcrel);
+
   switch (fixp->fx_r_type)
     {
     case BFD_RELOC_NONE:
     case BFD_RELOC_32:
     case BFD_RELOC_64:
     case BFD_RELOC_64_PCREL:
-      code = fixp->fx_r_type;
-      break;
+    case BFD_RELOC_NEWCPU_32:
+    case BFD_RELOC_NEWCPU_32_PCREL:
+    case BFD_RELOC_NEWCPU_IMM_12_12_8:
+    case BFD_RELOC_NEWCPU_IMM_12_8:
+    case BFD_RELOC_NEWCPU_IMM_8:
+    case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
+    case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
+    case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+        printf("Copy type\n");
+        code = fixp->fx_r_type;
+        break;
 
     default:
+        abort();
       switch (F (fixp->fx_size, fixp->fx_pcrel))
         {
           MAP (1, 0, BFD_RELOC_8);
@@ -902,6 +1125,9 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   rel->address = fixp->fx_frag->fr_address + fixp->fx_where;
   /* Always pass the addend along!  */
   rel->addend = fixp->fx_offset;
+
+  printf("GEN RELOC: addend is %ld\n", (long)fixp->fx_offset);
+
   rel->howto = bfd_reloc_type_lookup (stdoutput, code);
 
   if (rel->howto == NULL)
@@ -912,7 +1138,8 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
                                   "Cannot represent relocation type %s",
                                   bfd_get_reloc_code_name (code)));
 #endif
-      /* Set howto to a garbage value so that we can keep going.  */
+        abort();
+        /* Set howto to a garbage value so that we can keep going.  */
       rel->howto = bfd_reloc_type_lookup (stdoutput, BFD_RELOC_32);
       gas_assert (rel->howto != NULL);
     }
@@ -936,13 +1163,16 @@ md_apply_fix (fixS *   fixP,
   struct op_code_struct * opcode1;
   unsigned long inst1;
 
+  printf("md_apply_fix: Applying fixup\n");
+
   //symname = fixP->fx_addsy ? S_GET_NAME (fixP->fx_addsy) : _("<unknown>");
 
   /* fixP->fx_offset is supposed to be set up correctly for all
-     symbol relocations.  */
+   symbol relocations.  */
+
   if (fixP->fx_addsy == NULL)
     {
-      if (!fixP->fx_pcrel)
+         if (!fixP->fx_pcrel)
         fixP->fx_offset = val; /* Absolute relocation.  */
       else
         fprintf (stderr, "NULL symbol PC-relative relocation? offset = %08x, val = %08x\n",
@@ -981,7 +1211,8 @@ md_apply_fix (fixS *   fixP,
       && (!S_IS_DEFINED (fixP->fx_addsy)
           || (S_GET_SEGMENT (fixP->fx_addsy) != segment)))
     {
-      fixP->fx_done = 0;
+        fixP->fx_done = 0;
+        printf("md_apply_fix: no defined symbol, or different segment\n");
 #ifdef OBJ_ELF
       /* For ELF we can just return and let the reloc that will be generated
          take care of everything.  For COFF we still have to insert 'val'
@@ -990,18 +1221,23 @@ md_apply_fix (fixS *   fixP,
 #endif
     }
   /* All fixups in the text section must be handled in the linker.  */
-  else if (segment->flags & SEC_CODE)
-    fixP->fx_done = 0;
+  else if (segment->flags & SEC_CODE) {
+      printf("md_apply_fix: text section fixup is for linker\n");
+      fixP->fx_done = 0;
+  }
   else if (!fixP->fx_pcrel && fixP->fx_addsy != NULL)
     fixP->fx_done = 0;
   else
     fixP->fx_done = 1;
 
+  printf("md_apply_fix: at this point, fix_done == %d\n", fixP->fx_done);
+
   switch (fixP->fx_r_type)
     {
-    case BFD_RELOC_MICROBLAZE_32_LO:
-    case BFD_RELOC_MICROBLAZE_32_LO_PCREL:
-      if (target_big_endian)
+    case BFD_RELOC_NEWCPU_32_PCREL:
+    case BFD_RELOC_NEWCPU_32:
+        abort();
+        if (target_big_endian)
 	{
 	  buf[2] |= ((val >> 8) & 0xff);
 	  buf[3] |= (val & 0xff);
@@ -1038,6 +1274,7 @@ md_apply_fix (fixS *   fixP,
     case BFD_RELOC_32:
     case BFD_RELOC_RVA:
     case BFD_RELOC_32_PCREL:
+        abort();
     //case BFD_RELOC_MICROBLAZE_32_SYM_OP_SYM:
       /* Don't do anything if the symbol is not defined.  */
       if (fixP->fx_addsy == NULL || S_IS_DEFINED (fixP->fx_addsy))
@@ -1126,7 +1363,7 @@ md_apply_fix (fixS *   fixP,
     default:
       break;
     }
-
+  printf("md_apply_fix: at this point, fx_addsy %p\n", fixP->fx_addsy);
   if (fixP->fx_addsy == NULL)
     {
       /* This fixup has been resolved.  Create a reloc in case the linker
@@ -1135,24 +1372,30 @@ md_apply_fix (fixS *   fixP,
               as_fatal("Cannot handle this");
             //fixP->fx_r_type = BFD_RELOC_MICROBLAZE_64_NONE;
         }
-      else
-	fixP->fx_r_type = BFD_RELOC_NONE;
-      fixP->fx_addsy = section_symbol (absolute_section);
+      //else
+	//fixP->fx_r_type = BFD_RELOC_NONE;
+      //fixP->fx_addsy = section_symbol (absolute_section);
     }
   return;
 }
+
+
 
 /* Called just before address relaxation, return the length
    by which a fragment must grow to reach it's destination.  */
 
 int
-md_estimate_size_before_relax (fragS * fragP,
-			       segT segment_type)
+md_estimate_size_before_relax (fragS * fragP ATTRIBUTE_UNUSED,
+			       segT segment_type ATTRIBUTE_UNUSED)
 {
-  sbss_segment = bfd_get_section_by_name (stdoutput, ".sbss");
+#if 0
+
+    sbss_segment = bfd_get_section_by_name (stdoutput, ".sbss");
   sbss2_segment = bfd_get_section_by_name (stdoutput, ".sbss2");
   sdata_segment = bfd_get_section_by_name (stdoutput, ".sdata");
   sdata2_segment = bfd_get_section_by_name (stdoutput, ".sdata2");
+
+  printf("Estimate size before relax\n");
 
   switch (fragP->fr_subtype)
     {
@@ -1268,7 +1511,7 @@ md_estimate_size_before_relax (fragS * fragP,
     case GOT_OFFSET:
     case PLT_OFFSET:
     case GOTOFF_OFFSET:
-      fragP->fr_var = INST_WORD_SIZE*2;
+      fragP->fr_var = INST_WORD_SIZE * 2;
       break;
     case DEFINED_RO_SEGMENT:
     case DEFINED_RW_SEGMENT:
@@ -1280,4 +1523,53 @@ md_estimate_size_before_relax (fragS * fragP,
     }
 
   return fragP->fr_var;
+#endif
+  as_fatal("md_estimate_size_before_relax called\n");
 }
+
+
+/* See whether we need to force a relocation into the output file.  */
+int
+tc_newcpu_force_relocation (fixS *fixP)
+{
+	switch (fixP->fx_r_type)
+	{
+        case BFD_RELOC_NEWCPU_IMM_12_12_8:
+        case BFD_RELOC_NEWCPU_IMM_12_8:
+        case BFD_RELOC_NEWCPU_IMM_8:
+        case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
+        case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
+        case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+            return 1;
+		 default:
+		 break;
+	}
+
+  return generic_force_reloc (fixP);
+}
+
+int
+tc_newcpu_fix_adjustable (fixS *fixP)
+{
+  switch (fixP->fx_r_type)
+    {
+      /* For the linker relaxation to work correctly, these relocs
+         need to be on the symbol itself.  */
+    case BFD_RELOC_16:
+    case BFD_RELOC_32:
+
+	/* plus these */
+    case BFD_RELOC_NEWCPU_IMM_12_12_8:
+    case BFD_RELOC_NEWCPU_IMM_12_8:
+    case BFD_RELOC_NEWCPU_IMM_8:
+    case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
+    case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
+    case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+
+        return 0;
+
+    default:
+      return 1; 
+    }
+}
+

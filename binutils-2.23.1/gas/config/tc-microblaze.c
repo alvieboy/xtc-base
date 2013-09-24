@@ -83,10 +83,10 @@ const char FLT_CHARS[] = "rRsSfFdDxXpP";
 /* Initialize the relax table.  */
 const relax_typeS md_relax_table[] =
 {
-  {          1,          1,                0, 0 },  /*  0: Unused.  */
-  {          1,          1,                0, 0 },  /*  1: Unused.  */
-  {          1,          1,                0, 0 },  /*  2: Unused.  */
-  {          1,          1,                0, 0 },  /*  3: Unused.  */
+  {          1,          1,                INST_WORD_SIZE, 0 },  /*  0: Unused.  */
+  {          1,          1,                INST_WORD_SIZE, 0 },  /*  1: Unused.  */
+  {          1,          1,                INST_WORD_SIZE, 0 },  /*  2: Unused.  */
+  {          1,          1,                INST_WORD_SIZE , 0 },  /*  3: Unused.  */
   {      32767,   -32768, INST_WORD_SIZE, LARGE_DEFINED_PC_OFFSET }, /* 4: DEFINED_PC_OFFSET.  */
   {    1,     1,       0, 0 },                      /*  5: Unused.  */
   {    1,     1,       0, 0 },                      /*  6: Unused.  */
@@ -2031,7 +2031,7 @@ md_apply_fix (fixS *   fixP,
     }
   return;
 }
-}
+
 void
 md_operand (expressionS * expressionP)
 {

@@ -33,22 +33,24 @@
 /* We need to handle expressions of type "symbol op symbol" and create
    relocs for such expressions as -relax in linker can change the value
    of such expressions */
-#define TC_CONS_FIX_NEW cons_fix_new_newcpu
-#define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) parse_cons_expression_newcpu (EXP, NBYTES)
+//#define TC_CONS_FIX_NEW cons_fix_new_newcpu
+//#define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) parse_cons_expression_newcpu (EXP, NBYTES)
 extern void parse_cons_expression_newcpu PARAMS ((expressionS *, int));
 
-#define TC_FORCE_RELOCATION_SECTION(FIXP,SEG) 1
+//#define TC_FORCE_RELOCATION_SECTION(FIXP,SEG) 1
 #define UNDEFINED_DIFFERENCE_OK 1
+#define DIFF_EXPR_OK
 
-#define TC_FORCE_RELOCATION_LOCAL(FIX)	\
+/*
+ #define TC_FORCE_RELOCATION_LOCAL(FIX)	\
   (!(FIX)->fx_pcrel			\
    || TC_FORCE_RELOCATION (FIX))
-
+ */
 #define tc_fix_adjustable(X)  tc_newcpu_fix_adjustable(X)
 extern int tc_newcpu_fix_adjustable (struct fix *);
 
-extern const struct relax_type md_relax_table[];
-#define TC_GENERIC_RELAX_TABLE md_relax_table
+//extern const struct relax_type md_relax_table[];
+//#define TC_GENERIC_RELAX_TABLE md_relax_table
 
 /* We don't need to handle .word strangely.  */
 #define WORKING_DOT_WORD
@@ -56,7 +58,7 @@ extern const struct relax_type md_relax_table[];
 #define LISTING_HEADER        	"Newcpu GAS Listing"
 #define LISTING_LHS_CONT_LINES	4
 
-#define NEED_FX_R_TYPE	1
+//#define NEED_FX_R_TYPE	1
 
 /* We want local label support.  */
 #define LOCAL_LABELS_FB 1
@@ -71,7 +73,7 @@ extern const struct relax_type md_relax_table[];
 
 #ifdef OBJ_ELF
 
-#define TARGET_FORMAT (target_big_endian ? "elf32-newcpu" : "elf32-newcpu-little")
+#define TARGET_FORMAT "elf32-newcpu"
 
 #define ELF_TC_SPECIAL_SECTIONS \
   { ".sdata",		SHT_PROGBITS,	SHF_ALLOC + SHF_WRITE }, \
@@ -87,7 +89,15 @@ extern const struct relax_type md_relax_table[];
 # error No target format specified.
 #endif
 
+#define md_operand(x)
+
 #include "write.h"        /* For definition of fixS */
+
+#define TC_FORCE_RELOCATION(fix) tc_newcpu_force_relocation (fix)
+extern int tc_newcpu_force_relocation (struct fix *);
+
+#define tc_fix_adjustable(X) tc_newcpu_fix_adjustable(X)
+extern int tc_newcpu_fix_adjustable (struct fix *);
   
 extern void      md_begin            (void);
 extern void      md_assemble         (char *);
@@ -95,9 +105,9 @@ extern symbolS * md_undefined_symbol (char *);
 extern char *    md_atof             (int, char *, int *);
 extern int       md_parse_option     (int, char *);
 extern void      md_show_usage       (FILE *);
-extern void      md_convert_frag               (bfd *, segT, fragS *);
-extern void      md_operand                    (expressionS *);
-extern int       md_estimate_size_before_relax (fragS *, segT);
+//extern void      md_convert_frag               (bfd *, segT, fragS *);
+//extern void      md_operand                    (expressionS *);
+//extern int       md_estimate_size_before_relax (fragS *, segT);
 extern void      md_number_to_chars            (char *, valueT, int);
 extern valueT    md_section_align              (segT, valueT);
 extern long      md_pcrel_from_section         (fixS *, segT);
@@ -105,6 +115,6 @@ extern arelent * tc_gen_reloc                  (asection *, fixS *);
 extern void 	 cons_fix_new_newcpu       (fragS *, int, int, expressionS *);
 extern void 	 md_apply_fix3 		       (fixS *, valueT *, segT);
 
-#define EXTERN_FORCE_RELOC -1
+//#define EXTERN_FORCE_RELOC -1
 
 #endif /* TC_NEWCPU */

@@ -20,15 +20,65 @@
    MA 02110-1301, USA.  */
  
 
-#ifndef MICROBLAZE_OPCM
-#define MICROBLAZE_OPCM
+#ifndef NEWCPU_OPCM
+#define NEWCPU_OPCM
 
 enum newcpu_instr
 {
+    nop,
     add,
+    addc,
+    sub,
     and,
+    or,
+    not,
     bri,
+    brie,
+    brine,
+    brig,
+    brige,
+    bril,
+    brile,
     imm,
+    limr,
+    stw,
+    stwpreinc,
+    stwpostinc,
+    stwpredec,
+    stwpostdec,
+    sth,
+    sthpreinc,
+    sthpostinc,
+    stb,
+    stbpreinc,
+    stbpostinc,
+    stwi,
+    sthi,
+    stbi,
+
+    ldw,
+    ldwpreinc,
+    ldwpostinc,
+    ldwpredec,
+    ldwpostdec,
+    ldh,
+    ldhpreinc,
+    ldhpostinc,
+    ldb,
+    ldbpreinc,
+    ldbpostinc,
+    ldwi,
+    ldhi,
+    ldbi,
+
+    addi,
+    call,
+    callr,
+    brr,
+    lsr,
+    ssr,
+    ret,
+
     invalid_inst
 };
 
@@ -64,47 +114,27 @@ enum newcpu_instr_type
 #define MAX_REGNUM 31
 
 #define REG_PC  32 /* PC.  */
-#define REG_MSR 33 /* Machine status reg.  */
-#define REG_EAR 35 /* Exception reg.  */
-#define REG_ESR 37 /* Exception reg.  */
-#define REG_FSR 39 /* FPU Status reg.  */
-#define REG_BTR 43 /* Branch Target reg.  */
-#define REG_EDR 45 /* Exception reg.  */
-#define REG_PVR 40960 /* Program Verification reg.  */
-
-#define REG_PID   36864 /* MMU: Process ID reg.  */
-#define REG_ZPR   36865 /* MMU: Zone Protect reg.  */
-#define REG_TLBX  36866 /* MMU: TLB Index reg.  */
-#define REG_TLBLO 36867 /* MMU: TLB Low reg.  */
-#define REG_TLBHI 36868 /* MMU: TLB High reg.  */
-#define REG_TLBSX 36869 /* MMU: TLB Search Index reg.  */
+#define REG_Y  33 /* Y  */
+#define REG_BR  34 /* BR  */
 
 /* Alternate names for gen purpose regs.  */
 #define REG_SP  1 /* stack pointer.  */
-#define REG_ROSDP 2 /* read-only small data pointer.  */
-#define REG_RWSDP 13 /* read-write small data pointer.  */
 
 /* Assembler Register - Used in Delay Slot Optimization.  */
 #define REG_AS    18
 #define REG_ZERO  0
  
-#define RD_LOW  21 /* Low bit for RD.  */
-#define RA_LOW  16 /* Low bit for RA.  */
-#define RB_LOW  11 /* Low bit for RB.  */
+#define RA_LOW  0 /* Low bit for RA.  */
+#define RB_LOW  4 /* Low bit for RB.  */
 #define IMM_LOW  0 /* Low bit for immediate.  */
+#define IMM8_LOW  4 /* Low bit for 8-bit immediate.  */
+#define RA_MASK 0x000F
+#define RB_MASK 0x00F0
 
-#define RD_MASK 0x03E00000
-#define RA_MASK 0x001F0000
-#define RB_MASK 0x0000F800
-#define IMM_MASK 0x0000FFFF
+#define SPR_LOW 4
+#define SPR_MASK 0x0070
 
-/* Imm mask for barrel shifts.  */
-#define IMM5_MASK 0x0000001F
+#define IMM_MASK 0x0FFF
+#define IMM8_MASK 0x0FF0
 
-/* FSL imm mask for get, put instructions.  */
-#define  RFSL_MASK 0x000000F
-
-/* Imm mask for msrset, msrclr instructions.  */
-#define  IMM15_MASK 0x00007FFF
-
-#endif /* MICROBLAZE-OPCM */
+#endif /* NEWCPU-OPCM */

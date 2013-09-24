@@ -28,9 +28,15 @@
 
 /* Relocations.  */
 START_RELOC_NUMBERS (elf_newcpu_reloc_type)
-  RELOC_NUMBER (R_NEWCPU_NONE, 0)
-  RELOC_NUMBER (R_NEWCPU_32, 1)
-  RELOC_NUMBER (R_NEWCPU_32_PCREL, 2)
+    RELOC_NUMBER (R_NEWCPU_NONE, 0)
+    RELOC_NUMBER (R_NEWCPU_32, 1)             /* 32-bit normal reloc, memory */
+    RELOC_NUMBER (R_NEWCPU_32_PCREL, 2)       /* 32-bit normal reloc, PCREL */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_12_12_8, 3) /* 32-bit IMM reloc */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_12_8, 4)    /* 20-bit IMM reloc */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_8, 5)       /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_12_12_8_PCREL, 6) /* 32-bit IMM reloc, PC-relative */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_12_8_PCREL, 7)    /* 20-bit IMM reloc */
+    RELOC_NUMBER (R_NEWCPU_32_IMM_8_PCREL, 8)       /* 8-bit IMM reloc */
 END_RELOC_NUMBERS (R_NEWCPU_max)
 
 #endif /* _ELF_NEWCPU_H */

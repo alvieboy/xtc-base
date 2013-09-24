@@ -39,11 +39,10 @@ architecture behave of memory is
 begin
 
     muo.r <= mr;
-    muo.mdata <= wb_dat_i;
     muo.mreg <= mr.dreg;
     muo.mregwe <= mregwe;
 
-    process(eui,mr,clk,rst,wb_ack_i)
+    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i)
       variable mw: memory_regs_type;
       variable wmask: std_logic_vector(3 downto 0);
       variable wdata: std_logic_vector(31 downto 0);
@@ -56,6 +55,7 @@ begin
       wb_we_o   <=eui.r.data_writeenable;
       wdata     := (others => DontCareValue);
       wmask     := (others => DontCareValue);
+      muo.mdata <= (others => '0');
 
       case eui.r.macc is
         when M_BYTE | M_BYTE_POSTINC | M_BYTE_PREINC | M_BYTE_IND =>
@@ -67,6 +67,8 @@ begin
             when "11" => wdata(31 downto 24) := eui.r.data_write(7 downto 0); wmask:="1000";
             when others => null;
           end case;
+          muo.mdata(7 downto 0) <= wb_dat_i(7 downto 0);
+
 
         when M_HWORD | M_HWORD_POSTINC | M_HWORD_PREINC | M_HWORD_IND =>
           case eui.r.data_address(1) is
@@ -74,9 +76,13 @@ begin
             when '1' => wdata(31 downto 16) := eui.r.data_write(15 downto 0); wmask:="1100";
             when others => null;
           end case;
+          muo.mdata(15 downto 0) <= wb_dat_i(15 downto 0);
+
         when others =>
-            wdata := eui.r.data_write;
-            wmask:="1111";
+          wdata := eui.r.data_write;
+          wmask:="1111";
+          muo.mdata <= wb_dat_i;
+
       end case;
 
       wb_adr_o <= eui.r.data_address;
@@ -89,9 +95,9 @@ begin
         if wb_ack_i='0' then
           mw.dreg := eui.r.mwreg;
         end if;
-        --if wb_ack_i='1' then
-        refetch <= wb_ack_i;--'1';
-        --end if;
+        -- NOTE: if we just issued a store, and a load is queued, we also need to
+        -- refetch the data. Maybe use freeze.... ????
+        refetch <= wb_ack_i;
         mregwe <= wb_ack_i;
       end if;
 
@@ -101,7 +107,7 @@ begin
         busy <= '1';
       end if;
 
-      if eui.r.valid='0' then
+      if eui.r.data_access='0' then
         wb_cyc_o <= '0';
         wb_stb_o <= DontCareValue;
         wb_adr_o <= (others => DontCareValue);

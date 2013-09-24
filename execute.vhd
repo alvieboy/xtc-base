@@ -91,6 +91,7 @@ begin
       variable busy_int: std_logic;
       constant reg_zero: unsigned(31 downto 0) := (others => '0');
       variable im8_fill: unsigned(31 downto 0);
+      variable invalid_instr: boolean;
     begin
       ew := er;
 
@@ -98,6 +99,7 @@ begin
       ew.jump := '0';
       ew.jumpaddr := (others => 'X');
       ew.regwe := '0';
+      invalid_instr := false;
 
       -- This is *really* expensive. Can we do this in another way ?
       if er.imflag='1' then
@@ -111,7 +113,7 @@ begin
 
       -- ALUB selector
       case fdui.r.drq.op is
-        when O_ADDI | O_BRR | O_CALLR=>
+        when O_ADDI | O_BRR | O_CALLR | O_CALLI =>
           alu_b_b <= std_logic_vector(im8_fill);
         when others =>
           alu_b_b <= (others => 'X');
@@ -163,6 +165,7 @@ begin
         ew.dreg := fdui.r.drq.dreg;
         ew.mwreg := fdui.r.drq.sra2;
         ew.regwe := fdui.r.drq.regwe;
+        ew.sr := fdui.r.drq.sr;
 
         if mem_busy='0' then
           ew.macc := fdui.r.drq.macc;
@@ -189,7 +192,8 @@ begin
                  M_BYTE_IND =>
               ew.data_address := std_logic_vector(alu_b_r);
 
-            when others =>        
+            when others =>
+              invalid_instr := true;
           end case;
           if fdui.r.drq.memory_access='1' then
             case fdui.r.drq.macc is
@@ -221,11 +225,11 @@ begin
           when O_IM =>
             ew.imflag := '1';
 
-            if er.imflag='1' then
+            if er.imflag='0' then
               ew.imreg(31 downto 12) := (others => fdui.r.drq.imm12(11));
               ew.imreg(11 downto 0) := unsigned(fdui.r.drq.imm12(11 downto 0));
             else
-              ew.imreg(31 downto 12) := (others => fdui.r.drq.imm12(11));
+              ew.imreg(31 downto 12) := er.imreg(31-12 downto 0);
               ew.imreg(11 downto 0) := unsigned(fdui.r.drq.imm12(11 downto 0));
             end if;
 
@@ -240,10 +244,11 @@ begin
 
         case fdui.r.drq.op is
           when O_BRR | O_CALLR =>
-            ew.jump := '1'; ew.jumpaddr := alu_b_r(31 downto 0);
-          when O_BRI | O_CALLI =>
+          when O_CALLI  =>
+            ew.jump := '1'; ew.jumpaddr := alu_b_r(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          when O_BRI =>
             -- NOTE: if we use sync output here, we can use imreg.
-            ew.jump := '1';               ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+            ew.jump := '1'; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
           when O_BRINE =>
             ew.jump := not er.flag_zero;  ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
           when O_BRIE =>
@@ -264,9 +269,18 @@ begin
         case fdui.r.drq.op is
           when O_CALLR | O_CALLI =>
             ew.br := fdui.r.drq.fpc;  -- This is PC+2. We have to skip delay slot
+          when O_SSR =>
+
+            case fdui.r.drq.sr is
+              when SR_BR =>
+                ew.br := unsigned(fdui.rr1);
+              when others =>
+                invalid_instr := true;
+
+            end case;
+
           when others =>
         end case;
-
       end if;
 
       busy <= busy_int;
@@ -282,8 +296,12 @@ begin
       euo.dreg <= ew.dreg;
       euo.regwe <= ew.regwe;
       euo.imreg <= ew.imreg;
+      euo.sr <= ew.sr;
 
       if rising_edge(clk) then
+        if invalid_instr then
+          report "Invalid instruction" severity failure;
+        end if;
         er <= ew;
       end if;
 

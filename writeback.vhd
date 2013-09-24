@@ -53,6 +53,10 @@ begin
             wdata := eui.alur2;
           when reg_source_imm =>
             wdata := eui.imreg;
+          when reg_source_spr =>
+
+            wdata := eui.r.br;
+
           when others =>
         end case;
   
@@ -67,6 +71,8 @@ begin
             wdata := eui.r.alur2;
           when reg_source_imm =>
             wdata := eui.r.imreg;
+          when reg_source_spr =>
+            wdata := eui.r.br;
           when others =>
         end case;
   

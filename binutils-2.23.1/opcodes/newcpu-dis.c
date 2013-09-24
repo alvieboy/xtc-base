@@ -50,6 +50,25 @@ get_field (long instr, long mask, unsigned short low)
 }
 
 static char *
+get_field_spr (long instr)
+{
+    char tmpstr[25];
+    int spr = (instr & SPR_MASK)>>SPR_LOW;
+    switch (spr) {
+    case 0:
+        sprintf(tmpstr,"pc"); break;
+    case 1:
+        sprintf(tmpstr,"y"); break;
+    case 2:
+        sprintf(tmpstr,"br"); break;
+    default:
+        sprintf(tmpstr,"<error>"); break;
+    }
+
+  return (strdup (tmpstr));
+}
+
+static char *
 get_field_imm12 (long instr)
 {
   char tmpstr[25];
@@ -63,7 +82,7 @@ get_field_imm8 (long instr)
 {
   char tmpstr[25];
 
-  sprintf (tmpstr, "%d", (short)((instr & IMM5_MASK) >> IMM_LOW));
+  sprintf (tmpstr, "%d", (short)((instr & IMM8_MASK) >> IMM_LOW));
   return (strdup (tmpstr));
 }
 
@@ -72,12 +91,12 @@ read_insn_newcpu (bfd_vma memaddr,
 		      struct disassemble_info *info,
 		      struct op_code_struct **opr)
 {
-  unsigned char       ibytes[4];
+  unsigned char       ibytes[2];
   int                 status;
   struct op_code_struct * op;
   unsigned long inst;
 
-  status = info->read_memory_func (memaddr, ibytes, 4, info);
+  status = info->read_memory_func (memaddr, ibytes, 2, info);
 
   if (status != 0)
     {
@@ -85,13 +104,7 @@ read_insn_newcpu (bfd_vma memaddr,
       return 0;
     }
 
-  if (info->endian == BFD_ENDIAN_BIG)
-    inst = (ibytes[0] << 24) | (ibytes[1] << 16) | (ibytes[2] << 8) | ibytes[3];
-  else if (info->endian == BFD_ENDIAN_LITTLE)
-    inst = (ibytes[3] << 24) | (ibytes[2] << 16) | (ibytes[1] << 8) | ibytes[0];
-  else
-    abort ();
-
+  inst = (ibytes[0] << 8) | ibytes[1];
   /* Just a linear search of the table.  */
   for (op = opcodes; op->name != 0; op ++)
     if (op->bit_sequence == (inst & op->opcode_mask))
@@ -115,19 +128,15 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
   static int          prev_insn_vma = -1;  /* Init the prev insn vma.  */
   int                 curr_insn_vma = info->buffer_vma;
 
-  info->bytes_per_chunk = 4;
+  info->bytes_per_chunk = 2;
 
   inst = read_insn_newcpu (memaddr, info, &op);
-  if (inst == 0)
-    return -1;
 
   if (prev_insn_vma == curr_insn_vma)
     {
       if (memaddr-(info->bytes_per_chunk) == prev_insn_addr)
         {
           prev_inst = read_insn_newcpu (prev_insn_addr, info, &pop);
-	  if (prev_inst == 0)
-	    return -1;
 	  if (pop->instr == imm)
 	    {
 	      immval = (get_int_field_imm12 (prev_inst) << 12);
@@ -153,7 +162,11 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
 
       switch (op->inst_type)
 	{
+        case INST_TYPE_SR:
+          print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_spr (inst));
+          break;
         case INST_TYPE_R1_R2:
+        case INST_TYPE_MEM:
           print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_r2 (inst));
           break;
         case INST_TYPE_IMM:
@@ -180,7 +193,9 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
             print_func (stream, "\t%s", get_field_imm8 (inst));
             break;
         case INST_TYPE_IMM8_R:
-            print_func (stream, "\t(%s)%s", get_field_imm8 (inst), get_field_r1(inst));
+            print_func (stream, "\t%s, %s", get_field_imm8 (inst), get_field_r1(inst));
+            break;
+        case INST_TYPE_NOARGS:
             break;
          default:
 	  /* If the disassembler lags the instruction set.  */
@@ -190,7 +205,7 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
     }
 
   /* Say how many bytes we consumed.  */
-  return 4;
+  return 2;
 }
 
 enum newcpu_instr
@@ -207,8 +222,10 @@ get_insn_newcpu (long inst,
     if (op->bit_sequence == (inst & op->opcode_mask))
       break;
 
-  if (op->name == 0)
-    return invalid_inst;
+  if (op->name == 0) {
+      printf("Invalid instruction\n");
+      return invalid_inst;
+  }
   else
     {
       *isunsignedimm = (op->inst_type == INST_TYPE_IMM);
@@ -219,7 +236,7 @@ get_insn_newcpu (long inst,
 }
 
 enum newcpu_instr
-newcpu_decode_insn (long insn, int *rd, int *ra, int *rb, int *immed)
+newcpu_decode_insn (long insn, int *ra, int *rb, int *immed)
 {
   enum newcpu_instr op;
   bfd_boolean t1;
@@ -227,7 +244,6 @@ newcpu_decode_insn (long insn, int *rd, int *ra, int *rb, int *immed)
   short t3;
 
   op = get_insn_newcpu (insn, &t1, &t2, &t3);
-  *rd = (insn & RD_MASK) >> RD_LOW;
   *ra = (insn & RA_MASK) >> RA_LOW;
   *rb = (insn & RB_MASK) >> RB_LOW;
   t3 = (insn & IMM_MASK) >> IMM_LOW;
@@ -250,6 +266,7 @@ newcpu_get_target_address (long inst, bfd_boolean immfound, int immval,
         if (op->bit_sequence == (inst & op->opcode_mask))
             break;
 
+    printf("newcpu_get_target_address\n");
     if (op->name == 0)
     {
         *targetvalid = FALSE;

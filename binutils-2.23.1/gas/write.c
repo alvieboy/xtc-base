@@ -487,7 +487,8 @@ cvt_frag_to_fill (segT sec ATTRIBUTE_UNUSED, fragS *fragP)
 
     case rs_machine_dependent:
       md_convert_frag (stdoutput, sec, fragP);
-
+      printf("rs Machine dep fr_next address %u fr_address %u fr_fix %u\n",(unsigned)fragP->fr_next->fr_address, (unsigned)fragP->fr_address,
+		  (unsigned)fragP->fr_fix);
       gas_assert (fragP->fr_next == NULL
 	      || ((offsetT) (fragP->fr_next->fr_address - fragP->fr_address)
 		  == fragP->fr_fix));
@@ -1262,6 +1263,10 @@ write_relocs (bfd *abfd, asection *sec, void *xxx ATTRIBUTE_UNUSED)
       if (slack > 0)
 	fx_size = fx_size > slack ? fx_size - slack : 0;
       loc = fixp->fx_where + fx_size;
+
+      printf("write_relocs: slack %d, loc %ld, fr_fix %ld\n",
+             slack ,loc, fixp->fx_frag->fr_fix);
+
       if (slack >= 0 && loc > fixp->fx_frag->fr_fix)
 	as_bad_where (fixp->fx_file, fixp->fx_line,
 		      _("internal error: fixup not contained within frag"));

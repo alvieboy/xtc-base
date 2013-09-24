@@ -5817,6 +5817,43 @@ ENUMDOC
   Same as BFD_RELOC_32_PCREL but with an implicit -4 addend.
 
 ENUM
+  BFD_RELOC_NEWCPU_NONE
+ENUMDOC
+  This is a 32-bit reloc that stores the address of a value
+ENUM
+  BFD_RELOC_NEWCPU_32
+ENUMDOC
+  This is a 32-bit reloc that stores the address of a value
+ENUM
+  BFD_RELOC_NEWCPU_32_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores a pc-relative address
+ENUM
+  BFD_RELOC_NEWCPU_IMM_12_12_8
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_NEWCPU_IMM_12_8
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_NEWCPU_IMM_8
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_NEWCPU_IMM_12_8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_NEWCPU_IMM_8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+
+ENUM
   BFD_RELOC_MICROBLAZE_32_LO
 ENUMDOC
   This is a 32 bit reloc for the microblaze that stores the 

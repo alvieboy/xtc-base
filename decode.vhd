@@ -61,7 +61,7 @@ begin
       variable imm12:          std_logic_vector(11 downto 0);
       variable imm8:           std_logic_vector(7 downto 0);
       variable imm4:           std_logic_vector(3 downto 0);
-
+      variable sr:             std_logic_vector(2 downto 0);
       variable alu2_opcode: opcode_type;
 
       variable opcdelta: std_logic_vector(2 downto 0);
@@ -112,6 +112,7 @@ begin
           imm12 := dec1.imm12;
           imm8  := dec1.imm8;
           imm4  := dec1.imm4;
+          sr := dec1.sr;
 
           op := dec1.op;
           alu1_op := dec1.alu1_op;
@@ -140,6 +141,7 @@ begin
           imm12 := dec2.imm12;
           imm8  := dec2.imm8;
           imm4  := dec2.imm4;
+          sr := dec2.sr;
 
           op := dec2.op;
           alu1_op := dec2.alu1_op;
@@ -164,6 +166,8 @@ begin
         -- Issue two instructions at the time, one for each of the LU
         ra1 := dec1.sreg1;
         ra2 := dec2.sreg2;
+        sr := (others => 'X');
+
         prepost := DontCareValue; -- No prepost in composite
         memory_access := '0';
         memory_write := DontCareValue;
@@ -240,6 +244,7 @@ begin
         dw.regwe := regwe;
         dw.wb_is_data_address := '0';
         dw.macc := macc;
+        dw.sr := sr;
         dw.memory_access := memory_access;
         dw.memory_write := memory_write;
         dw.modify_flags := modify_flags;

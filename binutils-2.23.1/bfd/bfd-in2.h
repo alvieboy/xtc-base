@@ -2191,8 +2191,8 @@ enum bfd_architecture
 #define bfd_mach_tilegx    1
 #define bfd_mach_tilegx32  2
   bfd_arch_aarch64,   /* AArch64  */
+  bfd_arch_newcpu,/* Alvie Newcpu */
 #define bfd_mach_aarch64 0
-  bfd_arch_newcpu,
   bfd_arch_last
   };
 
@@ -5016,6 +5016,33 @@ the linker could optimize the movq to a leaq if possible.  */
 /* Same as BFD_RELOC_32_PCREL but with an implicit -4 addend.  */
   BFD_RELOC_MACH_O_X86_64_PCREL32_4,
 
+/* This is a 32-bit reloc that stores the address of a value  */
+  BFD_RELOC_NEWCPU_NONE,
+
+/* This is a 32-bit reloc that stores the address of a value  */
+  BFD_RELOC_NEWCPU_32,
+
+/* This is a 32-bit reloc that stores a pc-relative address  */
+  BFD_RELOC_NEWCPU_32_PCREL,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_12_12_8,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_12_8,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_8,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_12_8_PCREL,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_NEWCPU_IMM_8_PCREL,
+
 /* This is a 32 bit reloc for the microblaze that stores the 
 low 16 bits of a value  */
   BFD_RELOC_MICROBLAZE_32_LO,
@@ -5481,11 +5508,6 @@ giving a 16 bit signed byte offset.  */
 
 /* Adapteva EPIPHANY - 8 bit immediate for 16 bit mov instruction.  */
   BFD_RELOC_EPIPHANY_IMM8,
-  /* Newcpu */
-  BFD_RELOC_NEWCPU_IMM12,
-  BFD_RELOC_NEWCPU_IMM24,
-  BFD_RELOC_NEWCPU_IMM8,
-
   BFD_RELOC_UNUSED };
 typedef enum bfd_reloc_code_real bfd_reloc_code_real_type;
 reloc_howto_type *bfd_reloc_type_lookup

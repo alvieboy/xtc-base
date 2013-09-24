@@ -31,7 +31,7 @@ const bfd_arch_info_type bfd_newcpu_arch =
   bfd_arch_newcpu, 		/* Architecture.  */
   0,		  		/* Machine number - 0 for now.  */
   "newcpu",	  		/* Architecture name.  */
-  "Newcpu",	  		/* Printable name.  */
+  "newcpu",	  		/* Printable name.  */
   3,		  		/* Section align power.  */
   TRUE,		  		/* Is this the default architecture ?  */
   bfd_default_compatible,	/* Architecture comparison function.  */

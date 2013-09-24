@@ -25,6 +25,12 @@ package newcpupkg is
 
   subtype alu2_op_type is std_logic_vector(2 downto 0);
 
+  constant SR_PC: std_logic_vector(2 downto 0) := "000";
+  constant SR_Y: std_logic_vector(2 downto 0) := "001";
+  constant SR_BR: std_logic_vector(2 downto 0) := "010";
+  constant SR_CCSR: std_logic_vector(2 downto 0) := "011";
+  constant SR_INTPC: std_logic_vector(2 downto 0) := "100";
+  constant SR_INTM: std_logic_vector(2 downto 0) := "101";
 
   type decoded_opcode_type is (
     O_NOP,
@@ -54,8 +60,10 @@ package newcpupkg is
 
     O_CALLR,
     O_CALLI,
-    O_RET
+    O_SSR,
+    O_LSR,
 
+    O_RET
   );
 
   type memory_access_type is (
@@ -114,6 +122,8 @@ package newcpupkg is
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
     imm4:           std_logic_vector(3 downto 0);
+    -- Special reg
+    sr:             std_logic_vector(2 downto 0);
 
     op:             decoded_opcode_type;
 -- synthesis translate_off
@@ -164,7 +174,7 @@ package newcpupkg is
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
     imm4:           std_logic_vector(3 downto 0);
-
+    sr:             std_logic_vector(2 downto 0);
 -- synthesis translate_off
     strasm:     string(1 to 50);
 -- synthesis translate_on
@@ -207,7 +217,7 @@ package newcpupkg is
     data_address:   std_logic_vector(31 downto 0);
     data_access:    std_logic;
     data_writeenable: std_logic;
-
+    sr:             std_logic_vector(2 downto 0);
     dreg:           regaddress_type;
     mwreg:          regaddress_type;
     regwe:          std_logic;
@@ -225,7 +235,8 @@ package newcpupkg is
     -- Async stuff for writeback
     reg_source: reg_source_type;
     dreg: regaddress_type;
-
+    sr: std_logic_vector(2 downto 0);
+    
     alur1: word_type;
     alur2: word_type;
     imreg: word_type;

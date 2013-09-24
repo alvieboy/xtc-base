@@ -28,8 +28,15 @@ begin
   begin
     case opcode(15 downto 12) is
       when "0000" =>
-        --
-        op := O_NOP;
+        case opcode(11 downto 8) is
+          when "0001" =>
+            op := O_LSR;
+          when "0010" =>
+            op := O_SSR;
+
+          when others =>
+            op := O_NOP;
+        end case;
       when "0001" =>
         -- ALU operations
         case opcode(11 downto 9) is
@@ -133,6 +140,7 @@ begin
     d.opcode := opcode;
     d.sreg1 := opcode(3 downto 0);
     d.sreg2 := opcode(7 downto 4);
+    d.sr := opcode(6 downto 4);
 
     d.dreg := d.sreg1;
 
@@ -416,10 +424,23 @@ begin
         -- synthesis translate_on
 
       when O_CALLI =>
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
         -- synthesis translate_on
 
+      when O_LSR =>
+        d.modify_gpr:=true; d.reg_source:=reg_source_spr;
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("LSR ");
+        -- synthesis translate_on
+
+      when O_SSR =>
+        d.rd1:='1';
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("SSR ");
+        -- synthesis translate_on
 
       when others =>
         -- synthesis translate_off

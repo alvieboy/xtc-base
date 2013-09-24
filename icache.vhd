@@ -357,7 +357,7 @@ begin
 
   cache_addr_write <= line_save & std_logic_vector(offcnt_write(offcnt_write'HIGH downto 2));
 
-  process(busy,miss,access_q)
+  process(busy,miss,access_q,fill_success)
   begin
     if busy='1' then
       stall_i<='1';
