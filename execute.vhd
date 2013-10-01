@@ -13,6 +13,7 @@ entity execute is
     rst:  in std_logic;
     mem_busy: in std_logic;
     busy: out std_logic;
+    refetch: in std_logic;
     wb_busy: in std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
@@ -113,7 +114,7 @@ begin
 
       -- ALUB selector
       case fdui.r.drq.op is
-        when O_ADDI | O_BRR | O_CALLR | O_CALLI =>
+        when O_ADDI | O_BRR | O_CALLR | O_CALLI | O_CMPI =>
           alu_b_b <= std_logic_vector(im8_fill);
         when others =>
           alu_b_b <= (others => 'X');
@@ -137,7 +138,7 @@ begin
       if fdui.r.drq.valid='1' and busy_int='0' then
         -- synthesis translate_off
         if rising_edge(clk) then
-          report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+          -- report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
         end if;
         -- synthesis translate_on
 
@@ -167,7 +168,7 @@ begin
         ew.regwe := fdui.r.drq.regwe;
         ew.sr := fdui.r.drq.sr;
 
-        if mem_busy='0' then
+        if mem_busy='0' or refetch='1' then
           ew.macc := fdui.r.drq.macc;
           ew.data_write := fdui.rr2;
 

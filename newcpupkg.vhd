@@ -7,23 +7,46 @@ use work.txt_util.all;
 
 package newcpupkg is
 
+
+  constant INSTRUCTION_CACHE: boolean := false;
+
+
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
   subtype word_type is unsigned(31 downto 0);
   subtype word_type_std is std_logic_vector(31 downto 0);
   subtype regaddress_type is std_logic_vector(3 downto 0);
 
-  subtype alu1_op_type is std_logic_vector(2 downto 0);
+  --subtype alu1_op_type is std_logic_vector(2 downto 0);
+  type alu1_op_type is (
+    ALU_ADD,
+    ALU_ADDC,
+    ALU_SUB,
+    ALU_AND,
+    ALU_OR,
+    ALU_COPY,
+    ALU_XOR,
+    ALU_UNKNOWN
+  );
 
-  constant ALU_ADD:   alu1_op_type := "000";
-  constant ALU_ADDC:  alu1_op_type := "001";
-  constant ALU_SUB:   alu1_op_type := "010";
+  --constant ALU_ADD:   alu1_op_type := "000";
+  --constant ALU_ADDC:  alu1_op_type := "001";
+  --constant ALU_SUB:   alu1_op_type := "010";
   --constant ALU_SUBB:  alu1_op_type := "011";
-  constant ALU_AND:   alu1_op_type := "100";
-  constant ALU_OR:    alu1_op_type := "101";
-  constant ALU_UNKNOWN:  alu1_op_type := (others => 'X');
+  --constant ALU_AND:   alu1_op_type := "100";
+  --constant ALU_OR:    alu1_op_type := "101";
+  --constant ALU_COPY:    alu1_op_type := "110";
+  --constant ALU_CMPI:    alu1_op_type := "111";
+--  constant ALU_UNKNOWN:  alu1_op_type := (others => 'X');
 
-  subtype alu2_op_type is std_logic_vector(2 downto 0);
+  
+
+  --subtype alu2_op_type is std_logic_vector(2 downto 0);
+  type alu2_op_type is (
+    ALU_ADD,
+    ALU_CMPI,
+    ALU_UNKNOWN
+  );
 
   constant SR_PC: std_logic_vector(2 downto 0) := "000";
   constant SR_Y: std_logic_vector(2 downto 0) := "001";
@@ -38,12 +61,14 @@ package newcpupkg is
     O_LIMR,
 
     O_ADDI,
+    O_CMPI,
 
     O_ADD,
     O_ADDC,
     O_SUB,
     O_AND,
     O_OR,
+    O_COPY,
 
     O_ST,
     O_LD,
@@ -251,6 +276,7 @@ package newcpupkg is
     --data_address:       word_type_std;
     --regwe:              std_logic;
     dreg:               regaddress_type;
+    trans:                std_logic;
     -- Own registers
     --mread:              std_logic;
   end record;

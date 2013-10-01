@@ -44,24 +44,26 @@ begin
         r_addr <= mui.mreg;
       else
         busy <= '0';
+
         if FAST_WRITEBACK then
 
-        case eui.reg_source is
-          when reg_source_alu1 =>
-            wdata := eui.alur1;
-          when reg_source_alu2 =>
-            wdata := eui.alur2;
-          when reg_source_imm =>
-            wdata := eui.imreg;
-          when reg_source_spr =>
-
-            wdata := eui.r.br;
-
-          when others =>
-        end case;
+          case eui.reg_source is
+            when reg_source_alu1 =>
+              wdata := eui.alur1;
+            when reg_source_alu2 =>
+              wdata := eui.alur2;
+            when reg_source_imm =>
+              wdata := eui.imreg;
+            when reg_source_spr =>
+              -- MUX other SPR here.
+              wdata := eui.r.br;
   
-        r_we <=  eui.regwe;
-        r_addr <= eui.dreg;
+            when others =>
+          end case;
+    
+          r_we <=  eui.regwe;
+          r_addr <= eui.dreg;
+
         else
 
         case eui.r.reg_source is

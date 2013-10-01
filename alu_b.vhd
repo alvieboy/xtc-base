@@ -36,7 +36,8 @@ begin
     case op is
       when ALU_ADD =>
         r <= ("0"&a) + ("0"&b);
-
+      when ALU_CMPI =>
+        r <= ("0"&a) - ("0"&b);
 --      when ALU2_IMMFIRST =>
 --        r(31 downto 11) <= (others => b(10));
 --        r(10 downto 0) <= unsigned(b(10 downto 0));

@@ -21,6 +21,7 @@ entity newcpu is
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
     wb_we_o:        out std_logic;
+    wb_stall_i:     in  std_logic;
     -- ROM wb interface
 
     rom_wb_ack_i:       in std_logic;
@@ -101,6 +102,8 @@ begin
     rb3_wr  => rbw_wr
   );
 
+  cache: if INSTRUCTION_CACHE generate
+
   cache: icache
   generic map (
     ADDRESS_HIGH => 31
@@ -124,6 +127,26 @@ begin
     m_wb_stb_o  => rom_wb_stb_o,
     m_wb_stall_i => rom_wb_stall_i
   );
+
+  end generate;
+
+  nocache: if not INSTRUCTION_CACHE generate
+
+    -- Hack... we need to provide a solution for ACK being held low
+    -- when no pipelined transaction exists
+
+    -- For now, the romram is hacked to do it.
+
+    cache_valid       <= rom_wb_ack_i;
+    cache_data  <= rom_wb_dat_i;
+    rom_wb_adr_o <= cache_address;
+    rom_wb_stb_o <= cache_strobe;
+    rom_wb_cyc_o <= cache_enable;
+    cache_stall       <= rom_wb_stall_i;
+
+  end generate;
+
+
 
   fetch_unit: fetch
     port map (
@@ -209,6 +232,7 @@ begin
       busy      => execute_busy,
       mem_busy  => memory_busy,
       wb_busy   => wb_busy,
+      refetch   => refetch,
       -- Input from fetchdata unit
       fdui      => fduo,
       -- Outputs for next stages
@@ -228,6 +252,7 @@ begin
     wb_stb_o        => wb_stb_o,
     wb_sel_o        => wb_sel_o,
     wb_we_o         => wb_we_o,
+    wb_stall_i      => wb_stall_i,
 
     refetch         => refetch,
     busy            => memory_busy,

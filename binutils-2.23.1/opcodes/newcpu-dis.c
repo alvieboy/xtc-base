@@ -109,7 +109,8 @@ read_insn_newcpu (bfd_vma memaddr,
   for (op = opcodes; op->name != 0; op ++)
     if (op->bit_sequence == (inst & op->opcode_mask))
       break;
-
+  if (op->name==NULL)
+      op = NULL;
   *opr = op;
   return inst;
 }
@@ -138,9 +139,11 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
         {
           prev_inst = read_insn_newcpu (prev_insn_addr, info, &pop);
 	  if (pop->instr == imm)
-	    {
-	      immval = (get_int_field_imm12 (prev_inst) << 12);
-	      immfound = TRUE;
+          {
+              immval<<=12;
+	      immval += get_int_field_imm12 (prev_inst);
+              immfound = TRUE;
+              printf("Found IMM\n");
 	    }
 	  else
 	    {

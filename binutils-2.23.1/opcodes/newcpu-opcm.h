@@ -31,6 +31,7 @@ enum newcpu_instr
     sub,
     and,
     or,
+    copy,
     not,
     bri,
     brie,
@@ -72,6 +73,7 @@ enum newcpu_instr
     ldbi,
 
     addi,
+    cmpi,
     call,
     callr,
     brr,
@@ -118,7 +120,7 @@ enum newcpu_instr_type
 #define REG_BR  34 /* BR  */
 
 /* Alternate names for gen purpose regs.  */
-#define REG_SP  1 /* stack pointer.  */
+#define REG_SP  15 /* stack pointer.  */
 
 /* Assembler Register - Used in Delay Slot Optimization.  */
 #define REG_AS    18

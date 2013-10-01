@@ -19,6 +19,7 @@ entity memory is
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
     wb_we_o:        out std_logic;
+    wb_stall_i:     in  std_logic;
 
     busy:           out std_logic;
     refetch:        out std_logic;
@@ -42,7 +43,7 @@ begin
     muo.mreg <= mr.dreg;
     muo.mregwe <= mregwe;
 
-    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i)
+    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i)
       variable mw: memory_regs_type;
       variable wmask: std_logic_vector(3 downto 0);
       variable wdata: std_logic_vector(31 downto 0);
@@ -51,32 +52,58 @@ begin
       mw:=mr;
 
       wb_cyc_o  <=eui.r.data_access;
-      wb_stb_o  <=eui.r.data_access and not wb_ack_i_q;
+--      wb_stb_o  <=eui.r.data_access and not wb_ack_i_q;
+      wb_stb_o  <=eui.r.data_access and not mr.trans and not wb_ack_i_q;
+
       wb_we_o   <=eui.r.data_writeenable;
       wdata     := (others => DontCareValue);
       wmask     := (others => DontCareValue);
       muo.mdata <= (others => '0');
 
+      mw.trans:='0';   -- Transaction delayed.
+
+      if eui.r.data_access='1' and mr.trans='0' then
+        -- requested memory access.
+        if wb_stall_i='0' then
+          mw.trans:='1';
+        end if;
+      end if;
+
       case eui.r.macc is
         when M_BYTE | M_BYTE_POSTINC | M_BYTE_PREINC | M_BYTE_IND =>
 
           case eui.r.data_address(1 downto 0) is
-            when "00" => wdata(7 downto 0) := eui.r.data_write(7 downto 0); wmask:="0001";
-            when "01" => wdata(15 downto 8) := eui.r.data_write(7 downto 0); wmask:="0010";
-            when "10" => wdata(23 downto 16) := eui.r.data_write(7 downto 0); wmask:="0100";
-            when "11" => wdata(31 downto 24) := eui.r.data_write(7 downto 0); wmask:="1000";
+            when "11" =>
+              wdata(7 downto 0) := eui.r.data_write(7 downto 0); wmask:="0001";
+              muo.mdata(7 downto 0) <= wb_dat_i(7 downto 0);
+
+            when "10" =>
+              wdata(15 downto 8) := eui.r.data_write(7 downto 0); wmask:="0010";
+              muo.mdata(7 downto 0) <= wb_dat_i(15 downto 8);
+
+            when "01" =>
+              wdata(23 downto 16) := eui.r.data_write(7 downto 0); wmask:="0100";
+              muo.mdata(7 downto 0) <= wb_dat_i(23 downto 16);
+
+            when "00" =>
+              wdata(31 downto 24) := eui.r.data_write(7 downto 0); wmask:="1000";
+              muo.mdata(7 downto 0) <= wb_dat_i(31 downto 24);
+
             when others => null;
           end case;
-          muo.mdata(7 downto 0) <= wb_dat_i(7 downto 0);
 
 
         when M_HWORD | M_HWORD_POSTINC | M_HWORD_PREINC | M_HWORD_IND =>
           case eui.r.data_address(1) is
-            when '0' => wdata(15 downto 0) := eui.r.data_write(15 downto 0); wmask:="0011";
-            when '1' => wdata(31 downto 16) := eui.r.data_write(15 downto 0); wmask:="1100";
+            when '1' =>
+              wdata(15 downto 0) := eui.r.data_write(15 downto 0); wmask:="0011";
+              muo.mdata(15 downto 0) <= wb_dat_i(15 downto 0);
+            when '0' =>
+              wdata(31 downto 16) := eui.r.data_write(15 downto 0); wmask:="1100";
+              muo.mdata(15 downto 0) <= wb_dat_i(31 downto 16);
+
             when others => null;
           end case;
-          muo.mdata(15 downto 0) <= wb_dat_i(15 downto 0);
 
         when others =>
           wdata := eui.r.data_write;
@@ -91,10 +118,9 @@ begin
       refetch <= '0';
 
       mregwe <= '0';
+      mw.dreg := eui.r.mwreg;
+
       if eui.r.data_access='1' and wb_ack_i_q='0' and eui.r.data_writeenable='0' then
-        if wb_ack_i='0' then
-          mw.dreg := eui.r.mwreg;
-        end if;
         -- NOTE: if we just issued a store, and a load is queued, we also need to
         -- refetch the data. Maybe use freeze.... ????
         refetch <= wb_ack_i;
@@ -121,6 +147,8 @@ begin
         wb_adr_o <= (others => DontCareValue);
         wb_dat_o <= (others => DontCareValue);
         wb_sel_o <= (others => DontCareValue);
+        mw.trans := '0';
+
         --mw.mread:='0';
       end if;                     
 
@@ -129,10 +157,9 @@ begin
         -- synthesis translate_off
         if eui.r.data_access='1' then
           if eui.r.data_writeenable='1' then
-            report ">> MEMORY WRITE, address " & hstr(eui.r.data_address) &
-             ", data 0x" & hstr( wdata );
+            --report ">> MEMORY WRITE, address " & hstr(eui.r.data_address) & ", data 0x" & hstr( wdata );
           else
-            report ">> MEMORY READ, address " & hstr(eui.r.data_address);
+            --report ">> MEMORY READ, address " & hstr(eui.r.data_address);
           end if;
         end if;
         -- synthesis translate_on

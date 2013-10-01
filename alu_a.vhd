@@ -38,21 +38,23 @@ begin
   alu_a <= '0'&a;
   alu_b <= '0'&b;
   carryext(32 downto 1) <= (others => '0');
-  carryext(0) <= ci;
+  carryext(0) <= ci when op=ALU_ADDC else '0';
 
-  alu_add_r <= alu_a + alu_b;
+  alu_add_r <= alu_a + alu_b + carryext;
   alu_sub_r <= alu_a - alu_b;
 
   process(alu_add_r, carryext, alu_a, alu_b, alu_sub_r, op)
   begin
 
     case op is
-      when ALU_ADD  => alu_r <= alu_add_r;
-      when ALU_ADDC => alu_r <= alu_add_r + carryext;
+      when ALU_ADD |
+           ALU_ADDC => alu_r <= alu_add_r;
       when ALU_AND  => alu_r <= alu_a and alu_b;
       when ALU_OR   => alu_r <= alu_a or alu_b;
       when ALU_SUB  => alu_r <= alu_sub_r;
---      when ALU1_COPY_A => alu_r <= alu_a;
+      when ALU_COPY => alu_r <= alu_b;
+      when ALU_XOR  => alu_r <= alu_a xor alu_b;
+
       when others => alu_r <= (others =>'X');
     end case;
 

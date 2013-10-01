@@ -74,8 +74,8 @@ begin
           fw.fpc := npc;
           strobe <= '1';
           enable <= '1';
-          fw.ipc := npc;
-          fw.pc := npc;
+          fw.ipc := fr.fpc;
+          fw.pc := fr.ipc;
           fw.state := running;
         end if;
         fuo.valid<='0';

@@ -3,6 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
 use work.newcpupkg.all;
+use work.wishbonepkg.all;
 
 package newcpucomppkg is
 
@@ -67,7 +68,7 @@ package newcpucomppkg is
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
     wb_we_o:        out std_logic;
-
+    wb_stall_i:     in std_logic;
     wb_inta_i:      in std_logic;
 
     -- ROM wb interface
@@ -228,6 +229,7 @@ package newcpucomppkg is
     rst:  in std_logic;
     mem_busy: in std_logic;
     busy: out std_logic;
+    refetch: in std_logic;
     wb_busy: in std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
@@ -249,6 +251,7 @@ package newcpucomppkg is
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
     wb_we_o:        out std_logic;
+    wb_stall_i:     in  std_logic;
 
     busy:           out std_logic;
     refetch:        out std_logic;
@@ -365,5 +368,136 @@ package newcpucomppkg is
     taint:  out std_logic_vector(COUNT-1 downto 0)
   );
   end component;
+
+  component wbmux2 is
+  generic (
+    select_line: integer;
+    address_high: integer:=31;
+    address_low: integer:=2
+  );
+  port (
+    wb_clk_i: in std_logic;
+	 	wb_rst_i: in std_logic;
+
+    -- Master 
+
+    m_wb_dat_o: out std_logic_vector(31 downto 0);
+    m_wb_dat_i: in std_logic_vector(31 downto 0);
+    m_wb_adr_i: in std_logic_vector(address_high downto address_low);
+    m_wb_sel_i: in std_logic_vector(3 downto 0);
+    m_wb_we_i:  in std_logic;
+    m_wb_cyc_i: in std_logic;
+    m_wb_stb_i: in std_logic;
+    m_wb_ack_o: out std_logic;
+    m_wb_stall_o: out std_logic;
+
+    -- Slave 0 signals
+
+    s0_wb_dat_i: in std_logic_vector(31 downto 0);
+    s0_wb_dat_o: out std_logic_vector(31 downto 0);
+    s0_wb_adr_o: out std_logic_vector(address_high downto address_low);
+    s0_wb_sel_o: out std_logic_vector(3 downto 0);
+    s0_wb_we_o:  out std_logic;
+    s0_wb_cyc_o: out std_logic;
+    s0_wb_stb_o: out std_logic;
+    s0_wb_ack_i: in std_logic;
+    s0_wb_stall_i: in std_logic;
+
+    -- Slave 1 signals
+
+    s1_wb_dat_i: in std_logic_vector(31 downto 0);
+    s1_wb_dat_o: out std_logic_vector(31 downto 0);
+    s1_wb_adr_o: out std_logic_vector(address_high downto address_low);
+    s1_wb_sel_o: out std_logic_vector(3 downto 0);
+    s1_wb_we_o:  out std_logic;
+    s1_wb_cyc_o: out std_logic;
+    s1_wb_stb_o: out std_logic;
+    s1_wb_ack_i: in std_logic;
+    s1_wb_stall_i: in std_logic
+  );
+end component;
+
+  component wbarb2_1 is
+  generic (
+    ADDRESS_HIGH: integer := 31;
+    ADDRESS_LOW: integer := 0
+  );
+  port (
+    wb_clk_i: in std_logic;
+	 	wb_rst_i: in std_logic;
+
+    -- Master 0 signals
+
+    m0_wb_dat_o: out std_logic_vector(31 downto 0);
+    m0_wb_dat_i: in std_logic_vector(31 downto 0);
+    m0_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
+    m0_wb_sel_i: in std_logic_vector(3 downto 0);
+    m0_wb_cti_i: in std_logic_vector(2 downto 0);
+    m0_wb_we_i:  in std_logic;
+    m0_wb_cyc_i: in std_logic;
+    m0_wb_stb_i: in std_logic;
+    m0_wb_stall_o: out std_logic;
+    m0_wb_ack_o: out std_logic;
+
+    -- Master 1 signals
+
+    m1_wb_dat_o: out std_logic_vector(31 downto 0);
+    m1_wb_dat_i: in std_logic_vector(31 downto 0);
+    m1_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
+    m1_wb_sel_i: in std_logic_vector(3 downto 0);
+    m1_wb_cti_i: in std_logic_vector(2 downto 0);
+    m1_wb_we_i:  in std_logic;
+    m1_wb_cyc_i: in std_logic;
+    m1_wb_stb_i: in std_logic;
+    m1_wb_ack_o: out std_logic;
+    m1_wb_stall_o: out std_logic;
+
+    -- Slave signals
+
+    s0_wb_dat_i: in std_logic_vector(31 downto 0);
+    s0_wb_dat_o: out std_logic_vector(31 downto 0);
+    s0_wb_adr_o: out std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
+    s0_wb_sel_o: out std_logic_vector(3 downto 0);
+    s0_wb_cti_o: out std_logic_vector(2 downto 0);
+    s0_wb_we_o:  out std_logic;
+    s0_wb_cyc_o: out std_logic;
+    s0_wb_stb_o: out std_logic;
+    s0_wb_ack_i: in std_logic;
+    s0_wb_stall_i: in std_logic
+  );
+  end component;
+
+  component wb_master_p_to_slave_np is
+  port (
+    syscon:   in wb_syscon_type;
+
+    -- Master signals
+    mwbi:     in wb_mosi_type;
+    mwbo:     out wb_miso_type;
+    -- Slave signals
+    swbi:     in wb_miso_type;
+    swbo:     out wb_mosi_type
+  );
+  end component;
+
+  component newcpu_top_bram is
+  port (
+    wb_clk_i:       in std_logic;
+    wb_rst_i:       in std_logic;
+
+    -- IO wishbone interface
+
+    wb_ack_i:       in std_logic;
+    wb_dat_i:       in std_logic_vector(31 downto 0);
+    wb_dat_o:       out std_logic_vector(31 downto 0);
+    wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_cyc_o:       out std_logic;
+    wb_stb_o:       out std_logic;
+    wb_sel_o:       out std_logic_vector(3 downto 0);
+    wb_we_o:        out std_logic
+
+  );
+  end component;
+
 
 end package;
