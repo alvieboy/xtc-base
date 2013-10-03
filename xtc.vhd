@@ -203,28 +203,6 @@ begin
       fduo       => fduo
     );
 
-  tb: if false generate
-
-  taintcheck: taint
-    generic map (
-      COUNT => 16
-    )
-    port map (
-      clk     => wb_clk_i,
-      rst     => wb_rst_i,
-      req1_en => rb1_en,
-      req1_r  => rb1_addr,
-      req2_en => rb2_en,
-      req2_r  => rb2_addr,
-      -- Set
-      set_en  => fduo.r.drq.regwe,--w_en,
-      set_r   => fduo.r.drq.dreg,--w_addr,
-      -- Clear
-      clr_en  => rbw_we,
-      clr_r   => rbw_addr
-    );
-  end generate;
-
   execute_unit: execute
     port map (
       clk       => wb_clk_i,

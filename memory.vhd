@@ -52,7 +52,6 @@ begin
       mw:=mr;
 
       wb_cyc_o  <=eui.r.data_access;
---      wb_stb_o  <=eui.r.data_access and not wb_ack_i_q;
       wb_stb_o  <=eui.r.data_access and not mr.trans and not wb_ack_i_q;
 
       wb_we_o   <=eui.r.data_writeenable;
