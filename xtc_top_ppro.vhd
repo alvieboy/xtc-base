@@ -2,7 +2,7 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
-entity newcpu_top_ppro is
+entity xtc_top_ppro is
   port (
     CLK:        in std_logic;
 
@@ -35,9 +35,9 @@ entity newcpu_top_ppro is
     -- The LED
     --LED:        out std_logic
   );
-end entity newcpu_top_ppro;
+end entity xtc_top_ppro;
 
-architecture behave of newcpu_top_ppro is
+architecture behave of xtc_top_ppro is
 
   component uart is
   generic (
@@ -78,7 +78,7 @@ architecture behave of newcpu_top_ppro is
   signal wb_clk_i:    std_logic;
   signal wb_rst_i:    std_logic;
 
-  component newcpu_top_bram is
+  component xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
     wb_rst_i:       in std_logic;
@@ -109,7 +109,7 @@ architecture behave of newcpu_top_ppro is
 
 begin
 
-  cpu: newcpu_top_bram
+  cpu: xtc_top_bram
   port map (
     wb_clk_i        => wb_clk_i,
     wb_rst_i        => wb_rst_i,
