@@ -2,10 +2,10 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
-use work.newcpupkg.all;
+use work.xtcpkg.all;
 use work.wishbonepkg.all;
 
-package newcpucomppkg is
+package xtccomppkg is
 
   component generic_dp_ram is
   generic (
@@ -53,7 +53,7 @@ package newcpucomppkg is
   );
   end component;
 
-  component newcpu is
+  component xtc is
   port (
     wb_clk_i:       in std_logic;
     wb_rst_i:       in std_logic;
@@ -480,7 +480,7 @@ end component;
   );
   end component;
 
-  component newcpu_top_bram is
+  component xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
     wb_rst_i:       in std_logic;

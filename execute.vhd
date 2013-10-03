@@ -2,8 +2,8 @@ library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
-use work.newcpupkg.all;
-use work.newcpucomppkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 -- synthesis translate_off
 use work.txt_util.all;
 -- synthesis translate_on

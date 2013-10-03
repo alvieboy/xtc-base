@@ -5,7 +5,7 @@ use ieee.numeric_std.all;
 use work.txt_util.all;
 -- synthesis translate_on
 
-package newcpupkg is
+package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := false;
@@ -293,10 +293,10 @@ package newcpupkg is
   function opcode_txt_pad(strin: in string) return string;
   function regname(r: in regaddress_type) return string;
 
-end newcpupkg;
+end xtcpkg;
 
 
-package body newcpupkg is
+package body xtcpkg is
   function opcode_txt_pad(strin: in string) return string is
     variable ret: string(1 to 25);
   begin

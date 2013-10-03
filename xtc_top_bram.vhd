@@ -3,10 +3,10 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.newcpupkg.all;
-use work.newcpucomppkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 
-entity newcpu_top_bram is
+entity xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
     wb_rst_i:       in std_logic;
@@ -25,7 +25,7 @@ entity newcpu_top_bram is
   );
 end entity;
 
-architecture behave of newcpu_top_bram is
+architecture behave of xtc_top_bram is
 
 
   signal wb_read:       std_logic_vector(31 downto 0);
@@ -155,7 +155,7 @@ architecture behave of newcpu_top_bram is
 
 begin
 
-  cpu: newcpu
+  cpu: xtc
   port map (
     wb_clk_i        => wb_clk_i,
     wb_rst_i        => wb_rst_i,

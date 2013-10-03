@@ -4,8 +4,8 @@ use IEEE.std_logic_unsigned.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.newcpupkg.all;
-use work.newcpucomppkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 
 entity icache is
   generic (

@@ -3,8 +3,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.newcpupkg.all;
-use work.newcpucomppkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 use work.wishbonepkg.all;
 
 entity tb is
@@ -197,7 +197,7 @@ begin
   w_clk <= not w_clk after period/2;
 
 
-  cpu: newcpu_top_bram
+  cpu: xtc_top_bram
   port map (
     wb_clk_i        => w_clk,
     wb_rst_i        => w_rst,

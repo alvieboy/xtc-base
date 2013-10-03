@@ -3,10 +3,10 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 
 library work;
-use work.newcpupkg.all;
-use work.newcpucomppkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 
-entity newcpu is
+entity xtc is
   port (
     wb_clk_i:       in std_logic;
     wb_rst_i:       in std_logic;
@@ -38,9 +38,9 @@ entity newcpu is
     break:          out std_logic;
     intack:         out std_logic
   );
-end newcpu;
+end xtc;
 
-architecture behave of newcpu is
+architecture behave of xtc is
 
   signal fuo:  fetch_output_type;
   signal duo:  decode_output_type;
