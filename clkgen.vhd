@@ -115,7 +115,7 @@ pll_base_inst : PLL_ADV
     CLK_FEEDBACK         => "CLKFBOUT",
     COMPENSATION         => "SYSTEM_SYNCHRONOUS",
     DIVCLK_DIVIDE        => 1,
-    CLKFBOUT_MULT        => 15,--30,
+    CLKFBOUT_MULT        => 13,--30,
     CLKFBOUT_PHASE       => 0.000,
     CLKOUT0_DIVIDE       => 4,--10,
     CLKOUT0_PHASE        => 0.000,
