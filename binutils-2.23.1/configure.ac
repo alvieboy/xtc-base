@@ -1021,7 +1021,7 @@ case "${target}" in
   mips*-*-*)
     noconfigdirs="$noconfigdirs gprof"
     ;;
-  newcpu*)
+  xtc*)
     noconfigdirs="$noconfigdirs gprof"
     ;;
   sh-*-* | sh64-*-*)
