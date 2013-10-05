@@ -1,6 +1,6 @@
 ## Process this file with automake to generate Makefile.in
 
-AUTOMAKE_OPTIONS = 1.8 cygnus
+AUTOMAKE_OPTIONS = 1.8 
 
 # What version of the manual you want; "all" includes everything
 CONFIG=all

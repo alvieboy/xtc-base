@@ -3,8 +3,8 @@
 #include "bfd.h"
 #include "subsegs.h"
 #define DEFINE_TABLE
-#include "../opcodes/newcpu-opc.h"
-#include "../opcodes/newcpu-opcm.h"
+#include "../opcodes/xtc-opc.h"
+#include "../opcodes/xtc-opcm.h"
 #include "safe-ctype.h"
 #include <string.h>
 #include <dwarf2dbg.h>
@@ -172,7 +172,7 @@ md_operand (expressionS * expressionP)
 #endif
 
 extern void
-parse_cons_expression_newcpu (expressionS *exp, int size)
+parse_cons_expression_xtc (expressionS *exp, int size)
 {
 #if 0
   if (size == 4)
@@ -496,7 +496,7 @@ parse_imm (char * s, expressionS * e, int min, int max)
   return new_pointer;
 }
 
-static int newcpu_count_bits(unsigned int immed)
+static int xtc_count_bits(unsigned int immed)
 {
     int count=31;
     int bsign;
@@ -509,7 +509,7 @@ static int newcpu_count_bits(unsigned int immed)
     } while (--count);
     return count+1;
 }
-static inline int newcpu_can_represent_as_imm8(int immed)
+static inline int xtc_can_represent_as_imm8(int immed)
 {
     return immed <= 127 && immed >= -128;
 }
@@ -657,8 +657,8 @@ md_assemble (char * str)
 #endif
             //expressionS ex;
             //expression (&ex);
-            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-                            BFD_RELOC_NEWCPU_IMM_12_12_8 );
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+                            BFD_RELOC_XTC_IMM_12_12_8 );
 
             fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
             output = frag_more(2);
@@ -779,8 +779,8 @@ md_assemble (char * str)
                                exp.X_add_number,
                                opc);
 #endif
-            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-                            BFD_RELOC_NEWCPU_IMM_12_12_8 );
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+                            BFD_RELOC_XTC_IMM_12_12_8 );
 
             fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
             output = frag_more(2);
@@ -799,7 +799,7 @@ md_assemble (char * str)
         }
         else
         {
-            int bits = newcpu_count_bits(exp.X_add_number);
+            int bits = xtc_count_bits(exp.X_add_number);
 
             output = frag_more (isize);
             printf("Need to emit constant IMM, value %08x\n", (unsigned)exp.X_add_number);
@@ -889,7 +889,7 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
         printf("md_convert_frag: undefined PC offset\n");
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 3, fragP->fr_symbol,
-                 fragP->fr_offset, TRUE, BFD_RELOC_NEWCPU_IMM_12_12_8);
+                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8);
         fragP->fr_fix += INST_WORD_SIZE * 2;
         fragP->fr_var = 0;
         //abort();
@@ -903,7 +903,7 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
         //}
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
-                 fragP->fr_offset, FALSE, BFD_RELOC_NEWCPU_IMM_12_12_8);
+                 fragP->fr_offset, FALSE, BFD_RELOC_XTC_IMM_12_12_8);
         fragP->fr_fix += INST_WORD_SIZE * 2;
         fragP->fr_var = 0;
         break;
@@ -911,13 +911,13 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
 
     case DEFINED_PC_OFFSET:
 
-        printf("md_convert_frag: defined PC offset  -reloc type %d\n", BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL);
+        printf("md_convert_frag: defined PC offset  -reloc type %d\n", BFD_RELOC_XTC_IMM_12_12_8_PCREL);
 
         //fragP->fr_fix += INST_WORD_SIZE*2;
         //fragP->fr_fix -= 4;
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE*3, fragP->fr_symbol,
-                 fragP->fr_offset, TRUE, BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL);
+                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8_PCREL);
 
         fragP->fr_fix += INST_WORD_SIZE * 2;
 
@@ -996,7 +996,7 @@ default:
  then we create relocs accordingly.  */
 
 void
-cons_fix_new_newcpu (fragS * frag,
+cons_fix_new_xtc (fragS * frag,
 			 int where,
 			 int size,
 			 expressionS *exp)
@@ -1038,7 +1038,7 @@ cons_fix_new_newcpu (fragS * frag,
           r = BFD_RELOC_32;
           break;
         }
-        printf("cons_fix_new_newcpu: %d\n", r);
+        printf("cons_fix_new_xtc: %d\n", r);
 #if 0
     }
 #endif
@@ -1046,9 +1046,9 @@ cons_fix_new_newcpu (fragS * frag,
 }
 #if 0
 int
-tc_newcpu_fix_adjustable (struct fix *fixP ATTRIBUTE_UNUSED)
+tc_xtc_fix_adjustable (struct fix *fixP ATTRIBUTE_UNUSED)
 {
-    printf("tc_newcpu_fix_adjustable: enter\n");
+    printf("tc_xtc_fix_adjustable: enter\n");
 #if 0
   if (GOT_symbol && fixP->fx_subsy == GOT_symbol)
     return 0;
@@ -1081,14 +1081,14 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_32:
     case BFD_RELOC_64:
     case BFD_RELOC_64_PCREL:
-    case BFD_RELOC_NEWCPU_32:
-    case BFD_RELOC_NEWCPU_32_PCREL:
-    case BFD_RELOC_NEWCPU_IMM_12_12_8:
-    case BFD_RELOC_NEWCPU_IMM_12_8:
-    case BFD_RELOC_NEWCPU_IMM_8:
-    case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-    case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
-    case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+    case BFD_RELOC_XTC_32:
+    case BFD_RELOC_XTC_32_PCREL:
+    case BFD_RELOC_XTC_IMM_12_12_8:
+    case BFD_RELOC_XTC_IMM_12_8:
+    case BFD_RELOC_XTC_IMM_8:
+    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+    case BFD_RELOC_XTC_IMM_12_8_PCREL:
+    case BFD_RELOC_XTC_IMM_8_PCREL:
         printf("Copy type\n");
         code = fixp->fx_r_type;
         break;
@@ -1234,8 +1234,8 @@ md_apply_fix (fixS *   fixP,
 
   switch (fixP->fx_r_type)
     {
-    case BFD_RELOC_NEWCPU_32_PCREL:
-    case BFD_RELOC_NEWCPU_32:
+    case BFD_RELOC_XTC_32_PCREL:
+    case BFD_RELOC_XTC_32:
         abort();
         if (target_big_endian)
 	{
@@ -1530,16 +1530,16 @@ md_estimate_size_before_relax (fragS * fragP ATTRIBUTE_UNUSED,
 
 /* See whether we need to force a relocation into the output file.  */
 int
-tc_newcpu_force_relocation (fixS *fixP)
+tc_xtc_force_relocation (fixS *fixP)
 {
 	switch (fixP->fx_r_type)
 	{
-        case BFD_RELOC_NEWCPU_IMM_12_12_8:
-        case BFD_RELOC_NEWCPU_IMM_12_8:
-        case BFD_RELOC_NEWCPU_IMM_8:
-        case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-        case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
-        case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+        case BFD_RELOC_XTC_IMM_12_12_8:
+        case BFD_RELOC_XTC_IMM_12_8:
+        case BFD_RELOC_XTC_IMM_8:
+        case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+        case BFD_RELOC_XTC_IMM_12_8_PCREL:
+        case BFD_RELOC_XTC_IMM_8_PCREL:
             return 1;
 		 default:
 		 break;
@@ -1549,7 +1549,7 @@ tc_newcpu_force_relocation (fixS *fixP)
 }
 
 int
-tc_newcpu_fix_adjustable (fixS *fixP)
+tc_xtc_fix_adjustable (fixS *fixP)
 {
   switch (fixP->fx_r_type)
     {
@@ -1559,12 +1559,12 @@ tc_newcpu_fix_adjustable (fixS *fixP)
     case BFD_RELOC_32:
 
 	/* plus these */
-    case BFD_RELOC_NEWCPU_IMM_12_12_8:
-    case BFD_RELOC_NEWCPU_IMM_12_8:
-    case BFD_RELOC_NEWCPU_IMM_8:
-    case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-    case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
-    case BFD_RELOC_NEWCPU_IMM_8_PCREL:
+    case BFD_RELOC_XTC_IMM_12_12_8:
+    case BFD_RELOC_XTC_IMM_12_8:
+    case BFD_RELOC_XTC_IMM_8:
+    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+    case BFD_RELOC_XTC_IMM_12_8_PCREL:
+    case BFD_RELOC_XTC_IMM_8_PCREL:
 
         return 0;
 

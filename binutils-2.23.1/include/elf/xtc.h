@@ -1,4 +1,4 @@
-/* newcpu support for BFD.
+/* xtc support for BFD.
  
    Copyright 2009, 2010 Free Software Foundation, Inc.
 
@@ -19,24 +19,24 @@
    Foundation, Inc., 51 Franklin Street - Fifth Floor, Boston, MA 
    02110-1301, USA.  */
 
-/* This file holds definitions specific to the NEWCPU ELF ABI.  */
+/* This file holds definitions specific to the XTC ELF ABI.  */
 
-#ifndef _ELF_NEWCPU_H
-#define _ELF_NEWCPU_H
+#ifndef _ELF_XTC_H
+#define _ELF_XTC_H
 
 #include "elf/reloc-macros.h"
 
 /* Relocations.  */
-START_RELOC_NUMBERS (elf_newcpu_reloc_type)
-    RELOC_NUMBER (R_NEWCPU_NONE, 0)
-    RELOC_NUMBER (R_NEWCPU_32, 1)             /* 32-bit normal reloc, memory */
-    RELOC_NUMBER (R_NEWCPU_32_PCREL, 2)       /* 32-bit normal reloc, PCREL */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_12_12_8, 3) /* 32-bit IMM reloc */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_12_8, 4)    /* 20-bit IMM reloc */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_8, 5)       /* 8-bit IMM reloc */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_12_12_8_PCREL, 6) /* 32-bit IMM reloc, PC-relative */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_12_8_PCREL, 7)    /* 20-bit IMM reloc */
-    RELOC_NUMBER (R_NEWCPU_32_IMM_8_PCREL, 8)       /* 8-bit IMM reloc */
-END_RELOC_NUMBERS (R_NEWCPU_max)
+START_RELOC_NUMBERS (elf_xtc_reloc_type)
+    RELOC_NUMBER (R_XTC_NONE, 0)
+    RELOC_NUMBER (R_XTC_32, 1)             /* 32-bit normal reloc, memory */
+    RELOC_NUMBER (R_XTC_32_PCREL, 2)       /* 32-bit normal reloc, PCREL */
+    RELOC_NUMBER (R_XTC_32_IMM_12_12_8, 3) /* 32-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_IMM_12_8, 4)    /* 20-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_IMM_8, 5)       /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_IMM_12_12_8_PCREL, 6) /* 32-bit IMM reloc, PC-relative */
+    RELOC_NUMBER (R_XTC_32_IMM_12_8_PCREL, 7)    /* 20-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_IMM_8_PCREL, 8)       /* 8-bit IMM reloc */
+END_RELOC_NUMBERS (R_XTC_max)
 
-#endif /* _ELF_NEWCPU_H */
+#endif /* _ELF_XTC_H */

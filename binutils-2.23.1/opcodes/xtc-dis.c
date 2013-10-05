@@ -1,4 +1,4 @@
-/* Disassemble Xilinx newcpu instructions.
+/* Disassemble XThunderCore instructions.
 
    Copyright 2009, 2012 Free Software Foundation, Inc.
 
@@ -26,8 +26,8 @@
 
 #include "dis-asm.h"
 #include <strings.h>
-#include "newcpu-opc.h"
-#include "newcpu-dis.h"
+#include "xtc-opc.h"
+#include "xtc-dis.h"
 
 #define get_field_rd(instr)        get_field (instr, RD_MASK, RD_LOW)
 #define get_field_r1(instr)        get_field (instr, RA_MASK, RA_LOW)
@@ -37,7 +37,7 @@
 #define get_int_field_r1(instr)    ((instr & RA_MASK) >> RA_LOW)
 
 int
-print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info);
+print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info);
 
 
 static char *
@@ -87,7 +87,7 @@ get_field_imm8 (long instr)
 }
 
 static unsigned long
-read_insn_newcpu (bfd_vma memaddr,
+read_insn_xtc (bfd_vma memaddr,
 		      struct disassemble_info *info,
 		      struct op_code_struct **opr)
 {
@@ -117,7 +117,7 @@ read_insn_newcpu (bfd_vma memaddr,
 
 
 int
-print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
+print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
 {
   fprintf_ftype       print_func = info->fprintf_func;
   void *              stream = info->stream;
@@ -131,13 +131,13 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
 
   info->bytes_per_chunk = 2;
 
-  inst = read_insn_newcpu (memaddr, info, &op);
+  inst = read_insn_xtc (memaddr, info, &op);
 
   if (prev_insn_vma == curr_insn_vma)
     {
       if (memaddr-(info->bytes_per_chunk) == prev_insn_addr)
         {
-          prev_inst = read_insn_newcpu (prev_insn_addr, info, &pop);
+          prev_inst = read_insn_xtc (prev_insn_addr, info, &pop);
 	  if (pop->instr == imm)
           {
               immval<<=12;
@@ -211,10 +211,10 @@ print_insn_newcpu (bfd_vma memaddr, struct disassemble_info * info)
   return 2;
 }
 
-enum newcpu_instr
-get_insn_newcpu (long inst,
+enum xtc_instr
+get_insn_xtc (long inst,
   		     bfd_boolean *isunsignedimm,
-  		     enum newcpu_instr_type *insn_type,
+  		     enum xtc_instr_type *insn_type,
   		     short *delay_slots)
 {
   struct op_code_struct * op;
@@ -238,15 +238,15 @@ get_insn_newcpu (long inst,
     }
 }
 
-enum newcpu_instr
-newcpu_decode_insn (long insn, int *ra, int *rb, int *immed)
+enum xtc_instr
+xtc_decode_insn (long insn, int *ra, int *rb, int *immed)
 {
-  enum newcpu_instr op;
+  enum xtc_instr op;
   bfd_boolean t1;
-  enum newcpu_instr_type t2;
+  enum xtc_instr_type t2;
   short t3;
 
-  op = get_insn_newcpu (insn, &t1, &t2, &t3);
+  op = get_insn_xtc (insn, &t1, &t2, &t3);
   *ra = (insn & RA_MASK) >> RA_LOW;
   *rb = (insn & RB_MASK) >> RB_LOW;
   t3 = (insn & IMM_MASK) >> IMM_LOW;
@@ -255,7 +255,7 @@ newcpu_decode_insn (long insn, int *ra, int *rb, int *immed)
 }
 
 unsigned long
-newcpu_get_target_address (long inst, bfd_boolean immfound, int immval,
+xtc_get_target_address (long inst, bfd_boolean immfound, int immval,
                            long pcval, long r1val,
                            bfd_boolean *targetvalid,
                            bfd_boolean *unconditionalbranch)
@@ -269,7 +269,7 @@ newcpu_get_target_address (long inst, bfd_boolean immfound, int immval,
         if (op->bit_sequence == (inst & op->opcode_mask))
             break;
 
-    printf("newcpu_get_target_address\n");
+    printf("xtc_get_target_address\n");
     if (op->name == 0)
     {
         *targetvalid = FALSE;

@@ -132,7 +132,7 @@
 #include "elf/moxie.h"
 #include "elf/mt.h"
 #include "elf/msp430.h"
-#include "elf/newcpu.h"
+#include "elf/xtc.h"
 #include "elf/or32.h"
 #include "elf/pj.h"
 #include "elf/ppc.h"
@@ -628,7 +628,7 @@ guess_is_rela (unsigned int e_machine)
     case EM_XTENSA_OLD:
     case EM_MICROBLAZE:
     case EM_MICROBLAZE_OLD:
-    case EM_NEWCPU:
+    case EM_XTC:
       return TRUE;
 
     case EM_68HC05:
@@ -1236,8 +1236,8 @@ dump_relocations (FILE * file,
 	  rtype = elf_microblaze_reloc_type (type);
 	  break;
 
-        case EM_NEWCPU:
-	  rtype = elf_newcpu_reloc_type (type);
+        case EM_XTC:
+	  rtype = elf_xtc_reloc_type (type);
 	  break;
 
 	case EM_RL78:
@@ -2011,7 +2011,7 @@ get_machine_name (unsigned e_machine)
     case EM_CR16:
     case EM_MICROBLAZE:
     case EM_MICROBLAZE_OLD:	return "Xilinx MicroBlaze";
-    case EM_NEWCPU:             return "Alvie's Newcpu";
+    case EM_XTC:                return "Alvie's XThunderCore";
     case EM_RL78:		return "Renesas RL78";
     case EM_RX:			return "Renesas RX";
     case EM_METAG:		return "Imagination Technologies META processor architecture";
@@ -9887,8 +9887,8 @@ is_32bit_abs_reloc (unsigned int reloc_type)
       return reloc_type == 4; /* R_MEP_32.  */
     case EM_MICROBLAZE:
       return reloc_type == 1; /* R_MICROBLAZE_32.  */
-    case EM_NEWCPU:
-      return reloc_type == 1; /* R_MICROBLAZE_32.  */
+    case EM_XTC:
+      return reloc_type == 1; /* R_XTC_32.  */
     case EM_MIPS:
       return reloc_type == 2; /* R_MIPS_32.  */
     case EM_MMIX:
@@ -9997,8 +9997,8 @@ is_32bit_pcrel_reloc (unsigned int reloc_type)
       return reloc_type == 3;  /* R_ARM_REL32 */
     case EM_MICROBLAZE:
       return reloc_type == 2;  /* R_MICROBLAZE_32_PCREL.  */
-    case EM_NEWCPU:
-      return reloc_type == 2;  /* R_MICROBLAZE_32_PCREL.  */
+    case EM_XTC:
+      return reloc_type == 2;  /* R_XTC_32_PCREL.  */
     case EM_PARISC:
       return reloc_type == 9;  /* R_PARISC_PCREL32.  */
     case EM_PPC:

@@ -3,7 +3,7 @@
 #include "bfdlink.h"
 #include "libbfd.h"
 #include "elf-bfd.h"
-#include "elf/newcpu.h"
+#include "elf/xtc.h"
 #include <assert.h>
 
 #define INST_WORD_SIZE 2
@@ -62,7 +62,7 @@ init_insn_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 
 
 static bfd_reloc_status_type
-newcpu_elf_imm_12_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
+xtc_elf_imm_12_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
                           void * data, asection *input_section, bfd *output_bfd,
                           char **error_message ATTRIBUTE_UNUSED)
 {
@@ -89,7 +89,7 @@ newcpu_elf_imm_12_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 }
 
 static bfd_reloc_status_type
-newcpu_elf_imm_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
+xtc_elf_imm_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
                           void * data, asection *input_section, bfd *output_bfd,
                           char **error_message ATTRIBUTE_UNUSED)
 {
@@ -116,7 +116,7 @@ newcpu_elf_imm_12_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 }
 
 static bfd_reloc_status_type
-newcpu_elf_imm_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
+xtc_elf_imm_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
                           void * data, asection *input_section, bfd *output_bfd,
                           char **error_message ATTRIBUTE_UNUSED)
 {
@@ -145,7 +145,7 @@ newcpu_elf_imm_8_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 
 
 static bfd_reloc_status_type
-newcpu_elf_ignore_reloc (bfd *abfd ATTRIBUTE_UNUSED,
+xtc_elf_ignore_reloc (bfd *abfd ATTRIBUTE_UNUSED,
                          arelent *reloc_entry,
                          asymbol *symbol ATTRIBUTE_UNUSED,
                          void *data ATTRIBUTE_UNUSED,
@@ -159,12 +159,12 @@ newcpu_elf_ignore_reloc (bfd *abfd ATTRIBUTE_UNUSED,
 }
 
 
-static reloc_howto_type * newcpu_elf_howto_table [(int) R_NEWCPU_max];
+static reloc_howto_type * xtc_elf_howto_table [(int) R_XTC_max];
 
-static reloc_howto_type newcpu_elf_howto_raw[] =
+static reloc_howto_type xtc_elf_howto_raw[] =
 {
    /* This reloc does nothing.  */
-   HOWTO (R_NEWCPU_NONE,	/* Type.  */
+   HOWTO (R_XTC_NONE,	/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           32,			/* Bitsize.  */
@@ -172,14 +172,14 @@ static reloc_howto_type newcpu_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield,  /* Complain on overflow.  */
           NULL,                  /* Special Function.  */
-          "R_NEWCPU_NONE", 	/* Name.  */
+          "R_XTC_NONE", 	/* Name.  */
           FALSE,		/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,			/* Dest Mask.  */
           FALSE),		/* PC relative offset?  */
 
    /* A standard 32 bit relocation.  */
-   HOWTO (R_NEWCPU_32,     	/* Type.  */
+   HOWTO (R_XTC_32,     	/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           32,			/* Bitsize.  */
@@ -187,14 +187,14 @@ static reloc_howto_type newcpu_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           bfd_elf_generic_reloc,/* Special Function.  */
-          "R_NEWCPU_32",   	/* Name.  */
+          "R_XTC_32",   	/* Name.  */
           FALSE,		/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           FALSE), 		/* PC relative offset?  */
 
    /* A standard PCREL 32 bit relocation.  */
-   HOWTO (R_NEWCPU_32_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_PCREL,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           32,			/* Bitsize.  */
@@ -202,90 +202,90 @@ static reloc_howto_type newcpu_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           bfd_elf_generic_reloc,/* Special Function.  */
-          "R_NEWCPU_32_PCREL",   	/* Name.  */
+          "R_XTC_32_PCREL",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_NEWCPU_32_IMM_12_12_8,/* Type.  */
+   HOWTO (R_XTC_32_IMM_12_12_8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           32,			/* Bitsize.  */
           FALSE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_12_12_8",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_12_8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_NEWCPU_32_IMM_12_8,/* Type.  */
+   HOWTO (R_XTC_32_IMM_12_8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           20,			/* Bitsize.  */
           FALSE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_12_8",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_NEWCPU_32_IMM_8,/* Type.  */
+   HOWTO (R_XTC_32_IMM_8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           8,			/* Bitsize.  */
           FALSE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_8",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		/* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_NEWCPU_32_IMM_12_12_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_IMM_12_12_8_PCREL,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           32,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_12_12_8_PCREL",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_12_8_PCREL",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_NEWCPU_32_IMM_12_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_IMM_12_8_PCREL,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           20,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_12_PCREL",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_PCREL",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE), /* PC relative offset?  */
-   HOWTO (R_NEWCPU_32_IMM_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_IMM_8_PCREL,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           8,			/* Bitsize.  */
           TRUE,		        /* PC_relative.  */
           4,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
-          newcpu_elf_ignore_reloc,/* Special Function.  */
-          "R_NEWCPU_32_IMM_8_PCREL",   	/* Name.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_8_PCREL",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0x0,		/* Dest Mask.  */
@@ -297,106 +297,106 @@ static reloc_howto_type newcpu_elf_howto_raw[] =
 #endif
 
 static void
-newcpu_elf_howto_init (void)
+xtc_elf_howto_init (void)
 {
   unsigned int i;
 
-  for (i = NUM_ELEM (newcpu_elf_howto_raw); i--;)
+  for (i = NUM_ELEM (xtc_elf_howto_raw); i--;)
     {
       unsigned int type;
 
-      type = newcpu_elf_howto_raw[i].type;
+      type = xtc_elf_howto_raw[i].type;
 
-      BFD_ASSERT (type < NUM_ELEM (newcpu_elf_howto_table));
+      BFD_ASSERT (type < NUM_ELEM (xtc_elf_howto_table));
 
-      newcpu_elf_howto_table [type] = & newcpu_elf_howto_raw [i];
+      xtc_elf_howto_table [type] = & xtc_elf_howto_raw [i];
     }
 }
 
 static reloc_howto_type *
-newcpu_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
+xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
 				  bfd_reloc_code_real_type code)
 {
-  enum elf_newcpu_reloc_type newcpu_reloc = R_NEWCPU_NONE;
+  enum elf_xtc_reloc_type xtc_reloc = R_XTC_NONE;
 
   switch (code)
     {
     case BFD_RELOC_NONE:
-        printf("newcpu_elf_reloc_type_lookup: none\n");
-      newcpu_reloc = R_NEWCPU_NONE;
+        printf("xtc_elf_reloc_type_lookup: none\n");
+      xtc_reloc = R_XTC_NONE;
       break;
     case BFD_RELOC_32:
-        printf("newcpu_elf_reloc_type_lookup: BFD_RELOC_32\n");
-      newcpu_reloc = R_NEWCPU_32;
+        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_32\n");
+      xtc_reloc = R_XTC_32;
       break;
       /* RVA is treated the same as 32 */
     case BFD_RELOC_RVA:
-        printf("newcpu_elf_reloc_type_lookup: BFD_RELOC_RVA\n");
+        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_RVA\n");
 
-      newcpu_reloc = R_NEWCPU_32;
+      xtc_reloc = R_XTC_32;
       break;
     case BFD_RELOC_32_PCREL:
-        printf("newcpu_elf_reloc_type_lookup: BDF_RELOC_32_PCREL\n");
+        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_32_PCREL\n");
 
-      newcpu_reloc = R_NEWCPU_32_PCREL;
+      xtc_reloc = R_XTC_32_PCREL;
       break;
 
-    case BFD_RELOC_NEWCPU_32:
-        printf("newcpu_elf_reloc_type_lookup: BDF_RELOC_NEWCPU_32\n");
+    case BFD_RELOC_XTC_32:
+        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32\n");
 
-        newcpu_reloc = R_NEWCPU_32;
-        break;
-
-    case BFD_RELOC_NEWCPU_32_PCREL:
-        printf("newcpu_elf_reloc_type_lookup: BDF_RELOC_NEWCPU_32_PCREL\n");
-
-        newcpu_reloc = R_NEWCPU_32_PCREL;
+        xtc_reloc = R_XTC_32;
         break;
 
-    case BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL:
-        newcpu_reloc = R_NEWCPU_32_IMM_12_12_8_PCREL;
-        break;
-    case BFD_RELOC_NEWCPU_IMM_12_8_PCREL:
-        newcpu_reloc = R_NEWCPU_32_IMM_12_8_PCREL;
-        break;
-    case BFD_RELOC_NEWCPU_IMM_8_PCREL:
-        newcpu_reloc = R_NEWCPU_32_IMM_8_PCREL;
+    case BFD_RELOC_XTC_32_PCREL:
+        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32_PCREL\n");
+
+        xtc_reloc = R_XTC_32_PCREL;
         break;
 
-    case BFD_RELOC_NEWCPU_IMM_12_12_8:
-        newcpu_reloc = R_NEWCPU_32_IMM_12_12_8;
+    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
+        xtc_reloc = R_XTC_32_IMM_12_12_8_PCREL;
         break;
-    case BFD_RELOC_NEWCPU_IMM_12_8:
-        newcpu_reloc = R_NEWCPU_32_IMM_12_8;
+    case BFD_RELOC_XTC_IMM_12_8_PCREL:
+        xtc_reloc = R_XTC_32_IMM_12_8_PCREL;
         break;
-    case BFD_RELOC_NEWCPU_IMM_8:
-        newcpu_reloc = R_NEWCPU_32_IMM_8;
+    case BFD_RELOC_XTC_IMM_8_PCREL:
+        xtc_reloc = R_XTC_32_IMM_8_PCREL;
+        break;
+
+    case BFD_RELOC_XTC_IMM_12_12_8:
+        xtc_reloc = R_XTC_32_IMM_12_12_8;
+        break;
+    case BFD_RELOC_XTC_IMM_12_8:
+        xtc_reloc = R_XTC_32_IMM_12_8;
+        break;
+    case BFD_RELOC_XTC_IMM_8:
+        xtc_reloc = R_XTC_32_IMM_8;
         break;
 
     default:
-        printf("newcpu_elf_reloc_type_lookup: unknown %d\n", code);
+        printf("xtc_elf_reloc_type_lookup: unknown %d\n", code);
         abort();
 
       return (reloc_howto_type *) NULL;
     }
 
-  if (!newcpu_elf_howto_table [R_NEWCPU_32])
+  if (!xtc_elf_howto_table [R_XTC_32])
     /* Initialize howto table if needed.  */
-    newcpu_elf_howto_init ();
+    xtc_elf_howto_init ();
 
-  return newcpu_elf_howto_table [(int) newcpu_reloc];
+  return xtc_elf_howto_table [(int) xtc_reloc];
 };
 
 static reloc_howto_type *
-newcpu_elf_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
+xtc_elf_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
 				  const char *r_name)
 {
   unsigned int i;
 
-  for (i = 0; i < NUM_ELEM (newcpu_elf_howto_raw); i++)
-    if (newcpu_elf_howto_raw[i].name != NULL
-	&& strcasecmp (newcpu_elf_howto_raw[i].name, r_name) == 0)
-      return &newcpu_elf_howto_raw[i];
+  for (i = 0; i < NUM_ELEM (xtc_elf_howto_raw); i++)
+    if (xtc_elf_howto_raw[i].name != NULL
+	&& strcasecmp (xtc_elf_howto_raw[i].name, r_name) == 0)
+      return &xtc_elf_howto_raw[i];
 
   return NULL;
 }
@@ -404,17 +404,17 @@ newcpu_elf_reloc_name_lookup (bfd *abfd ATTRIBUTE_UNUSED,
 /* Set the howto pointer for a RCE ELF reloc.  */
 
 static void
-newcpu_elf_info_to_howto (bfd * abfd ATTRIBUTE_UNUSED,
+xtc_elf_info_to_howto (bfd * abfd ATTRIBUTE_UNUSED,
 			      arelent * cache_ptr,
 			      Elf_Internal_Rela * dst)
 {
-  if (!newcpu_elf_howto_table [R_NEWCPU_32])
+  if (!xtc_elf_howto_table [R_XTC_32])
     /* Initialize howto table if needed.  */
-    newcpu_elf_howto_init ();
+    xtc_elf_howto_init ();
 
-  BFD_ASSERT (ELF32_R_TYPE (dst->r_info) < (unsigned int) R_NEWCPU_max);
+  BFD_ASSERT (ELF32_R_TYPE (dst->r_info) < (unsigned int) R_XTC_max);
 
-  cache_ptr->howto = newcpu_elf_howto_table [ELF32_R_TYPE (dst->r_info)];
+  cache_ptr->howto = xtc_elf_howto_table [ELF32_R_TYPE (dst->r_info)];
 }
 
 struct elf32_mb_dyn_relocs
@@ -467,9 +467,9 @@ struct elf32_mb_link_hash_table
 
 #define elf32_mb_hash_table(p)				\
   (elf_hash_table_id ((struct elf_link_hash_table *) ((p)->hash)) \
-  == NEWCPU_ELF_DATA ? ((struct elf32_mb_link_hash_table *) ((p)->hash)) : NULL)
+  == XTC_ELF_DATA ? ((struct elf32_mb_link_hash_table *) ((p)->hash)) : NULL)
 
-/* Create an entry in a microblaze ELF linker hash table.  */
+/* Create an entry in a xtc ELF linker hash table.  */
 
 static struct bfd_hash_entry *
 link_hash_newfunc (struct bfd_hash_entry *entry,
@@ -502,7 +502,7 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
 /* Create a mb ELF linker hash table.  */
 
 static struct bfd_link_hash_table *
-newcpu_elf_link_hash_table_create (bfd *abfd)
+xtc_elf_link_hash_table_create (bfd *abfd)
 {
   struct elf32_mb_link_hash_table *ret;
   bfd_size_type amt = sizeof (struct elf32_mb_link_hash_table);
@@ -513,7 +513,7 @@ newcpu_elf_link_hash_table_create (bfd *abfd)
 
   if (!_bfd_elf_link_hash_table_init (&ret->elf, abfd, link_hash_newfunc,
 				      sizeof (struct elf32_mb_link_hash_entry),
-				      NEWCPU_ELF_DATA))
+				      XTC_ELF_DATA))
     {
       free (ret);
       return NULL;
@@ -524,7 +524,7 @@ newcpu_elf_link_hash_table_create (bfd *abfd)
 
 
 static bfd_boolean
-newcpu_get_relocation_value (bfd *input_bfd, struct bfd_link_info *info,
+xtc_get_relocation_value (bfd *input_bfd, struct bfd_link_info *info,
                              asection *input_section,
                              asection **local_sections,
                              Elf_Internal_Sym *local_syms,
@@ -586,7 +586,7 @@ newcpu_get_relocation_value (bfd *input_bfd, struct bfd_link_info *info,
 #if 0
 
 static bfd_boolean
-newcpu_elf_relocate_section (bfd *output_bfd,
+xtc_elf_relocate_section (bfd *output_bfd,
                              struct bfd_link_info *info,
                              bfd *input_bfd,
                              asection *input_section,
@@ -606,8 +606,8 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 
   printf("kjshkdhsaldhajsh\n");
 
-  if (!newcpu_elf_howto_table[R_NEWCPU_max-1])
-    newcpu_elf_howto_init ();
+  if (!xtc_elf_howto_table[R_XTC_max-1])
+    xtc_elf_howto_init ();
 
   htab = elf32_mb_hash_table (info);
   if (htab == NULL)
@@ -636,7 +636,7 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 
       h = NULL;
       r_type = ELF32_R_TYPE (rel->r_info);
-      if (r_type < 0 || r_type >= (int) R_NEWCPU_max)
+      if (r_type < 0 || r_type >= (int) R_XTC_max)
 	{
 	  (*_bfd_error_handler) (_("%s: unknown relocation type %d"),
 				 bfd_get_filename (input_bfd), (int) r_type);
@@ -645,7 +645,7 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 	  continue;
 	}
 
-      howto = newcpu_elf_howto_table[r_type];
+      howto = xtc_elf_howto_table[r_type];
 
       BFD_ASSERT(NULL!=howto);
 
@@ -734,8 +734,8 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 
 	  switch ((int) r_type)
 	    {
-	    case (int) R_NEWCPU_32_IMM_12_12_8_PCREL:
-            case (int) R_NEWCPU_32:
+	    case (int) R_XTC_32_IMM_12_12_8_PCREL:
+            case (int) R_XTC_32:
 	      {
 		/* r_symndx will be STN_UNDEF (zero) only for relocs against symbols
 		   from removed linkonce sections, or sections discarded by
@@ -743,12 +743,12 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 		if (r_symndx == STN_UNDEF || (input_section->flags & SEC_ALLOC) == 0)
                 {
 		    relocation += addend;
-                    if (r_type == R_NEWCPU_32)
+                    if (r_type == R_XTC_32)
 		      bfd_put_32 (input_bfd, relocation, contents + offset);
 		    else
                     {
                                                       /*
-			if (r_type == R_NEWCPU_32_PCREL)
+			if (r_type == R_XTC_32_PCREL)
 			  relocation -= (input_section->output_section->vma
 					 + input_section->output_offset
                                          + offset );*/
@@ -832,9 +832,9 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 		    else
                     {
 #if 0
-			if (r_type == R_NEWCPU_32)
+			if (r_type == R_XTC_32)
 			  {
-			    outrel.r_info = ELF32_R_INFO (0, R_MICROBLAZE_REL);
+			    outrel.r_info = ELF32_R_INFO (0, R_XTC_REL);
 			    outrel.r_addend = relocation + addend;
 			  }
 			else
@@ -859,13 +859,13 @@ newcpu_elf_relocate_section (bfd *output_bfd,
                 {
                     (*_bfd_error_handler) ("Relocating here\n");
 		    relocation += addend;
-                    if (r_type == R_NEWCPU_32) {
+                    if (r_type == R_XTC_32) {
                         bfd_put_32 (input_bfd, relocation, contents + offset);
                         abort();
                     }
 		    else
 		      {
-                          if (r_type == R_NEWCPU_32_PCREL) {
+                          if (r_type == R_XTC_32_PCREL) {
                               printf("Is a PCREL relocation\n");
                               relocation -= (input_section->output_section->vma
                                              + input_section->output_offset
@@ -969,7 +969,7 @@ newcpu_elf_relocate_section (bfd *output_bfd,
 
 #endif
 
-static int newcpu_bytes_12_12_8(bfd_vma value)
+static int xtc_bytes_12_12_8(bfd_vma value)
 {
     if ((value & 0xfff80000)==0 /* unsigned */
         ||(value & 0xfff80000)==0xfff80000 /* signed */ ) {
@@ -986,7 +986,7 @@ static int newcpu_bytes_12_12_8(bfd_vma value)
     }
 }
 
-static void newcpu_emit_imm_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
+static void xtc_emit_imm_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
     printf("LOAD 0x%04lx, ",inst);
@@ -1002,7 +1002,7 @@ static void newcpu_emit_imm_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
     bfd_put_16 (abfd, inst, address + INST_WORD_SIZE);
 }
 
-static void newcpu_emit_imm_12_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
+static void xtc_emit_imm_12_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
     printf("LOAD 0x%04lx, ",inst);
@@ -1026,7 +1026,7 @@ static void newcpu_emit_imm_12_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
     bfd_put_16 (abfd, inst, address + INST_WORD_SIZE*2);
 }
 
-static void newcpu_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
+static void xtc_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
     printf("LOAD 0x%04lx, ",inst);
@@ -1036,17 +1036,17 @@ static void newcpu_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
     bfd_put_16 (abfd, inst, address);
 }
 
-static void newcpu_emit_imm(bfd *abfd, bfd_byte *address, bfd_vma value, int size)
+static void xtc_emit_imm(bfd *abfd, bfd_byte *address, bfd_vma value, int size)
 {
     switch(size) {
     case 3:
-        newcpu_emit_imm_12_12_8(abfd,address,value);
+        xtc_emit_imm_12_12_8(abfd,address,value);
         break;
     case 2:
-        newcpu_emit_imm_12_8(abfd,address,value);
+        xtc_emit_imm_12_8(abfd,address,value);
         break;
     case 1:
-        newcpu_emit_imm_8(abfd,address,value);
+        xtc_emit_imm_8(abfd,address,value);
         break;
     default:
         abort();
@@ -1055,7 +1055,7 @@ static void newcpu_emit_imm(bfd *abfd, bfd_byte *address, bfd_vma value, int siz
 
 
 static bfd_boolean
-newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
+xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                              struct bfd_link_info *info,
                              bfd *input_bfd, asection *input_section,
                              bfd_byte *contents, Elf_Internal_Rela *relocs,
@@ -1071,8 +1071,8 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
   symtab_hdr = &elf_tdata (input_bfd)->symtab_hdr;
 //  sym_hashes = elf_sym_hashes (input_bfd);
 
-  if (!newcpu_elf_howto_table[R_NEWCPU_max-1])
-    newcpu_elf_howto_init ();
+  if (!xtc_elf_howto_table[R_XTC_max-1])
+    xtc_elf_howto_init ();
 
   /* Get memory bank parameters.  */
 
@@ -1115,24 +1115,24 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
 	}
       //(*ebd->elf_info_to_howto_rel) (input_bfd, &arel, rel);
       //howto = arel.howto;
-      howto = newcpu_elf_howto_table[ELF32_R_TYPE (rel->r_info)];
+      howto = xtc_elf_howto_table[ELF32_R_TYPE (rel->r_info)];
 
       BFD_ASSERT(NULL!=howto);
 
-      newcpu_get_relocation_value (input_bfd, info, input_section,
+      xtc_get_relocation_value (input_bfd, info, input_section,
                                    local_sections, local_syms,
                                    rel, &name, &relocation);
       pcrel=0;
 
       switch (r_type)
       {
-      case R_NEWCPU_32_IMM_12_12_8_PCREL:
-      case R_NEWCPU_32_IMM_12_8_PCREL:
-      case R_NEWCPU_32_IMM_8_PCREL:
+      case R_XTC_32_IMM_12_12_8_PCREL:
+      case R_XTC_32_IMM_12_8_PCREL:
+      case R_XTC_32_IMM_8_PCREL:
           pcrel=1;
-      case R_NEWCPU_32_IMM_12_12_8:
-      case R_NEWCPU_32_IMM_12_8:
-      case R_NEWCPU_32_IMM_8:
+      case R_XTC_32_IMM_12_12_8:
+      case R_XTC_32_IMM_12_8:
+      case R_XTC_32_IMM_8:
 
           {
               int len;
@@ -1140,7 +1140,7 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
               int reserved;
               if (pcrel)
               {
-                  reserved = R_NEWCPU_32_IMM_8_PCREL - r_type + 1 ;
+                  reserved = R_XTC_32_IMM_8_PCREL - r_type + 1 ;
                   phys_addr = relocation + rel->r_addend;
                   printf("Reloc phys 0x%lx addend %lu\n", relocation, rel->r_addend);
                   phys_addr -= (input_section->output_section->vma
@@ -1153,11 +1153,11 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                   phys_addr -= (reserved*2);
               } else
               {
-                  reserved = R_NEWCPU_32_IMM_8 - r_type + 1;
+                  reserved = R_XTC_32_IMM_8 - r_type + 1;
                   phys_addr = relocation + rel->r_addend;
                   printf("Reloc offset ABSOLUTE %ld\n", rel->r_offset);
               }
-              len = newcpu_bytes_12_12_8(phys_addr);
+              len = xtc_bytes_12_12_8(phys_addr);
               printf("Reserved: %d, len: %d, target address is delta %ld\n", reserved,len,phys_addr);
               
               for (i=0; i<reserved-len; i++)
@@ -1168,22 +1168,22 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                   bfd_put_16 (input_bfd, 0x0000,
                              (bfd_byte*) contents + rel->r_offset+i);
               }
-              newcpu_emit_imm(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
+              xtc_emit_imm(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
                              len);
 
-              r_type = R_NEWCPU_NONE;
+              r_type = R_XTC_NONE;
               r = bfd_reloc_ok;
         }
           break;
 
-        case R_NEWCPU_NONE:
+        case R_XTC_NONE:
           r = bfd_reloc_ok;
           break;
 
       default:
       break;
         }
-        if (r_type!=R_NEWCPU_NONE)
+        if (r_type!=R_XTC_NONE)
         {
             /* those that we did not handle ourselves */
             r = _bfd_final_link_relocate (howto, input_bfd, input_section,
@@ -1250,7 +1250,7 @@ newcpu_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
 /* Look through the relocs for a section during the first phase.  */
 
 static bfd_boolean
-newcpu_elf_check_relocs (bfd * abfd,
+xtc_elf_check_relocs (bfd * abfd,
                          struct bfd_link_info * info,
                          asection * sec,
                          const Elf_Internal_Rela * relocs)
@@ -1300,20 +1300,20 @@ newcpu_elf_check_relocs (bfd * abfd,
 #if 0
             /* This relocation describes the C++ object vtable hierarchy.
              Reconstruct it for later use during GC.  */
-        case R_MICROBLAZE_GNU_VTINHERIT:
+        case R_XTC_GNU_VTINHERIT:
             if (!bfd_elf_gc_record_vtinherit (abfd, sec, h, rel->r_offset))
                 return FALSE;
             break;
 
             /* This relocation describes which C++ vtable entries are actually
              used.  Record for later use during GC.  */
-        case R_MICROBLAZE_GNU_VTENTRY:
+        case R_XTC_GNU_VTENTRY:
             if (!bfd_elf_gc_record_vtentry (abfd, sec, h, rel->r_addend))
                 return FALSE;
             break;
 
             /* This relocation requires .plt entry.  */
-        case R_MICROBLAZE_PLT_64:
+        case R_XTC_PLT_64:
             if (h != NULL)
             {
                 h->needs_plt = 1;
@@ -1322,7 +1322,7 @@ newcpu_elf_check_relocs (bfd * abfd,
             break;
 
             /* This relocation requires .got entry.  */
-        case R_MICROBLAZE_GOT_64:
+        case R_XTC_GOT_64:
             if (htab->sgot == NULL)
             {
                 if (htab->elf.dynobj == NULL)
@@ -1356,8 +1356,8 @@ newcpu_elf_check_relocs (bfd * abfd,
             break;
 #endif
 
-        case R_NEWCPU_32:
-        case R_NEWCPU_32_PCREL:
+        case R_XTC_32:
+        case R_XTC_32_PCREL:
             {
                 if (h != NULL && !info->shared)
                 {
@@ -1366,7 +1366,7 @@ newcpu_elf_check_relocs (bfd * abfd,
 
                     /* we may also need a .plt entry.  */
                     h->plt.refcount += 1;
-                    if (ELF32_R_TYPE (rel->r_info) != R_NEWCPU_32_PCREL)
+                    if (ELF32_R_TYPE (rel->r_info) != R_XTC_32_PCREL)
                         h->pointer_equality_needed = 1;
                 }
 
@@ -1395,7 +1395,7 @@ newcpu_elf_check_relocs (bfd * abfd,
 
                 if ((info->shared
                      && (sec->flags & SEC_ALLOC) != 0
-                     && (r_type != R_NEWCPU_32_PCREL
+                     && (r_type != R_XTC_32_PCREL
                          || (h != NULL
                              && (! info->symbolic
                                  || h->root.type == bfd_link_hash_defweak
@@ -1499,7 +1499,7 @@ newcpu_elf_check_relocs (bfd * abfd,
                     }
 
                     p->count += 1;
-                    if (r_type == R_NEWCPU_32_PCREL)
+                    if (r_type == R_XTC_32_PCREL)
                         p->pc_count += 1;
                 }
             }
@@ -1536,7 +1536,7 @@ calc_fixup (bfd_vma addr, asection *sec)
 #endif
 
 static void
-newcpu_elf_relax_delete_bytes (bfd *abfd, asection *sec,
+xtc_elf_relax_delete_bytes (bfd *abfd, asection *sec,
                                bfd_vma addr, int count)
 {
   Elf_Internal_Shdr *symtab_hdr;
@@ -1623,7 +1623,7 @@ newcpu_elf_relax_delete_bytes (bfd *abfd, asection *sec,
 
 
 static bfd_boolean
-newcpu_elf_relax_section (bfd *abfd,
+xtc_elf_relax_section (bfd *abfd,
                           asection *sec,
                           struct bfd_link_info *link_info,
                           bfd_boolean *again)
@@ -1692,10 +1692,10 @@ newcpu_elf_relax_section (bfd *abfd,
 
         printf("relax RELOC: %ld %ld\n", irel->r_info, ELF32_R_TYPE (irel->r_info));
 
-        if ((ELF32_R_TYPE (irel->r_info) != (int) R_NEWCPU_32_IMM_12_12_8_PCREL)
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_NEWCPU_32_IMM_12_8_PCREL )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_NEWCPU_32_IMM_12_12_8 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_NEWCPU_32_IMM_12_8 )
+        if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8_PCREL)
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8_PCREL )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8 )
            )
             continue; /* Can't delete this reloc.  */
 
@@ -1759,8 +1759,8 @@ newcpu_elf_relax_section (bfd *abfd,
         }
         int isPcrel = 0;
 
-        if ( (ELF32_R_TYPE (irel->r_info) == (int) R_NEWCPU_32_IMM_12_12_8_PCREL)
-            || (ELF32_R_TYPE (irel->r_info) == (int) R_NEWCPU_32_IMM_12_8_PCREL)
+        if ( (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_12_8_PCREL)
+            || (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_8_PCREL)
            )
         {
             isPcrel = 1;
@@ -1778,7 +1778,7 @@ newcpu_elf_relax_section (bfd *abfd,
         printf("About to check relax: value is %ld (0x%08lx) at address %lx\n", symval, symval,
               irel->r_offset);
 
-        int bytesNeeded = newcpu_bytes_12_12_8(value);
+        int bytesNeeded = xtc_bytes_12_12_8(value);
 
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
@@ -1786,21 +1786,21 @@ newcpu_elf_relax_section (bfd *abfd,
         switch (ELF32_R_TYPE (irel->r_info))
         {
 
-        case R_NEWCPU_32_IMM_12_12_8_PCREL:
-        case R_NEWCPU_32_IMM_12_12_8:
+        case R_XTC_32_IMM_12_12_8_PCREL:
+        case R_XTC_32_IMM_12_12_8:
 
 
             switch (bytesNeeded) {
             case 3:
                 break;
             case 2:
-                newReloc = isPcrel ? R_NEWCPU_32_IMM_12_8_PCREL : R_NEWCPU_32_IMM_12_8;
-                //newcpu_emit_imm_12_8(abfd, contents + INST_WORD_SIZE, value);
+                newReloc = isPcrel ? R_XTC_32_IMM_12_8_PCREL : R_XTC_32_IMM_12_8;
+                //xtc_emit_imm_12_8(abfd, contents + INST_WORD_SIZE, value);
                 deleteBytes = 1;
                 break;
             case 1:
-                newReloc = isPcrel ? R_NEWCPU_32_IMM_8_PCREL : R_NEWCPU_32_IMM_8;
-                //newcpu_emit_imm_8(abfd, contents + INST_WORD_SIZE*2, value);
+                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
+                //xtc_emit_imm_8(abfd, contents + INST_WORD_SIZE*2, value);
                 deleteBytes = 2;
             }
             //newsize = bytesNeeded;
@@ -1808,8 +1808,8 @@ newcpu_elf_relax_section (bfd *abfd,
 
             break;
 
-        case R_NEWCPU_32_IMM_12_8_PCREL:
-        case R_NEWCPU_32_IMM_12_8:
+        case R_XTC_32_IMM_12_8_PCREL:
+        case R_XTC_32_IMM_12_8:
             switch (bytesNeeded) {
             case 3:
                 abort();
@@ -1817,14 +1817,14 @@ newcpu_elf_relax_section (bfd *abfd,
             case 2:
                 break;
             case 1:
-                newReloc = isPcrel ? R_NEWCPU_32_IMM_8_PCREL : R_NEWCPU_32_IMM_8;
+                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
                 deleteBytes = 1;
             }
             printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
             break;
 
-        case R_NEWCPU_32_IMM_8_PCREL:
-        case R_NEWCPU_32_IMM_8:
+        case R_XTC_32_IMM_8_PCREL:
+        case R_XTC_32_IMM_8:
             // Cannot relax any further
             break;
 
@@ -1852,7 +1852,7 @@ newcpu_elf_relax_section (bfd *abfd,
 
             irel->r_info = ELF32_R_INFO (ELF32_R_SYM (irel->r_info), newReloc );
             
-            newcpu_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes * 2);
+            xtc_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes * 2);
             *again = TRUE;
 
         }
@@ -1916,27 +1916,27 @@ error_return:
 
 
 
-#define TARGET_BIG_SYM          bfd_elf32_newcpu_vec
-#define TARGET_BIG_NAME		"elf32-newcpu"
+#define TARGET_BIG_SYM          bfd_elf32_xtc_vec
+#define TARGET_BIG_NAME		"elf32-xtc"
 
-#define ELF_ARCH		bfd_arch_newcpu
-#define ELF_TARGET_ID		NEWCPU_ELF_DATA
-#define ELF_MACHINE_CODE	EM_NEWCPU
+#define ELF_ARCH		bfd_arch_xtc
+#define ELF_TARGET_ID		XTC_ELF_DATA
+#define ELF_MACHINE_CODE	EM_XTC
 #define ELF_MAXPAGESIZE		0x4   		/* 4k, if we ever have 'em.  */
-#define elf_info_to_howto	newcpu_elf_info_to_howto
+#define elf_info_to_howto	xtc_elf_info_to_howto
 #define elf_info_to_howto_rel	NULL
 
-#define bfd_elf32_bfd_reloc_type_lookup		newcpu_elf_reloc_type_lookup
-//#define bfd_elf32_bfd_is_local_label_name       newcpu_elf_is_local_label_name
-#define elf_backend_relocate_section		newcpu_elf_relocate_section
-#define bfd_elf32_bfd_relax_section             newcpu_elf_relax_section
-#define bfd_elf32_bfd_reloc_name_lookup		newcpu_elf_reloc_name_lookup
+#define bfd_elf32_bfd_reloc_type_lookup		xtc_elf_reloc_type_lookup
+//#define bfd_elf32_bfd_is_local_label_name       xtc_elf_is_local_label_name
+#define elf_backend_relocate_section		xtc_elf_relocate_section
+#define bfd_elf32_bfd_relax_section             xtc_elf_relax_section
+#define bfd_elf32_bfd_reloc_name_lookup		xtc_elf_reloc_name_lookup
 
-//#define elf_backend_gc_mark_hook		newcpu_elf_gc_mark_hook
-//#define elf_backend_gc_sweep_hook		newcpu_elf_gc_sweep_hook
-#define elf_backend_check_relocs                newcpu_elf_check_relocs
-//#define elf_backend_copy_indirect_symbol        newcpu_elf_copy_indirect_symbol
-#define bfd_elf32_bfd_link_hash_table_create    newcpu_elf_link_hash_table_create
+//#define elf_backend_gc_mark_hook		xtc_elf_gc_mark_hook
+//#define elf_backend_gc_sweep_hook		xtc_elf_gc_sweep_hook
+#define elf_backend_check_relocs                xtc_elf_check_relocs
+//#define elf_backend_copy_indirect_symbol        xtc_elf_copy_indirect_symbol
+#define bfd_elf32_bfd_link_hash_table_create    xtc_elf_link_hash_table_create
 #define elf_backend_can_gc_sections		1
 #define elf_backend_can_refcount    		1
 #define elf_backend_want_got_plt    		1
@@ -1944,12 +1944,12 @@ error_return:
 #define elf_backend_got_header_size 		12
 #define elf_backend_rela_normal     		1
 
-//#define elf_backend_adjust_dynamic_symbol       newcpu_elf_adjust_dynamic_symbol
-//#define elf_backend_create_dynamic_sections     newcpu_elf_create_dynamic_sections
-//#define elf_backend_finish_dynamic_sections     newcpu_elf_finish_dynamic_sections
-//#define elf_backend_finish_dynamic_symbol       newcpu_elf_finish_dynamic_symbol
-//#define elf_backend_size_dynamic_sections       newcpu_elf_size_dynamic_sections
-//#define elf_backend_add_symbol_hook		newcpu_elf_add_symbol_hook
+//#define elf_backend_adjust_dynamic_symbol       xtc_elf_adjust_dynamic_symbol
+//#define elf_backend_create_dynamic_sections     xtc_elf_create_dynamic_sections
+//#define elf_backend_finish_dynamic_sections     xtc_elf_finish_dynamic_sections
+//#define elf_backend_finish_dynamic_symbol       xtc_elf_finish_dynamic_symbol
+//#define elf_backend_size_dynamic_sections       xtc_elf_size_dynamic_sections
+//#define elf_backend_add_symbol_hook		xtc_elf_add_symbol_hook
 
 #include "elf32-target.h"
 

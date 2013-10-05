@@ -241,7 +241,7 @@ ALL_EMULATION_SOURCES = \
 	eelf32mipswindiss.c \
 	eelf32moxie.c \
 	eelf32mt.c \
-	eelf32newcpu.c \
+	eelf32xtc.c \
 	eelf32openrisc.c \
 	eelf32ppc.c \
 	eelf32ppc_fbsd.c \
@@ -1120,9 +1120,9 @@ eelf32mep.c: $(srcdir)/emulparams/elf32mep.sh \
 eelf32microblaze.c: $(srcdir)/emulparams/elf32microblaze.sh \
   $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elfmicroblaze.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32microblaze "$(tdir_microblaze)"
-eelf32newcpu.c: $(srcdir)/emulparams/elf32newcpu.sh \
-  $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elfnewcpu.sc ${GEN_DEPENDS}
-	${GENSCRIPTS} elf32newcpu "$(tdir_newcpu)"
+eelf32xtc.c: $(srcdir)/emulparams/elf32xtc.sh \
+  $(srcdir)/emultempl/elf32.em $(srcdir)/scripttempl/elfxtc.sc ${GEN_DEPENDS}
+	${GENSCRIPTS} elf32xtc "$(tdir_xtc)"
 eelf32mipswindiss.c: $(srcdir)/emulparams/elf32mipswindiss.sh $(ELF_DEPS) \
   $(srcdir)/scripttempl/elf.sc ${GEN_DEPENDS}
 	${GENSCRIPTS} elf32mipswindiss "$(tdir_elf32mipswindiss)"

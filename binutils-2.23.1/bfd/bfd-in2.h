@@ -2191,7 +2191,7 @@ enum bfd_architecture
 #define bfd_mach_tilegx    1
 #define bfd_mach_tilegx32  2
   bfd_arch_aarch64,   /* AArch64  */
-  bfd_arch_newcpu,/* Alvie Newcpu */
+  bfd_arch_xtc,/* Alvie XThunderCore */
 #define bfd_mach_aarch64 0
   bfd_arch_last
   };
@@ -5017,31 +5017,31 @@ the linker could optimize the movq to a leaq if possible.  */
   BFD_RELOC_MACH_O_X86_64_PCREL32_4,
 
 /* This is a 32-bit reloc that stores the address of a value  */
-  BFD_RELOC_NEWCPU_NONE,
+  BFD_RELOC_XTC_NONE,
 
 /* This is a 32-bit reloc that stores the address of a value  */
-  BFD_RELOC_NEWCPU_32,
+  BFD_RELOC_XTC_32,
 
 /* This is a 32-bit reloc that stores a pc-relative address  */
-  BFD_RELOC_NEWCPU_32_PCREL,
+  BFD_RELOC_XTC_32_PCREL,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_12_12_8,
+  BFD_RELOC_XTC_IMM_12_12_8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_12_8,
+  BFD_RELOC_XTC_IMM_12_8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_8,
+  BFD_RELOC_XTC_IMM_8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_12_12_8_PCREL,
+  BFD_RELOC_XTC_IMM_12_12_8_PCREL,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_12_8_PCREL,
+  BFD_RELOC_XTC_IMM_12_8_PCREL,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
-  BFD_RELOC_NEWCPU_IMM_8_PCREL,
+  BFD_RELOC_XTC_IMM_8_PCREL,
 
 /* This is a 32 bit reloc for the microblaze that stores the 
 low 16 bits of a value  */

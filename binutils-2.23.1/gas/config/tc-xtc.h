@@ -1,4 +1,4 @@
-/* tc-newcpu.h -- Header file for tc-newcpu.c.
+/* tc-xtc.h -- Header file for tc-xtc.c.
 
    Copyright 2009 Free Software Foundation, Inc.
 
@@ -19,10 +19,10 @@
    Software Foundation, 51 Franklin Street - Fifth Floor, Boston, MA
    02110-1301, USA.  */
 
-#ifndef	TC_NEWCPU
-#define TC_NEWCPU 1
+#ifndef	TC_XTC
+#define TC_XTC 1
 
-#define TARGET_ARCH	bfd_arch_newcpu
+#define TARGET_ARCH	bfd_arch_xtc
 /* Used to initialise target_big_endian.  */
 #define TARGET_BYTES_BIG_ENDIAN 1
 
@@ -33,9 +33,9 @@
 /* We need to handle expressions of type "symbol op symbol" and create
    relocs for such expressions as -relax in linker can change the value
    of such expressions */
-//#define TC_CONS_FIX_NEW cons_fix_new_newcpu
-//#define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) parse_cons_expression_newcpu (EXP, NBYTES)
-extern void parse_cons_expression_newcpu PARAMS ((expressionS *, int));
+//#define TC_CONS_FIX_NEW cons_fix_new_xtc
+//#define TC_PARSE_CONS_EXPRESSION(EXP, NBYTES) parse_cons_expression_xtc (EXP, NBYTES)
+extern void parse_cons_expression_xtc PARAMS ((expressionS *, int));
 
 //#define TC_FORCE_RELOCATION_SECTION(FIXP,SEG) 1
 #define UNDEFINED_DIFFERENCE_OK 1
@@ -46,8 +46,8 @@ extern void parse_cons_expression_newcpu PARAMS ((expressionS *, int));
   (!(FIX)->fx_pcrel			\
    || TC_FORCE_RELOCATION (FIX))
  */
-#define tc_fix_adjustable(X)  tc_newcpu_fix_adjustable(X)
-extern int tc_newcpu_fix_adjustable (struct fix *);
+#define tc_fix_adjustable(X)  tc_xtc_fix_adjustable(X)
+extern int tc_xtc_fix_adjustable (struct fix *);
 
 //extern const struct relax_type md_relax_table[];
 //#define TC_GENERIC_RELAX_TABLE md_relax_table
@@ -55,7 +55,7 @@ extern int tc_newcpu_fix_adjustable (struct fix *);
 /* We don't need to handle .word strangely.  */
 #define WORKING_DOT_WORD
 
-#define LISTING_HEADER        	"Newcpu GAS Listing"
+#define LISTING_HEADER        	"XThunderCore GAS Listing"
 #define LISTING_LHS_CONT_LINES	4
 
 //#define NEED_FX_R_TYPE	1
@@ -73,7 +73,7 @@ extern int tc_newcpu_fix_adjustable (struct fix *);
 
 #ifdef OBJ_ELF
 
-#define TARGET_FORMAT "elf32-newcpu"
+#define TARGET_FORMAT "elf32-xtc"
 
 #define ELF_TC_SPECIAL_SECTIONS \
   { ".sdata",		SHT_PROGBITS,	SHF_ALLOC + SHF_WRITE }, \
@@ -93,11 +93,11 @@ extern int tc_newcpu_fix_adjustable (struct fix *);
 
 #include "write.h"        /* For definition of fixS */
 
-#define TC_FORCE_RELOCATION(fix) tc_newcpu_force_relocation (fix)
-extern int tc_newcpu_force_relocation (struct fix *);
+#define TC_FORCE_RELOCATION(fix) tc_xtc_force_relocation (fix)
+extern int tc_xtc_force_relocation (struct fix *);
 
-#define tc_fix_adjustable(X) tc_newcpu_fix_adjustable(X)
-extern int tc_newcpu_fix_adjustable (struct fix *);
+#define tc_fix_adjustable(X) tc_xtc_fix_adjustable(X)
+extern int tc_xtc_fix_adjustable (struct fix *);
   
 extern void      md_begin            (void);
 extern void      md_assemble         (char *);
@@ -112,9 +112,9 @@ extern void      md_number_to_chars            (char *, valueT, int);
 extern valueT    md_section_align              (segT, valueT);
 extern long      md_pcrel_from_section         (fixS *, segT);
 extern arelent * tc_gen_reloc                  (asection *, fixS *);
-extern void 	 cons_fix_new_newcpu       (fragS *, int, int, expressionS *);
+extern void 	 cons_fix_new_xtc       (fragS *, int, int, expressionS *);
 extern void 	 md_apply_fix3 		       (fixS *, valueT *, segT);
 
 //#define EXTERN_FORCE_RELOC -1
 
-#endif /* TC_NEWCPU */
+#endif /* TC_XTC */

@@ -59,7 +59,7 @@
 #define ARCH_mcore
 #define ARCH_mep
 #define ARCH_microblaze
-#define ARCH_newcpu
+#define ARCH_xtc
 #define ARCH_mips
 #define ARCH_mmix
 #define ARCH_mn10200
@@ -290,9 +290,9 @@ disassembler (abfd)
       disassemble = print_insn_microblaze;
       break;
 #endif
-#ifdef ARCH_newcpu
-    case bfd_arch_newcpu:
-      disassemble = print_insn_newcpu;
+#ifdef ARCH_xtc
+    case bfd_arch_xtc:
+      disassemble = print_insn_xtc;
       break;
 #endif
 #ifdef ARCH_msp430

@@ -1,4 +1,4 @@
-/* Disassemble newcpu instructions.
+/* Disassemble xtc instructions.
 
    Copyright 2009 Free Software Foundation, Inc.
 
@@ -19,15 +19,16 @@
    Free Software Foundation, 51 Franklin Street - Fifth Floor, Boston,
    MA 02110-1301, USA.  */
 
-#ifndef NEWCPU_DIS_H
-#define NEWCPU_DIS_H 1
+#ifndef XTC_DIS_H
+#define XTC_DIS_H 1
 
-extern enum newcpu_instr newcpu_decode_insn (long, int *, int *, int *);
-extern unsigned long newcpu_get_target_address (long, bfd_boolean, int,
-			       long, long, bfd_boolean *, bfd_boolean *);
+extern enum xtc_instr xtc_decode_insn (long, int *, int *, int *);
+extern unsigned long xtc_get_target_address (long, bfd_boolean, int,
+                                             long, long, bfd_boolean *,
+                                             bfd_boolean *);
 
-extern enum newcpu_instr get_insn_newcpu (long, bfd_boolean *, 
-						  enum newcpu_instr_type *,
-  		     				  short *);
+extern enum xtc_instr get_insn_xtc (long, bfd_boolean *, 
+                                    enum xtc_instr_type *,
+                                    short *);
 
-#endif /* newcpu-dis.h */
+#endif /* xtc-dis.h */

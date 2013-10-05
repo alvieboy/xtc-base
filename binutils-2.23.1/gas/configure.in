@@ -155,7 +155,7 @@ for this_target in $target $canon_targets ; do
 	AC_MSG_ERROR(Unknown vendor for mips-bsd configuration.)
 	;;
       
-      newcpu*)
+      xtc*)
         ;;
 
 changequote(,)dnl

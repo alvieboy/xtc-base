@@ -1,4 +1,4 @@
-/* BFD newcpu architecture definition
+/* BFD xtc architecture definition
 
    Copyright 2009, 2012 Free Software Foundation, Inc.
 
@@ -23,15 +23,15 @@
 #include "bfd.h"
 #include "libbfd.h"
 
-const bfd_arch_info_type bfd_newcpu_arch =
+const bfd_arch_info_type bfd_xtc_arch =
 {
   32,		  		/* 32 bits in a word.  */
   32,		  		/* 32 bits in an address.  */
   8,		  		/* 8 bits in a byte.  */
-  bfd_arch_newcpu, 		/* Architecture.  */
+  bfd_arch_xtc, 		/* Architecture.  */
   0,		  		/* Machine number - 0 for now.  */
-  "newcpu",	  		/* Architecture name.  */
-  "newcpu",	  		/* Printable name.  */
+  "xtc",	  		/* Architecture name.  */
+  "xtc",	  		/* Printable name.  */
   3,		  		/* Section align power.  */
   TRUE,		  		/* Is this the default architecture ?  */
   bfd_default_compatible,	/* Architecture comparison function.  */

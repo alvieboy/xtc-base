@@ -1,4 +1,4 @@
-/* newcpu-opc.h -- Newcpu Opcodes
+/* xtc-opc.h -- XThunderCore Opcodes
  
    Copyright 2009 Free Software Foundation, Inc.
 
@@ -20,10 +20,10 @@
    MA 02110-1301, USA.  */
 
 
-#ifndef NEWCPU_OPC
-#define NEWCPU_OPC
+#ifndef XTC_OPC
+#define XTC_OPC
 
-#include "newcpu-opcm.h"
+#include "xtc-opcm.h"
 
 
 #define INST_TYPE_R1_R2 0
@@ -71,8 +71,8 @@ struct op_code_struct
 				 all the variable bits (reg names, imm vals) 
 				 are set to 0.  */ 
   unsigned long opcode_mask;  /* Which bits define the opcode.  */
-  enum newcpu_instr instr;
-  enum newcpu_instr_type instr_type;
+  enum xtc_instr instr;
+  enum xtc_instr_type instr_type;
   /* More info about output format here.  */
 } opcodes[MAX_OPCODES] = 
 { 
@@ -160,5 +160,5 @@ char register_prefix[] = "r";
 #define MIN_IMM12 ((int) 0x000)
 #define MAX_IMM12 ((int) 0xfff)
 
-#endif /* NEWCPU_OPC */
+#endif /* XTC_OPC */
 

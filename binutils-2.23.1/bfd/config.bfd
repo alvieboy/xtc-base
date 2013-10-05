@@ -92,7 +92,7 @@ m68*)		 targ_archs=bfd_m68k_arch ;;
 m88*)		 targ_archs=bfd_m88k_arch ;;
 microblaze*)	 targ_archs=bfd_microblaze_arch ;;
 mips*)		 targ_archs=bfd_mips_arch ;;
-newcpu*)	 targ_archs=bfd_newcpu_arch ;;
+xtc*)	 	 targ_archs=bfd_xtc_arch ;;
 or32*)		 targ_archs=bfd_or32_arch ;;
 pdp11*)		 targ_archs=bfd_pdp11_arch ;;
 pj*)		 targ_archs="bfd_pj_arch bfd_i386_arch";;
@@ -1094,8 +1094,8 @@ case "${targ}" in
     targ_defvec=bfd_elf32_msp430_vec
     ;;
 
-  newcpu*-*)
-    targ_defvec=bfd_elf32_newcpu_vec
+  xtc*-*)
+    targ_defvec=bfd_elf32_xtc_vec
     ;;
 
   ns32k-pc532-mach* | ns32k-pc532-ux*)

@@ -146,7 +146,7 @@ TARGET_CPU_CFILES = \
 	config/tc-moxie.c \
 	config/tc-msp430.c \
 	config/tc-mt.c \
-	config/tc-newcpu.c \
+	config/tc-xtc.c \
 	config/tc-ns32k.c \
 	config/tc-openrisc.c \
 	config/tc-or32.c \
@@ -210,7 +210,7 @@ TARGET_CPU_HFILES = \
 	config/tc-mcore.h \
 	config/tc-mep.h \
 	config/tc-microblaze.h \
-	config/tc-newcpu.h \
+	config/tc-xtc.h \
 	config/tc-mips.h \
 	config/tc-mmix.h \
 	config/tc-mn10200.h \
