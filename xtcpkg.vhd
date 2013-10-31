@@ -109,6 +109,12 @@ package xtcpkg is
     -- 3 left.
   );
 
+  type loadimmtype is (
+    LOADNONE,
+    LOAD8,
+    LOAD12
+  );
+
   type reg_source_type is (
     reg_source_alu1,
     reg_source_alu2,
@@ -149,7 +155,7 @@ package xtcpkg is
     imm4:           std_logic_vector(3 downto 0);
     -- Special reg
     sr:             std_logic_vector(2 downto 0);
-
+    loadimm:        loadimmtype;
     op:             decoded_opcode_type;
 -- synthesis translate_off
     strasm:     string(1 to 25);    -- Assembly string, for debugging purposes
@@ -199,6 +205,10 @@ package xtcpkg is
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
     imm4:           std_logic_vector(3 downto 0);
+
+    imreg:          unsigned(31 downto 0);
+    imflag:         std_logic;
+
     sr:             std_logic_vector(2 downto 0);
 -- synthesis translate_off
     strasm:     string(1 to 50);
@@ -229,8 +239,8 @@ package xtcpkg is
     br:             unsigned(31 downto 0); -- BRanch register
     alur1:          unsigned(31 downto 0);
     alur2:          unsigned(31 downto 0);
-    imreg:          unsigned(31 downto 0);
-    imflag:         std_logic;
+    --imreg:          unsigned(31 downto 0);
+    --imflag:         std_logic;
 
     flag_carry:     std_logic;
     flag_borrow:    std_logic;

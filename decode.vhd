@@ -31,7 +31,15 @@ architecture behave of decode is
   -- Debug helpers
 
   signal dbg_can_issue_both: boolean;
-  
+
+  type compositeloadimmtype is (
+    LOAD8,
+    LOAD12,
+    LOAD12_12,
+    LOAD12_8,
+    LOADNONE
+  );
+
 begin
 
     duo.r <= dr;
@@ -61,6 +69,7 @@ begin
       variable imm12:          std_logic_vector(11 downto 0);
       variable imm8:           std_logic_vector(7 downto 0);
       variable imm4:           std_logic_vector(3 downto 0);
+      variable imm_fill:       std_logic_vector(31 downto 0);
       variable sr:             std_logic_vector(2 downto 0);
       variable alu2_opcode: opcode_type;
 
@@ -76,7 +85,7 @@ begin
       variable memory_access: std_logic;
       variable memory_write: std_logic;
       variable modify_flags: boolean;
-
+      variable compositeloadimm: compositeloadimmtype;
     begin
       dw := dr;
       busy <= '0';
@@ -114,6 +123,12 @@ begin
           imm4  := dec1.imm4;
           sr := dec1.sr;
 
+          case dec1.loadimm is
+            when LOAD8 =>  compositeloadimm := LOAD8;
+            when LOAD12 =>  compositeloadimm := LOAD12;
+            when others =>  compositeloadimm := LOADNONE;
+          end case;
+
           op := dec1.op;
           alu1_op := dec1.alu1_op;
           alu2_op := dec1.alu2_op;
@@ -142,6 +157,12 @@ begin
           imm8  := dec2.imm8;
           imm4  := dec2.imm4;
           sr := dec2.sr;
+
+          case dec2.loadimm is
+            when LOAD8 =>  compositeloadimm := LOAD8;
+            when LOAD12 =>  compositeloadimm := LOAD12;
+            when others =>  compositeloadimm := LOADNONE;
+          end case;
 
           op := dec2.op;
           alu1_op := dec2.alu1_op;
@@ -236,6 +257,46 @@ begin
         dw.imm8  := imm8;
         dw.imm4  := imm4;
 
+        if dr.imflag='0' then
+          dw.imreg := (others => '0');
+        end if;
+
+        case compositeloadimm is
+
+          when LOAD8 =>
+            if dr.imflag='1' then
+            -- Shift.
+              dw.imreg(31 downto 8) := dr.imreg(23 downto 0);
+              dw.imreg(7 downto 0) := unsigned(imm8);
+            else
+              dw.imreg(31 downto 8) := (others => imm8(7));
+              dw.imreg(7 downto 0) := unsigned(imm8);
+            end if;
+
+          when LOAD12 =>
+            if dr.imflag='0' then
+              dw.imreg(31 downto 12) := (others => imm12(11));
+              dw.imreg(11 downto 0) := unsigned(imm12(11 downto 0));
+            else
+              dw.imreg(31 downto 12) := dr.imreg(31-12 downto 0);
+              dw.imreg(11 downto 0) := unsigned(imm12(11 downto 0));
+            end if;
+
+          when LOAD12_12 =>
+            -- Not yet
+          when LOAD12_8 =>
+            -- Not yet
+          when others =>
+            dw.imreg := (others => '0');
+        end case;
+
+        if op=O_IM then
+          dw.imflag := '1';
+        else
+          dw.imflag := '0';
+        end if;
+        --
+
         dw.alu1_op := alu1_op;
         dw.alu2_op := alu2_op;
         dw.alu2_opcode := alu2_opcode;
@@ -270,6 +331,7 @@ begin
 
       if rst='1' or flush='1' then
         dw.valid := '0';
+        dw.imflag := '0';
       end if;
 
       -- fast-forward register access

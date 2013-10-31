@@ -92,20 +92,11 @@ begin
     ew.regwe := '0';
     invalid_instr := false;
 
-    -- This is *really* expensive. Can we do this in another way ?
-    if er.imflag='1' then
-      -- Shift.
-      im8_fill(31 downto 8) := er.imreg(23 downto 0);
-      im8_fill(7 downto 0) := unsigned(fdui.r.drq.imm8);
-    else
-      im8_fill(31 downto 8) := (others => fdui.r.drq.imm8(7));
-      im8_fill(7 downto 0) := unsigned(fdui.r.drq.imm8);
-    end if;
-
     -- ALUB selector
     case fdui.r.drq.op is
       when O_ADDI | O_BRR | O_CALLR | O_CALLI | O_CMPI =>
-        alu_b_b <= std_logic_vector(im8_fill);
+        --alu_b_b <= std_logic_vector(im8_fill);
+        alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
       when others =>
         alu_b_b <= (others => 'X');
         -- See below for memory alub usage
@@ -199,7 +190,7 @@ begin
             when M_WORD_IND |
                  M_HWORD_IND |
                  M_BYTE_IND =>
-              alu_b_b <= std_logic_vector(er.imreg);
+                alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
             when others =>
           end case;
         end if;
@@ -209,28 +200,6 @@ begin
 
       end if;
 
-      ew.imflag := '0';
-
-      -- IM processing
-      case fdui.r.drq.op is
-        when O_IM =>
-          ew.imflag := '1';
-
-          if er.imflag='0' then
-            ew.imreg(31 downto 12) := (others => fdui.r.drq.imm12(11));
-            ew.imreg(11 downto 0) := unsigned(fdui.r.drq.imm12(11 downto 0));
-          else
-            ew.imreg(31 downto 12) := er.imreg(31-12 downto 0);
-            ew.imreg(11 downto 0) := unsigned(fdui.r.drq.imm12(11 downto 0));
-          end if;
-
-        when O_LIMR =>
-          -- Load immediate into register.
-          ew.imreg := im8_fill;
-        when others =>
-          ew.imreg := (others => 'X');
-      end case;
-
       -- Branching
 
       case fdui.r.drq.op is
@@ -239,13 +208,18 @@ begin
           ew.jump := '1'; ew.jumpaddr := alu_b_r(31 downto 0) + fdui.r.drq.npc(31 downto 0);
         when O_BRI =>
           -- NOTE: if we use sync output here, we can use imreg.
-          ew.jump := '1'; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jump := '1';
+          --ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
         when O_BRINE =>
-          ew.jump := not er.flag_zero;  ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jump := not er.flag_zero;
+          --ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
         when O_BRIE =>
-          ew.jump := er.flag_zero; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          --ew.jump := er.flag_zero; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jump := er.flag_zero; ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
         when O_BRIG =>
-          ew.jump := er.flag_sign; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+          ew.jump := er.flag_sign; ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
         when O_RET =>
           ew.jump := '1'; ew.jumpaddr := er.br;
         when others =>
@@ -276,17 +250,13 @@ begin
 
     busy <= busy_int;
 
-    if rst='1' then
-      ew.imflag := '0';
-    end if;
-
     -- Fast writeback
     euo.alur1 <= alu_a_r(31 downto 0);
     euo.alur2 <= alu_b_r(31 downto 0);
     euo.reg_source <= ew.reg_source;
     euo.dreg <= ew.dreg;
     euo.regwe <= ew.regwe;
-    euo.imreg <= ew.imreg;
+    euo.imreg <= fdui.r.drq.imreg;
     euo.sr <= ew.sr;
 
     if rising_edge(clk) then

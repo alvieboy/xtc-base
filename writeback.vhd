@@ -71,8 +71,8 @@ begin
             wdata := eui.r.alur1;
           when reg_source_alu2 =>
             wdata := eui.r.alur2;
-          when reg_source_imm =>
-            wdata := eui.r.imreg;
+--          when reg_source_imm =>
+--            wdata := eui.r.imreg;
           when reg_source_spr =>
             wdata := eui.r.br;
           when others =>

@@ -179,6 +179,7 @@ begin
     d.macc        := mtype;
     d.reg_source  := reg_source_alu1;
     d.modify_flags:= false;
+    d.loadimm     := LOADNONE;
 
     case decoded_op is
 
@@ -187,11 +188,13 @@ begin
         d.strasm := opcode_txt_pad("NOP ");
         -- synthesis translate_on
       when O_IM =>
+        d.loadimm     := LOAD12;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("IM 0x" & hstr(d.imm12));
         -- synthesis translate_on
 
       when O_LIMR =>
+        d.loadimm     := LOAD8;
         -- Load IMMediate into register target
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_imm;
         
@@ -242,6 +245,7 @@ begin
         -- synthesis translate_on
 
       when O_ADDI =>
+        d.loadimm     := LOAD8;
         d.modify_flags := true;
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
         -- synthesis translate_off
@@ -249,6 +253,7 @@ begin
         -- synthesis translate_on
 
       when O_CMPI =>
+        d.loadimm     := LOAD8;
         d.modify_flags := true;
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_CMPI; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
         -- synthesis translate_off
@@ -417,30 +422,37 @@ begin
         end case;
 
       when O_BRI =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRI 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIE =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIE 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRINE =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRINE 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIG =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIG 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIGE =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIGE 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIL =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIL 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRILE =>
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRILE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -452,7 +464,7 @@ begin
 
       when O_CALLI =>
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
-
+        d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
         -- synthesis translate_on
