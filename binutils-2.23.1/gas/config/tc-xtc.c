@@ -394,6 +394,7 @@ parse_reg (char * s, unsigned * reg)
 }
 
 
+
 static char *
 parse_exp (char *s, expressionS *e)
 {
@@ -496,6 +497,55 @@ parse_imm (char * s, expressionS * e, int min, int max)
   return new_pointer;
 }
 
+/* Try to parse a memory address  */
+
+static char *
+parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
+{
+  /* Strip leading whitespace.  */
+  while (ISSPACE (* s))
+    ++ s;
+
+  printf("parse_memory: parsing %s\n", s);
+
+  if ( *s == '(' ) {
+      s++;
+      /* First argument must be a register */
+      printf("Calling parsereg with '%s'\n",s);
+      s = parse_reg(s, ptr_reg);
+      if (!check_gpr_reg(ptr_reg)) {
+          as_bad("Only GPR registers allowed");
+      }
+      while (ISSPACE (* s))
+          ++ s;
+      /* Operand must either be a sum with an immediate,
+       or empty */
+      if (*s == ')') {
+          if (hasimm)
+              *hasimm = 0; // No immediate;
+          printf("No immediate, it's OK\n");
+          s++;
+          return s;
+      } else {
+          s++;
+          printf("Parse IMM\n");
+          s = parse_imm( s, imval, MIN_IMM, MAX_IMM );
+          if (hasimm)
+              *hasimm = 1;
+
+          while (ISSPACE (* s))
+              ++ s;
+          if (*s == ')') {
+              s++;
+              return s;
+          }
+      }
+  }
+  as_bad (_("Memory address expected, but saw '%s'"), s);
+  return s;
+}
+
+
 static int xtc_count_bits(unsigned int immed)
 {
     int count=31;
@@ -527,6 +577,7 @@ md_assemble (char * str)
     unsigned reg1;
     unsigned reg2;
     //unsigned reg3;
+    int hasimm;
     unsigned isize;
     unsigned int immed, temp;
     expressionS exp;
@@ -603,8 +654,36 @@ md_assemble (char * str)
         break;
 
     case INST_TYPE_MEM:
-        //ismem=1;
-        // Keep goiing...
+        /* Memory instructions include a displacement */
+        op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg2 = 0;
+        }
+
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (& reg2))
+            as_fatal (_("Cannot use special register with this instruction"));
+
+        /* Now, check if we need to add a displacement */
+        if (hasimm==1) {
+            if (exp.X_op != O_constant || exp.X_add_number!=0) {
+                as_bad("Cannot yet handle offsets in memory access");
+            }
+        }
+
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+        inst |= (reg2 << RB_LOW) & RB_MASK;
+        printf("now: bit sequence %04lx\n", inst);
+
+        output = frag_more (isize);
+        break;
+
+
 
     case INST_TYPE_R1_R2:
 
