@@ -14,3 +14,7 @@ $(BIN).elf: $(BIN).o
 
 $(BIN).bin: $(BIN).elf
 	$(OBJCOPY) -O binary $(BIN).elf $(BIN).bin
+	perl ../gen-prom-generic-dualport_32.pl  $(BIN).bin 32768 internalram > internalram.vhd
+	#cp internalram.vhd ..
+	@echo "internalram.vhd generated"
+	
