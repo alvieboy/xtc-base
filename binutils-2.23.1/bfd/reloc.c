@@ -5852,6 +5852,18 @@ ENUM
   BFD_RELOC_XTC_IMM_8_PCREL
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_IMM_12_12_12
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_IMM_12_12
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_IMM_12
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
 
 ENUM
   BFD_RELOC_MICROBLAZE_32_LO

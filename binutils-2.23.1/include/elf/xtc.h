@@ -37,6 +37,9 @@ START_RELOC_NUMBERS (elf_xtc_reloc_type)
     RELOC_NUMBER (R_XTC_32_IMM_12_12_8_PCREL, 6) /* 32-bit IMM reloc, PC-relative */
     RELOC_NUMBER (R_XTC_32_IMM_12_8_PCREL, 7)    /* 20-bit IMM reloc */
     RELOC_NUMBER (R_XTC_32_IMM_8_PCREL, 8)       /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_IMM_12_12_12, 9)
+    RELOC_NUMBER (R_XTC_32_IMM_12_12, 10)
+    RELOC_NUMBER (R_XTC_32_IMM_12, 11)
 END_RELOC_NUMBERS (R_XTC_max)
 
 #endif /* _ELF_XTC_H */

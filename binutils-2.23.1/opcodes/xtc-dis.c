@@ -143,7 +143,6 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
               immval<<=12;
 	      immval += get_int_field_imm12 (prev_inst);
               immfound = TRUE;
-              printf("Found IMM\n");
 	    }
 	  else
 	    {
@@ -169,8 +168,14 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
           print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_spr (inst));
           break;
         case INST_TYPE_R1_R2:
+            print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_r2 (inst));
+            break;
         case INST_TYPE_MEM:
-          print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_r2 (inst));
+            if (op->instr_type == memory_load_inst) {
+                print_func (stream, "\t(%s), %s", get_field_r1(inst), get_field_r2 (inst));
+            } else {
+                print_func (stream, "\t%s, (%s)", get_field_r2(inst), get_field_r1 (inst));
+            }
           break;
         case INST_TYPE_IMM:
 	  print_func (stream, "\t%s", get_field_imm12 (inst));

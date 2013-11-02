@@ -250,6 +250,48 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,		/* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
+   HOWTO (R_XTC_32_IMM_12_12_12,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_12_12",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_IMM_12_12,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          24,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12_12",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_IMM_12,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          12,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_IMM_12",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		/* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
    HOWTO (R_XTC_32_IMM_12_12_8_PCREL,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
@@ -371,6 +413,16 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
         break;
     case BFD_RELOC_XTC_IMM_8:
         xtc_reloc = R_XTC_32_IMM_8;
+        break;
+
+    case BFD_RELOC_XTC_IMM_12_12_12:
+        xtc_reloc = R_XTC_32_IMM_12_12_12;
+        break;
+    case BFD_RELOC_XTC_IMM_12_12:
+        xtc_reloc = R_XTC_32_IMM_12_12;
+        break;
+    case BFD_RELOC_XTC_IMM_12:
+        xtc_reloc = R_XTC_32_IMM_12;
         break;
 
     default:
@@ -986,57 +1038,117 @@ static int xtc_bytes_12_12_8(bfd_vma value)
     }
 }
 
+static int xtc_bytes_12_12_12(bfd_vma value)
+{
+    if ((value & 0xff800000)==0 /* unsigned */
+        ||(value & 0xff800000)==0xff800000 /* signed */ ) {
+
+        /* Two bytes (12+12) or one. */
+        if (((value & 0xfffff800) == 0) ||
+            (value & 0xfffff800) == 0xfffff800 ) {
+            /* A single byte will do it */
+            return 1;
+        }
+        return 2;
+    } else {
+        return 3;
+    }
+}
+
+static void xtc_emit_imm_12_12(bfd *abfd, bfd_byte *address, bfd_vma value)
+{
+    unsigned long inst = bfd_get_16(abfd, address);
+    inst &= ~0x0FFF;
+    inst |= (value>>12)&0x0FFF;
+    bfd_put_16 (abfd, inst, address);
+    inst = bfd_get_16(abfd, address + INST_WORD_SIZE);
+    inst &= ~0x0FFF;
+    inst |= (value)&0x0FFF;
+    bfd_put_16 (abfd, inst, address + INST_WORD_SIZE);
+}
+
+static void xtc_emit_imm_12_12_12(bfd *abfd, bfd_byte *address, bfd_vma value)
+{
+    unsigned long inst = bfd_get_16(abfd, address);
+    inst &= ~0x0FFF;
+    inst |= (value>>24)&0xFFF;
+    bfd_put_16 (abfd, inst, address);
+    inst = bfd_get_16(abfd, address + INST_WORD_SIZE);
+    inst &= ~0x0FFF;
+    inst |= (value>>12)&0xFFF;
+    bfd_put_16 (abfd, inst, address + INST_WORD_SIZE);
+    inst = bfd_get_16(abfd, address + INST_WORD_SIZE*2);
+    inst &= ~0x0FFF;
+    inst |= (value)&0x0FFF;
+    bfd_put_16 (abfd, inst, address + INST_WORD_SIZE*2);
+}
+
 static void xtc_emit_imm_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FFF;
     inst |= (value>>8)&0xFFF;
-    printf("EMIT0 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address);
     inst = bfd_get_16(abfd, address + INST_WORD_SIZE);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FF0;
     inst |= (value<<4)&0x0FF0;
-    printf("EMIT1 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address + INST_WORD_SIZE);
 }
 
 static void xtc_emit_imm_12_12_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FFF;
     inst |= (value>>20)&0xFFF;
-    printf("EMIT0 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address);
-
     inst = bfd_get_16(abfd, address + INST_WORD_SIZE);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FFF;
     inst |= (value>>8)&0xFFF;
-    printf("EMIT1 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address + INST_WORD_SIZE);
-
     inst = bfd_get_16(abfd, address + INST_WORD_SIZE*2);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FF0;
     inst |= (value<<4)&0x0FF0;
-    printf("EMIT2 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address + INST_WORD_SIZE*2);
 }
 
 static void xtc_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
-    printf("LOAD 0x%04lx, ",inst);
+
     inst &= ~0x0FF0;
     inst |= (value<<4)&0x0FF0;
-    printf("EMIT3 %04lx\n", inst);
     bfd_put_16 (abfd, inst, address);
 }
 
-static void xtc_emit_imm(bfd *abfd, bfd_byte *address, bfd_vma value, int size)
+static void xtc_emit_imm_12(bfd *abfd, bfd_byte *address, bfd_vma value)
+{
+    unsigned long inst = bfd_get_16(abfd, address);
+    printf("LOAD 0x%04lx, ",inst);
+    inst &= ~0x0FFF;
+    inst |= (value)&0x0FFF;
+    printf("EMIT 12 %04lx\n", inst);
+    
+    bfd_put_16 (abfd, inst, address);
+}
+
+static void xtc_emit_imm_121212(bfd *abfd, bfd_byte *address, bfd_vma value, int size)
+{
+    switch(size) {
+    case 3:
+        xtc_emit_imm_12_12_12(abfd,address,value);
+        break;
+    case 2:
+        xtc_emit_imm_12_12(abfd,address,value);
+        break;
+    case 1:
+        xtc_emit_imm_12(abfd,address,value);
+        break;
+    default:
+        abort();
+    }
+}
+
+static void xtc_emit_imm_12128(bfd *abfd, bfd_byte *address, bfd_vma value, int size)
 {
     switch(size) {
     case 3:
@@ -1089,7 +1201,7 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
       asection *sec;
       bfd_vma relocation=0;
       bfd_reloc_status_type r = bfd_reloc_undefined;
-      int pcrel;
+      int pcrel, fullim;
 
       r_symndx = ELF32_R_SYM (rel->r_info);
       r_type = ELF32_R_TYPE (rel->r_info);
@@ -1123,18 +1235,30 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                                    local_sections, local_syms,
                                    rel, &name, &relocation);
       pcrel=0;
-
+      fullim=0;
       switch (r_type)
       {
       case R_XTC_32_IMM_12_12_8_PCREL:
       case R_XTC_32_IMM_12_8_PCREL:
       case R_XTC_32_IMM_8_PCREL:
           pcrel=1;
+      case R_XTC_32_IMM_12_12_12:
+      case R_XTC_32_IMM_12_12:
+      case R_XTC_32_IMM_12:
       case R_XTC_32_IMM_12_12_8:
       case R_XTC_32_IMM_12_8:
       case R_XTC_32_IMM_8:
 
           {
+              switch (r_type) {
+              case R_XTC_32_IMM_12_12_12:
+              case R_XTC_32_IMM_12_12:
+              case R_XTC_32_IMM_12:
+                  fullim=1;
+              default:
+                  break;
+              }
+
               int len;
               int i;
               int reserved;
@@ -1153,11 +1277,18 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                   phys_addr -= (reserved*2);
               } else
               {
-                  reserved = R_XTC_32_IMM_8 - r_type + 1;
+                  if (fullim)
+                      reserved = R_XTC_32_IMM_12 - r_type + 1;
+                  else
+                      reserved = R_XTC_32_IMM_8 - r_type + 1;
                   phys_addr = relocation + rel->r_addend;
                   printf("Reloc offset ABSOLUTE %ld\n", rel->r_offset);
               }
-              len = xtc_bytes_12_12_8(phys_addr);
+              if (fullim)
+                  len = xtc_bytes_12_12_12(phys_addr);
+              else
+                  len = xtc_bytes_12_12_8(phys_addr);
+
               printf("Reserved: %d, len: %d, target address is delta %ld\n", reserved,len,phys_addr);
               
               for (i=0; i<reserved-len; i++)
@@ -1168,9 +1299,15 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                   bfd_put_16 (input_bfd, 0x0000,
                              (bfd_byte*) contents + rel->r_offset+i);
               }
-              xtc_emit_imm(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
-                             len);
-
+              if (fullim) {
+                  printf("Emmiting FULL 12+12+12 Immediate len %d: %ld\n", len,phys_addr);
+                  xtc_emit_imm_121212(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
+                                      len);
+              }
+              else {
+                  xtc_emit_imm_12128(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
+                                     len);
+              }
               r_type = R_XTC_NONE;
               r = bfd_reloc_ok;
         }
@@ -1696,6 +1833,8 @@ xtc_elf_relax_section (bfd *abfd,
             && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8_PCREL )
             && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8 )
             && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_12 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12 )
            )
             continue; /* Can't delete this reloc.  */
 
@@ -1778,8 +1917,7 @@ xtc_elf_relax_section (bfd *abfd,
         printf("About to check relax: value is %ld (0x%08lx) at address %lx\n", symval, symval,
               irel->r_offset);
 
-        int bytesNeeded = xtc_bytes_12_12_8(value);
-
+        int bytesNeeded;
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
 
@@ -1788,7 +1926,7 @@ xtc_elf_relax_section (bfd *abfd,
 
         case R_XTC_32_IMM_12_12_8_PCREL:
         case R_XTC_32_IMM_12_12_8:
-
+            bytesNeeded = xtc_bytes_12_12_8(value);
 
             switch (bytesNeeded) {
             case 3:
@@ -1808,8 +1946,48 @@ xtc_elf_relax_section (bfd *abfd,
 
             break;
 
+        case R_XTC_32_IMM_12_12_12:
+            bytesNeeded = xtc_bytes_12_12_12(value);
+
+            switch (bytesNeeded) {
+            case 3:
+                break;
+            case 2:
+                newReloc = R_XTC_32_IMM_12_12;
+                deleteBytes = 1;
+                break;
+            case 1:
+                newReloc = R_XTC_32_IMM_12;
+                deleteBytes = 2;
+            }
+
+            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
+
+            break;
+
+        case R_XTC_32_IMM_12_12:
+            bytesNeeded = xtc_bytes_12_12_12(value);
+
+            switch (bytesNeeded) {
+            case 3:
+                abort();
+                break;
+            case 2:
+                break;
+            case 1:
+                newReloc = R_XTC_32_IMM_12;
+                deleteBytes = 1;
+            }
+
+            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
+
+            break;
+
         case R_XTC_32_IMM_12_8_PCREL:
         case R_XTC_32_IMM_12_8:
+
+            bytesNeeded = xtc_bytes_12_12_8(value);
+
             switch (bytesNeeded) {
             case 3:
                 abort();

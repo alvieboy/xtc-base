@@ -514,7 +514,7 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
       printf("Calling parsereg with '%s'\n",s);
       s = parse_reg(s, ptr_reg);
       if (!check_gpr_reg(ptr_reg)) {
-          as_bad("Only GPR registers allowed");
+          as_fatal("Only GPR registers allowed");
       }
       while (ISSPACE (* s))
           ++ s;
@@ -527,11 +527,11 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
           s++;
           return s;
       } else {
-          s++;
-          printf("Parse IMM\n");
+          printf("Parse IMM: %s\n",s);
           s = parse_imm( s, imval, MIN_IMM, MAX_IMM );
-          if (hasimm)
+          if (hasimm) {
               *hasimm = 1;
+          }
 
           while (ISSPACE (* s))
               ++ s;
@@ -541,7 +541,7 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
           }
       }
   }
-  as_bad (_("Memory address expected, but saw '%s'"), s);
+  as_fatal (_("Memory address expected, but saw '%s'"), s);
   return s;
 }
 
@@ -654,16 +654,40 @@ md_assemble (char * str)
         break;
 
     case INST_TYPE_MEM:
-        /* Memory instructions include a displacement */
-        op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
 
-        if (strcmp (op_end, ""))
-            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
-        else
-        {
-            as_fatal (_("Error in statement syntax"));
-            reg2 = 0;
+        switch (opcode->instr_type) {
+        case memory_store_inst:
+
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg2 = 0;
+            }
+            /* Memory instructions include a displacement */
+            op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
+
+            break;
+        case memory_load_inst:
+
+            op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
+
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg2 = 0;
+            }
+            break;
+        default:
+            as_fatal("Internal bug");
+            break;
         }
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+        inst |= (reg2 << RB_LOW) & RB_MASK;
+        printf("Opcode for mem: %04lx\n", inst);
 
         /* Check for spl registers.  */
         if (!check_gpr_reg (& reg2))
@@ -672,12 +696,31 @@ md_assemble (char * str)
         /* Now, check if we need to add a displacement */
         if (hasimm==1) {
             if (exp.X_op != O_constant || exp.X_add_number!=0) {
-                as_bad("Cannot yet handle offsets in memory access");
+
+
+                int newReloc = BFD_RELOC_XTC_IMM_12_12_12;
+    
+                fix_new_exp (frag_now, frag_now_fix (), 6, &exp, 0, newReloc);
+                output = frag_more(6);
+    
+                output[0] = 0x80;
+                output[1] = 0x0;
+                output[2] = 0x80;
+                output[3] = 0x0;
+                output[4] = 0x80;
+                output[5] = 0x0;
+
+                output = frag_more(INST_WORD_SIZE);
+                output[0] = INST_BYTE0(inst);
+                output[1] = INST_BYTE1(inst);
+
+                return;
+                //as_bad("Cannot yet handle offsets in memory access");
+            } else {
+
             }
         }
 
-        inst |= (reg1 << RA_LOW) & RA_MASK;
-        inst |= (reg2 << RB_LOW) & RB_MASK;
         printf("now: bit sequence %04lx\n", inst);
 
         output = frag_more (isize);
@@ -723,19 +766,6 @@ md_assemble (char * str)
 
         if (exp.X_op != O_constant)
         {
-#if 0
-            relax_substateT subtype;
-            subtype = opcode->inst_offset_type;
-            output = frag_var (rs_machine_dependent,
-                               isize * 3, /* maxm of 3 words.  */
-                               isize * 1,     /* minm of 1 word.  */
-                               subtype,   /* PC-relative or not.  */
-                               exp.X_add_symbol,
-                               exp.X_add_number,
-                               NULL);
-#endif
-            //expressionS ex;
-            //expression (&ex);
             int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
                             BFD_RELOC_XTC_IMM_12_12_8 );
 
@@ -1165,6 +1195,9 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_XTC_IMM_12_12_8:
     case BFD_RELOC_XTC_IMM_12_8:
     case BFD_RELOC_XTC_IMM_8:
+    case BFD_RELOC_XTC_IMM_12_12_12:
+    case BFD_RELOC_XTC_IMM_12_12:
+    case BFD_RELOC_XTC_IMM_12:
     case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_8_PCREL:
@@ -1616,6 +1649,9 @@ tc_xtc_force_relocation (fixS *fixP)
         case BFD_RELOC_XTC_IMM_12_12_8:
         case BFD_RELOC_XTC_IMM_12_8:
         case BFD_RELOC_XTC_IMM_8:
+        case BFD_RELOC_XTC_IMM_12_12_12:
+        case BFD_RELOC_XTC_IMM_12_12:
+        case BFD_RELOC_XTC_IMM_12:
         case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
         case BFD_RELOC_XTC_IMM_12_8_PCREL:
         case BFD_RELOC_XTC_IMM_8_PCREL:
@@ -1641,6 +1677,11 @@ tc_xtc_fix_adjustable (fixS *fixP)
     case BFD_RELOC_XTC_IMM_12_12_8:
     case BFD_RELOC_XTC_IMM_12_8:
     case BFD_RELOC_XTC_IMM_8:
+
+    case BFD_RELOC_XTC_IMM_12_12_12:
+    case BFD_RELOC_XTC_IMM_12_12:
+    case BFD_RELOC_XTC_IMM_12:
+
     case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_8_PCREL:

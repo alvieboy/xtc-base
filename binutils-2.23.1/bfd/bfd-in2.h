@@ -5043,6 +5043,15 @@ the linker could optimize the movq to a leaq if possible.  */
 /* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_IMM_8_PCREL,
 
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_IMM_12_12_12,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_IMM_12_12,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_IMM_12,
+
 /* This is a 32 bit reloc for the microblaze that stores the 
 low 16 bits of a value  */
   BFD_RELOC_MICROBLAZE_32_LO,
