@@ -36,13 +36,14 @@ architecture behave of romram is
 
 component internalram is
   port (
-    CLK:              in std_logic;
+    CLKA:              in std_logic;
     WEA:  in std_logic;
     ENA:  in std_logic;
     MASKA:    in std_logic_vector(3 downto 0);
     ADDRA:         in std_logic_vector(BITS-1 downto 2);
     DIA:        in std_logic_vector(31 downto 0);
     DOA:         out std_logic_vector(31 downto 0);
+    CLKB:              in std_logic;
     WEB:  in std_logic;
     ENB:  in std_logic;
     ADDRB:         in std_logic_vector(BITS-1 downto 2);
@@ -117,7 +118,8 @@ begin
 
 ram: internalram
   port map (
-    CLK   => rom_wb_clk_i,
+    CLKA  => rom_wb_clk_i,
+    CLKB  => rom_wb_clk_i,
     WEA   => '0',
     ENA   => rom_enable,
     MASKA => "1111",

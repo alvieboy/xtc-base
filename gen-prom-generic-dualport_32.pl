@@ -56,13 +56,14 @@ use ieee.numeric_std.all;
 
 entity ${entity} is
   port (
-    CLK:              in std_logic;
+    CLKA:              in std_logic;
     WEA:  in std_logic;
     ENA:  in std_logic;
     MASKA:    in std_logic_vector(3 downto 0);
     ADDRA:         in std_logic_vector($bitsminusone downto 2);
     DIA:        in std_logic_vector(31 downto 0);
     DOA:         out std_logic_vector(31 downto 0);
+    CLKB:              in std_logic;
     WEB:  in std_logic;
     ENB:  in std_logic;
     ADDRB:         in std_logic_vector($bitsminusone downto 2);
@@ -152,9 +153,9 @@ foreach my $ram (@rams)
     my $end = $index*8;
     print <<EOM;
 
-  process (clk)
+  process (clka)
   begin
-    if rising_edge(clk) then
+    if rising_edge(clka) then
     if ENA='1' then
     if rwea(${index})='1' then
       RAM${index}( conv_integer(ADDRA) ) := DIA($start downto $end);
@@ -164,9 +165,9 @@ foreach my $ram (@rams)
     end if;
   end process;  
 
-  process (clk)
+  process (clkb)
   begin
-    if rising_edge(clk) then
+    if rising_edge(clkb) then
     if ENB='1' then
       if rweb(${index})='1' then
          RAM${index}( conv_integer(ADDRB) ) := DIB($start downto $end);

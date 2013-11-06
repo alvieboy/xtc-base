@@ -206,8 +206,11 @@ package xtcpkg is
     imm8:           std_logic_vector(7 downto 0);
     imm4:           std_logic_vector(3 downto 0);
 
+
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;
+
+    opcode_q:       std_logic_vector(15 downto 0);
 
     sr:             std_logic_vector(2 downto 0);
 -- synthesis translate_off
