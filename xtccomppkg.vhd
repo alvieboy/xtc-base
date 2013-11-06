@@ -499,5 +499,71 @@ end component;
   );
   end component;
 
+  component regbank_5p is
+   generic (
+    ADDRESS_BITS: integer := 4
+  );
+  port (
+    clk:      in std_logic;
+
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb1_en:   in std_logic;
+    rb1_rd:   out std_logic_vector(31 downto 0);
+
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb2_en:   in std_logic;
+    rb2_rd:   out std_logic_vector(31 downto 0);
+
+    rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb3_en:   in std_logic;
+    rb3_rd:   out std_logic_vector(31 downto 0);
+
+    rb4_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb4_en:   in std_logic;
+    rb4_rd:   out std_logic_vector(31 downto 0);
+
+    rbw_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rbw_wr:   in std_logic_vector(31 downto 0);
+    rbw_we:   in std_logic;
+    rbw_en:   in std_logic
+  );
+  end component regbank_5p;
+
+
+  component regbank_4r_2w is
+  generic (
+    ADDRESS_BITS: integer := 4
+  );
+  port (
+    clk:      in std_logic;
+
+    rb1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb1_en:   in std_logic;
+    rb1_rd:   out std_logic_vector(31 downto 0);
+
+    rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb2_en:   in std_logic;
+    rb2_rd:   out std_logic_vector(31 downto 0);
+
+    rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb3_en:   in std_logic;
+    rb3_rd:   out std_logic_vector(31 downto 0);
+
+    rb4_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rb4_en:   in std_logic;
+    rb4_rd:   out std_logic_vector(31 downto 0);
+
+    rbw1_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rbw1_wr:   in std_logic_vector(31 downto 0);
+    rbw1_we:   in std_logic;
+    rbw1_en:   in std_logic;
+
+    rbw2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
+    rbw2_wr:   in std_logic_vector(31 downto 0);
+    rbw2_we:   in std_logic;
+    rbw2_en:   in std_logic
+  );
+  end component;
+
 
 end package;

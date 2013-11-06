@@ -48,10 +48,15 @@ architecture behave of xtc is
   signal euo:  execute_output_type;
   signal muo:  memory_output_type;
 
-  signal rbw_addr: regaddress_type;
-  signal rbw_wr:   std_logic_vector(31 downto 0);
-  signal rbw_we:   std_logic;
-  signal rbw_en:   std_logic;
+  signal rbw1_addr: regaddress_type;
+  signal rbw1_wr:   std_logic_vector(31 downto 0);
+  signal rbw1_we:   std_logic;
+  signal rbw1_en:   std_logic;
+
+  signal rbw2_addr: regaddress_type;
+  signal rbw2_wr:   std_logic_vector(31 downto 0);
+  signal rbw2_we:   std_logic := '0';
+  signal rbw2_en:   std_logic := '0';
 
   signal rb1_addr: regaddress_type;
   signal rb1_en:   std_logic;
@@ -59,6 +64,12 @@ architecture behave of xtc is
   signal rb2_addr: regaddress_type;
   signal rb2_en:   std_logic;
   signal rb2_rd:   std_logic_vector(31 downto 0);
+  signal rb3_addr: regaddress_type;
+  signal rb3_en:   std_logic;
+  signal rb3_rd:   std_logic_vector(31 downto 0);
+  signal rb4_addr: regaddress_type;
+  signal rb4_en:   std_logic;
+  signal rb4_rd:   std_logic_vector(31 downto 0);
 
   signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
@@ -84,7 +95,7 @@ begin
 
   -- Register bank.
 
-  rbe: regbank_3p
+  rbe: regbank_4r_2w
   generic map (
     ADDRESS_BITS => 4
   )
@@ -96,10 +107,22 @@ begin
     rb2_en  => rb2_en,
     rb2_addr=> rb2_addr,
     rb2_rd  => rb2_rd,
-    rb3_en  => rbw_en,
-    rb3_we  => rbw_we,
-    rb3_addr=> rbw_addr,
-    rb3_wr  => rbw_wr
+    rb3_en  => rb3_en,
+    rb3_addr=> rb3_addr,
+    rb3_rd  => rb3_rd,
+    rb4_en  => rb4_en,
+    rb4_addr=> rb4_addr,
+    rb4_rd  => rb4_rd,
+
+    rbw1_en  => rbw1_en,
+    rbw1_we  => rbw1_we,
+    rbw1_addr=> rbw1_addr,
+    rbw1_wr  => rbw1_wr,
+    rbw2_en  => rbw2_en,
+    rbw2_we  => rbw2_we,
+    rbw2_addr=> rbw2_addr,
+    rbw2_wr  => rbw2_wr
+
   );
 
   cache: if INSTRUCTION_CACHE generate
@@ -245,10 +268,10 @@ begin
       clk       => wb_clk_i,
       rst       => wb_rst_i,
       busy      => wb_busy,
-      r_en      => rbw_en,
-      r_we      => rbw_we,
-      r_addr    => rbw_addr,
-      r_write   => rbw_wr,
+      r_en      => rbw1_en,
+      r_we      => rbw1_we,
+      r_addr    => rbw1_addr,
+      r_write   => rbw1_wr,
       --r_read    => rbw_rd,
       -- Input from previous stage
       mui       => muo,
