@@ -40,19 +40,27 @@ architecture behave of decode is
     LOADNONE
   );
 
+  signal opcode1: std_logic_vector(15 downto 0);
+  signal opcode2: std_logic_vector(15 downto 0);
+
+  signal pc_lsb: boolean;
+
 begin
+
+    opcode1 <= fui.opcode(31 downto 16);
+    opcode2 <= fui.opcode(15 downto 0);
 
     duo.r <= dr;
 
     opdec1: opdec
       port map (
-        opcode  => fui.opcode(31 downto 16),
+        opcode  => opcode1,
         dec     => dec1
       );
 
     opdec2: opdec
       port map (
-        opcode  => fui.opcode(15 downto 0),
+        opcode  => opcode2,
         dec     => dec2
       );
 
@@ -340,6 +348,7 @@ begin
       duo.sra1 <= ra1;
       duo.sra2 <= ra2;
 
+      pc_lsb <= is_pc_lsb;
 
       if rising_edge(clk) then
         dr <= dw;
