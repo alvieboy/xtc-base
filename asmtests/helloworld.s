@@ -7,7 +7,7 @@ _start:
                                      gives 55 for baud divider */
         copy    r4, r3            /* r4 <- r3 */
         addi    4, r4             /* Add 4 for the UART control register. */
-        stw     (r4), r6            /* Store baud rate divider in UART control reg */
+        stw     r6, (r4-4)        /* Store baud rate divider in UART control reg */
 .endless:
         limr    mystring, r2      /* Load mystring offset into r2 */
         call    putstring, r0     /* Call putstring */
@@ -39,12 +39,17 @@ putstring:
         ldb+    (r2), r1              /* Load a char from string (at r2) into r1, increment r2 */
         or      r1, r1              /* Is a null char ? */
         brine   .waitready          /* No, not a null char, jump ... */
-        stw     (r3), r1              /* But store it in UART transmit register (this is delay slot) */
+        stw     r1, (r3)              /* But store it in UART transmit register (this is delay slot) */
         ret                         /* Return from subroutine and ... */
         limr  0, r1                 /* set r1 to zero (the subroutine return value (this is delay slot) */
 
 
 .data
+        .global xpto
+
+xpto:	.word 4
+
         .global mystring
+
 mystring:
         .string "Hello World!\r\n\0"  /* Our string! */
