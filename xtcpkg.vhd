@@ -166,7 +166,7 @@ package xtcpkg is
   type fetchunit_state_type is ( running, jumping );
 
   type fetch_regs_type is record
-    pc, fpc, ipc:        word_type;
+    pc, fpc:        word_type;
     state:          fetchunit_state_type;
   end record;
 
