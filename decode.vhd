@@ -250,16 +250,21 @@ begin
         dw.sra1 := ra1;
         dw.sra2 := ra2;
         dw.dreg := dreg;
-        dw.npc  := fui.r.ipc;
+        dw.npc  := fui.r.pc + 4;
         dw.fpc  := fui.r.fpc;
         dw.pc  := fui.r.pc;
+
         if is_pc_lsb=false then
           dw.pc(1) := '1';
           dw.fpc(1) := '1';
         end if;
+
         if is_pc_lsb=true then
-          dw.npc(1) := '1';
+          dw.npc  := fui.r.pc + 2;
+        else
+          dw.npc  := fui.r.pc + 4;
         end if;
+
         dw.op := op;
         dw.imm12 := imm12;
         dw.imm8  := imm8;

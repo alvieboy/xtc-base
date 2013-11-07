@@ -19,7 +19,7 @@ _start:
         
 .global delay
 delay:
-        limr    0x400000, r2      /* 0x400000 cycles */
+        limr    0x40, r2      /* 0x400000 cycles */
 .wait:
         or      r2, r2            /* is r2 zero ? */
         brine   .wait             /* No, jump into .wait ... */

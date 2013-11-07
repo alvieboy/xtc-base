@@ -35,9 +35,11 @@ begin
   process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr)
     variable fw: fetch_regs_type;
     variable npc: word_type;
+    variable realnpc: word_type;
   begin
     fw := fr;
     npc := fr.fpc + 4;
+    realnpc := fr.pc + 4;
 
     address <= std_logic_vector(fr.fpc);
     fuo.valid <= valid;
@@ -54,15 +56,21 @@ begin
           end if;
       
           if valid='1' then
-            --if freeze='0' then
-            fw.pc := fr.ipc;
+            if freeze='0' then
+              fw.pc := realnpc;
+            end if;
+            --fr.ipc;
             --end if;
-            fw.ipc := fr.fpc;
+            --fw.ipc := fr.fpc;
           end if;
         else
           -- Jump request
           fw.fpc := jumpaddr;
           fw.fpc(1 downto 0) := "00";
+
+          fw.pc := jumpaddr;
+          fw.pc(1 downto 0) := "00";
+
           fw.state := jumping;
           strobe <= '0';
           enable <= '0';
@@ -74,8 +82,8 @@ begin
           fw.fpc := npc;
           strobe <= '1';
           enable <= '1';
-          fw.ipc := fr.fpc;
-          fw.pc := fr.ipc;
+          --fw.ipc := fr.fpc;
+          --fw.pc := realnpc;
           fw.state := running;
         end if;
         fuo.valid<='0';
@@ -84,7 +92,7 @@ begin
 
     if rst='1' then
       fw.pc := (others => '0');
-      fw.ipc := (others => '0');
+      --fw.ipc := (others => '0');
       fw.fpc := (others => '0');
       strobe <= '0';
       enable <= '0';
