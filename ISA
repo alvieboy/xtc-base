@@ -74,6 +74,23 @@ F1 Instructions
    +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
 
    Load 8-bit immediate (extended by imreg) into destination register R.
+
+ ADDI <immediate>, <gpr>
+
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   | 0   1   1   0 |         8-BIT IMMEDIATE       |     DSTREG    | 
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   Add the 8-bit immediate (extended by imreg) to destination register R.
+
+ CMPI <immediate>, <gpr>
+
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+   | 0   1   1   1 |         8-BIT IMMEDIATE       |     DSTREG    | 
+   +---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+
+
+   Compare the destination register R with the 8-bit immediate 
+   (extended by imreg).
    
 
 Quick Opcode List
