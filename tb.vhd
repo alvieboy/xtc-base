@@ -14,6 +14,7 @@ architecture sim of tb is
 
   constant period: time := 9.615 ns;
   signal w_clk: std_logic := '0';
+  signal w_clk_2x: std_logic := '1';
   signal w_rst: std_logic := '0';
 
   signal wb_read:    std_logic_vector(31 downto 0);
@@ -195,11 +196,13 @@ begin
   rxd <= '1';
 
   w_clk <= not w_clk after period/2;
+  w_clk_2x <= not w_clk_2x after period/4;
 
 
   cpu: xtc_top_bram
   port map (
     wb_clk_i        => w_clk,
+    wb_clk_i_2x     => w_clk_2x,
     wb_rst_i        => w_rst,
 
     -- Master wishbone interface

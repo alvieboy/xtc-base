@@ -68,6 +68,7 @@ architecture behave of xtc_top_ppro is
     clkout: out std_logic;
     clkout1: out std_logic;
     clkout2: out std_logic;
+    clkout2x: out std_logic;
     rstout: out std_logic
   );
   end component;
@@ -81,6 +82,7 @@ architecture behave of xtc_top_ppro is
   component xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
+    wb_clk_i_2x:       in std_logic;
     wb_rst_i:       in std_logic;
 
     -- IO wishbone interface
@@ -106,12 +108,14 @@ architecture behave of xtc_top_ppro is
   signal wb_we:      std_logic;
   signal wb_ack:     std_logic;
   signal wb_stall:     std_logic;
+  signal wb_clk_i_2x: std_ulogic;
 
 begin
 
   cpu: xtc_top_bram
   port map (
     wb_clk_i        => wb_clk_i,
+    wb_clk_i_2x     => wb_clk_i_2x,
     wb_rst_i        => wb_rst_i,
 
     -- Master wishbone interface
@@ -163,6 +167,7 @@ begin
     clkin   => clk,
     rstin   => '0'  ,
     clkout  => sysclk,
+    clkout2x  => wb_clk_i_2x,
     rstout  => clkgen_rst
   );
 

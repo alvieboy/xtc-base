@@ -56,6 +56,7 @@ package xtccomppkg is
   component xtc is
   port (
     wb_clk_i:       in std_logic;
+    wb_clk_i_2x:    in std_logic;
     wb_rst_i:       in std_logic;
 
     -- Master wishbone interface
@@ -74,7 +75,7 @@ package xtccomppkg is
     -- ROM wb interface
 
     rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
+    rom_wb_dat_i:       in std_logic_vector(15 downto 0);
     rom_wb_adr_o:       out std_logic_vector(31 downto 0);
     rom_wb_cyc_o:       out std_logic;
     rom_wb_stb_o:       out std_logic;
@@ -160,13 +161,14 @@ package xtccomppkg is
   component fetch is
   port (
     clk:  in std_logic;
+    clk2x:  in std_logic;
     rst:  in std_logic;
 
     -- Connection to ROM
     stall: in std_logic;
     valid: in std_logic;
     address: out std_logic_vector(31 downto 0);
-    read: in     std_logic_vector(31 downto 0);
+    read: in     std_logic_vector(15 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
 
@@ -483,6 +485,7 @@ end component;
   component xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
+    wb_clk_i_2x:    in std_logic;
     wb_rst_i:       in std_logic;
 
     -- IO wishbone interface
@@ -562,6 +565,26 @@ end component;
     rbw2_wr:   in std_logic_vector(31 downto 0);
     rbw2_we:   in std_logic;
     rbw2_en:   in std_logic
+  );
+  end component;
+
+  component insnqueue is
+  port (
+    rst:      in std_logic;
+
+    clkw:     in std_logic;
+    din:      in std_logic_vector(15 downto 0);
+    en:       in std_logic;
+    clr:      in std_logic;
+    full:     out std_logic;
+
+    clkr:     in std_logic;
+    pop:      in std_logic;
+    dualpop:  in std_logic;
+    dout0:    out std_logic_vector(15 downto 0);
+    dout1:    out std_logic_vector(15 downto 0);
+    empty:    out std_logic;
+    dvalid:   out std_logic
   );
   end component;
 

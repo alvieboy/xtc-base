@@ -9,6 +9,7 @@ use work.xtccomppkg.all;
 entity xtc is
   port (
     wb_clk_i:       in std_logic;
+    wb_clk_i_2x:    in std_logic;
     wb_rst_i:       in std_logic;
 
     -- Master wishbone interface
@@ -25,7 +26,7 @@ entity xtc is
     -- ROM wb interface
 
     rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
+    rom_wb_dat_i:       in std_logic_vector(15 downto 0);
     rom_wb_adr_o:       out std_logic_vector(31 downto 0);
     rom_wb_cyc_o:       out std_logic;
     rom_wb_stb_o:       out std_logic;
@@ -74,7 +75,7 @@ architecture behave of xtc is
   signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
   signal cache_flush:          std_logic;
-  signal cache_data:           std_logic_vector(31 downto 0);
+  signal cache_data:           std_logic_vector(15 downto 0);
   signal cache_address:        std_logic_vector(31 downto 0);
   signal cache_strobe:         std_logic;
   signal cache_enable:         std_logic;
@@ -127,29 +128,29 @@ begin
 
   cache: if INSTRUCTION_CACHE generate
 
-  cache: icache
-  generic map (
-    ADDRESS_HIGH => 31
-  )
-  port map (
-    wb_clk_i    => wb_clk_i,
-    wb_rst_i    => wb_rst_i,
+--  cache: icache
+--  generic map (
+--    ADDRESS_HIGH => 31
+--  )
+--  port map (
+--    wb_clk_i    => wb_clk_i,
+--    wb_rst_i    => wb_rst_i,
 
-    valid       => cache_valid,
-    data        => cache_data,
-    address     => cache_address,
-    strobe      => cache_strobe,
-    stall       => cache_stall,
-    enable      => cache_enable,
-    flush       => cache_flush,
+--    valid       => cache_valid,
+    --data        => cache_data,
+--    address     => cache_address,
+--    strobe      => cache_strobe,
+--    stall       => cache_stall,
+--    enable      => cache_enable,
+--    flush       => cache_flush,
 
-    m_wb_ack_i  => rom_wb_ack_i,
-    m_wb_dat_i  => rom_wb_dat_i,
-    m_wb_adr_o  => rom_wb_adr_o,
-    m_wb_cyc_o  => rom_wb_cyc_o,
-    m_wb_stb_o  => rom_wb_stb_o,
-    m_wb_stall_i => rom_wb_stall_i
-  );
+--    m_wb_ack_i  => rom_wb_ack_i,
+--    m_wb_dat_i  => rom_wb_dat_i,
+--    m_wb_adr_o  => rom_wb_adr_o,
+ --   m_wb_cyc_o  => rom_wb_cyc_o,
+--    m_wb_stb_o  => rom_wb_stb_o,
+--    m_wb_stall_i => rom_wb_stall_i
+--  );
 
   end generate;
 
@@ -161,10 +162,10 @@ begin
     -- For now, the romram is hacked to do it.
 
     cache_valid       <= rom_wb_ack_i;
-    cache_data  <= rom_wb_dat_i;
-    rom_wb_adr_o <= cache_address;
-    rom_wb_stb_o <= cache_strobe;
-    rom_wb_cyc_o <= cache_enable;
+    cache_data        <= rom_wb_dat_i;
+    rom_wb_adr_o      <= cache_address;
+    rom_wb_stb_o      <= cache_strobe;
+    rom_wb_cyc_o      <= cache_enable;
     cache_stall       <= rom_wb_stall_i;
 
   end generate;
@@ -174,6 +175,7 @@ begin
   fetch_unit: fetch
     port map (
       clk       => wb_clk_i,
+      clk2x     => wb_clk_i_2x,
       rst       => wb_rst_i,
       -- Connection to ROM
       stall     => cache_stall,

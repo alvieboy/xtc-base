@@ -24,8 +24,8 @@ entity romram is
     rom_wb_clk_i:       in std_logic;
     rom_wb_rst_i:       in std_logic;
     rom_wb_ack_o:       out std_logic;
-    rom_wb_dat_o:       out std_logic_vector(31 downto 0);
-    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
+    rom_wb_dat_o:       out std_logic_vector(15 downto 0);
+    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 1);
     rom_wb_cyc_i:       in std_logic;
     rom_wb_stb_i:       in std_logic;
     rom_wb_stall_o:     out std_logic
@@ -56,8 +56,11 @@ end component;
   signal rom_enable: std_logic;
   signal ram_enable: std_logic;
   signal romack, ramack: std_logic;
+  signal qaddr: std_logic_vector(BITS-1 downto 1);
 
   constant nothing: std_logic_vector(31 downto 0) := (others => '0');
+  signal rom_data: std_logic_vector(31 downto 0);
+
 begin
 
   rom_enable <= rom_wb_stb_i and rom_wb_cyc_i;
@@ -116,6 +119,25 @@ begin
     end if;
   end process;
 
+
+  process(rom_wb_clk_i)
+  begin
+    if rising_edge(rom_wb_clk_i) then
+      if rom_enable='1' then
+        qaddr(BITS-1 downto 1) <= rom_wb_adr_i(BITS-1 downto 1);
+      end if;
+    end if;
+  end process;
+
+  process(qaddr, rom_data)
+  begin
+    if qaddr(1)='0' then
+      rom_wb_dat_o <= rom_data(31 downto 16);
+    else
+      rom_wb_dat_o <= rom_data(15 downto 0);
+    end if;
+  end process;
+
 ram: internalram
   port map (
     CLKA  => rom_wb_clk_i,
@@ -125,7 +147,7 @@ ram: internalram
     MASKA => "1111",
     ADDRA => rom_wb_adr_i(BITS-1 downto 2),
     DIA   => nothing,
-    DOA   => rom_wb_dat_o,
+    DOA   => rom_data,
 
     WEB   => ram_wb_we_i,
     ENB   => ram_enable,

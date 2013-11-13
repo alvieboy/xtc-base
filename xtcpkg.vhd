@@ -184,7 +184,7 @@ package xtcpkg is
     sra1, sra2:     regaddress_type;
     dra:            regaddress_type;
     regwe:          std_logic;
-    pc_lsb:         boolean;
+    --pc_lsb:         boolean;
     modify_flags:   boolean;
     op:             decoded_opcode_type;
     dreg:           regaddress_type;

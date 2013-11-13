@@ -9,6 +9,7 @@ use work.xtccomppkg.all;
 entity xtc_top_bram is
   port (
     wb_clk_i:       in std_logic;
+    wb_clk_i_2x:    in std_logic;
     wb_rst_i:       in std_logic;
 
     -- IO wishbone interface
@@ -60,7 +61,7 @@ architecture behave of xtc_top_bram is
   signal pio_wb_int:        std_logic;
 
   signal rom_wb_ack:       std_logic;
-  signal rom_wb_read:      std_logic_vector(31 downto 0);
+  signal rom_wb_read:      std_logic_vector(15 downto 0);
   signal rom_wb_adr:       std_logic_vector(31 downto 0);
   signal rom_wb_cyc:       std_logic;
   signal rom_wb_stb:       std_logic;
@@ -145,8 +146,8 @@ architecture behave of xtc_top_bram is
     rom_wb_clk_i:       in std_logic;
     rom_wb_rst_i:       in std_logic;
     rom_wb_ack_o:       out std_logic;
-    rom_wb_dat_o:       out std_logic_vector(31 downto 0);
-    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
+    rom_wb_dat_o:       out std_logic_vector(15 downto 0);
+    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 1);
     rom_wb_cyc_i:       in std_logic;
     rom_wb_stb_i:       in std_logic;
     rom_wb_stall_o:     out std_logic
@@ -158,6 +159,7 @@ begin
   cpu: xtc
   port map (
     wb_clk_i        => wb_clk_i,
+    wb_clk_i_2x     => wb_clk_i_2x,
     wb_rst_i        => wb_rst_i,
 
     -- Master wishbone interface
@@ -201,11 +203,11 @@ begin
     ram_wb_we_i     => ram_wb_we,
     ram_wb_stall_o  => ram_wb_stall,
 
-    rom_wb_clk_i    => wb_clk_i,
+    rom_wb_clk_i    => wb_clk_i_2x,
     rom_wb_rst_i    => wb_rst_i,
     rom_wb_ack_o    => rom_wb_ack,
     rom_wb_dat_o    => rom_wb_read,
-    rom_wb_adr_i    => rom_wb_adr(14 downto 2),
+    rom_wb_adr_i    => rom_wb_adr(14 downto 1),
     rom_wb_cyc_i    => rom_wb_cyc,
     rom_wb_stb_i    => rom_wb_stb,
     rom_wb_stall_o  => rom_wb_stall

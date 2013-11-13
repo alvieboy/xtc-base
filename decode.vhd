@@ -84,7 +84,7 @@ begin
       variable opcdelta: std_logic_vector(2 downto 0);
 
       variable can_issue_both: boolean;
-      variable is_pc_lsb: boolean;
+      --variable is_pc_lsb: boolean;
       variable reg_source: reg_source_type;
       variable regwe: std_logic;
       variable prepost: std_logic;
@@ -114,14 +114,14 @@ begin
         end if;
       end if;
 
-      is_pc_lsb:=dr.pc_lsb;
+      --is_pc_lsb:=dr.pc_lsb;
 
       -- Some instructions might need access to both register ports.
       -- These must be marked as "blocking".
 
       if not can_issue_both then
         -- TODO: choose correct instruction based on LSB of PC
-        if not is_pc_lsb then
+        if true then
           rd1 := dec1.rd1;
           rd2 := dec1.rd2;
           ra1 := dec1.sreg1;
@@ -143,8 +143,8 @@ begin
           alu2_opcode := dec1.opcode;
 
           reg_source := dec1.reg_source;
-          is_pc_lsb := true;
-          busy <= fui.valid;
+          --is_pc_lsb := true;
+          --busy <= fui.valid;
           dreg := dec1.dreg;
           macc := dec1.macc;
           memory_access := dec1.memory_access;
@@ -187,10 +187,8 @@ begin
           -- synthesis translate_off
           strasm := dec2.strasm & opcode_txt_pad("; (lsb)");
           -- synthesis translate_on
-          is_pc_lsb := false;
         end if;
       else
-        is_pc_lsb:=false;
 
         -- Issue two instructions at the time, one for each of the LU
         ra1 := dec1.sreg1;
@@ -254,16 +252,16 @@ begin
         dw.fpc  := fui.r.fpc;
         dw.pc  := fui.r.pc;
 
-        if is_pc_lsb=false then
-          dw.pc(1) := '1';
-          dw.fpc(1) := '1';
-        end if;
+        --if is_pc_lsb=false then
+        --  dw.pc(1) := '1';
+        --  dw.fpc(1) := '1';
+        ---end if;
 
-        if is_pc_lsb=true then
-          dw.npc  := fui.r.pc + 2;
-        else
-          dw.npc  := fui.r.pc + 4;
-        end if;
+        --if is_pc_lsb=true then
+        dw.npc  := fui.r.pc + 2;
+        --else
+        --  dw.npc  := fui.r.pc + 4;
+        --end if;
 
         dw.op := op;
         dw.imm12 := imm12;
@@ -313,7 +311,7 @@ begin
         dw.alu1_op := alu1_op;
         dw.alu2_op := alu2_op;
         dw.alu2_opcode := alu2_opcode;
-        dw.pc_lsb      := is_pc_lsb;
+        --dw.pc_lsb      := is_pc_lsb;
         dw.reg_source := reg_source;
         dw.regwe := regwe;
         dw.wb_is_data_address := '0';
@@ -332,16 +330,6 @@ begin
         busy <= freeze;
       end if;
 
-      -- This must be modified for jump
-
-      if jump='1' then
-        if jumpmsb='1' then
-          dw.pc_lsb := true;
-        else
-          dw.pc_lsb := false;
-        end if;
-      end if;
-
       if rst='1' or flush='1' then
         dw.valid := '0';
         dw.imflag := '0';
@@ -353,7 +341,7 @@ begin
       duo.sra1 <= ra1;
       duo.sra2 <= ra2;
 
-      pc_lsb <= is_pc_lsb;
+      --pc_lsb <= is_pc_lsb;
 
       if rising_edge(clk) then
         dr <= dw;
