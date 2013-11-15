@@ -176,6 +176,7 @@ package xtccomppkg is
     freeze:   in std_logic;
     jump:     in std_logic;
     jumpaddr: in word_type;
+    dual: in std_logic;
     
     -- Outputs for next stages
     fuo:  out fetch_output_type
@@ -196,7 +197,8 @@ package xtccomppkg is
     freeze: in std_logic;
     flush:  in std_logic;
     jump:   in std_logic;
-    jumpmsb: in std_logic
+    jumpmsb: in std_logic;
+    dual: out std_logic
   );
   end component;
 
@@ -270,11 +272,17 @@ package xtccomppkg is
     clk:  in std_logic;
     rst:  in std_logic;
     busy: out std_logic;
-    -- Register access
-    r_en:   out std_logic;
-    r_we:   out std_logic;
-    r_addr:   out regaddress_type;
-    r_write:   out word_type_std;
+
+    -- Register 0 access writeback
+    r0_en:       out std_logic;
+    r0_we:       out std_logic;
+    r0_addr:     out regaddress_type;
+    r0_write:    out word_type_std;
+    -- Register 1 access writeback
+    r1_en:       out std_logic;
+    r1_we:       out std_logic;
+    r1_addr:     out regaddress_type;
+    r1_write:    out word_type_std;
     -- Input for previous stages
     mui:  in memory_output_type;
     eui:  in execute_output_type

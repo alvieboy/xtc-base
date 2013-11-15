@@ -115,6 +115,11 @@ package xtcpkg is
     LOAD12
   );
 
+  type flagssource_type is (
+    FLAGS_ALU1,
+    FLAGS_ALU2
+  );
+
   type reg_source_type is (
     reg_source_alu1,
     reg_source_alu2,
@@ -183,15 +188,23 @@ package xtcpkg is
     rd1, rd2:       std_logic;
     sra1, sra2:     regaddress_type;
     dra:            regaddress_type;
-    regwe:          std_logic;
-    --pc_lsb:         boolean;
+
+    -- Target writeback registers
+    reg_source0:    reg_source_type;
+    regwe0:         std_logic;
+    dreg0:          regaddress_type;
+    reg_source1:    reg_source_type;
+    regwe1:         std_logic;
+    dreg1:          regaddress_type;
+
+    -- FLAGS and flags source
     modify_flags:   boolean;
+    flags_source:   flagssource_type;
+
     op:             decoded_opcode_type;
-    dreg:           regaddress_type;
     alu1_op:        alu1_op_type;
     alu2_op:        alu2_op_type;
     alu2_opcode:    opcode_type;
-    reg_source:     reg_source_type;
     swap_target_reg:std_logic;
     memory_write:   std_logic;
     memory_access:  std_logic;
@@ -242,27 +255,30 @@ package xtcpkg is
     br:             unsigned(31 downto 0); -- BRanch register
     alur1:          unsigned(31 downto 0);
     alur2:          unsigned(31 downto 0);
-    --imreg:          unsigned(31 downto 0);
-    --imflag:         std_logic;
 
     flag_carry:     std_logic;
     flag_borrow:    std_logic;
     flag_zero:      std_logic;
     flag_sign:      std_logic;
 
-
     data_write:     std_logic_vector(31 downto 0);
     data_address:   std_logic_vector(31 downto 0);
     data_access:    std_logic;
     data_writeenable: std_logic;
+
     sr:             std_logic_vector(2 downto 0);
-    dreg:           regaddress_type;
-    mwreg:          regaddress_type;
-    regwe:          std_logic;
+
+    dreg0:          regaddress_type; -- Destination reg 0
+    dreg1:          regaddress_type; -- Destination reg 1
+    regwe0:         std_logic; -- Write-enable for destination reg 0
+    regwe1:         std_logic; -- Write-enable for destination reg 1
+    reg_source0:    reg_source_type; -- Source for destination reg 0
+    reg_source1:    reg_source_type; -- Source for destination reg 1
+
+    mwreg:          regaddress_type;    -- Memory writeback register
     macc:           memory_access_type;
-    reg_source:     reg_source_type;
-    jump: std_logic;
-    jumpaddr: word_type;
+    jump:           std_logic;
+    jumpaddr:       word_type;
 
   end record;
 
@@ -270,15 +286,22 @@ package xtcpkg is
     r: execute_regs_type;
     --jump: std_logic;
     --jumpaddr: word_type;
+
+
     -- Async stuff for writeback
-    reg_source: reg_source_type;
-    dreg: regaddress_type;
+    reg_source0:  reg_source_type;
+    dreg0:        regaddress_type;
+    regwe0:       std_logic;
+
+    reg_source1:  reg_source_type;
+    dreg1:        regaddress_type;
+    regwe1:       std_logic;
+
     sr: std_logic_vector(2 downto 0);
     
     alur1: word_type;
     alur2: word_type;
     imreg: word_type;
-    regwe: std_logic;
   end record;
 
   type memory_regs_type is record

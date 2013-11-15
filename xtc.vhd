@@ -91,6 +91,7 @@ architecture behave of xtc is
   signal wb_busy:             std_logic;
 
   signal refetch:             std_logic;
+  signal dual:                std_logic;
 
 begin
 
@@ -188,6 +189,7 @@ begin
       freeze    => decode_freeze,
       jump      => euo.r.jump,
       jumpaddr  => euo.r.jumpaddr,
+      dual      => dual,
       -- Outputs for next stages
       fuo       => fuo
     );
@@ -202,6 +204,7 @@ begin
       duo       => duo,
       busy    => decode_freeze,
       freeze  => execute_busy,
+      dual    => dual,
       flush   => euo.r.jump, -- DELAY SLOT when fetchdata is passthrough
       jump    => euo.r.jump,
       jumpmsb => euo.r.jumpaddr(1)
@@ -270,10 +273,14 @@ begin
       clk       => wb_clk_i,
       rst       => wb_rst_i,
       busy      => wb_busy,
-      r_en      => rbw1_en,
-      r_we      => rbw1_we,
-      r_addr    => rbw1_addr,
-      r_write   => rbw1_wr,
+      r0_en      => rbw1_en,
+      r0_we      => rbw1_we,
+      r0_addr    => rbw1_addr,
+      r0_write   => rbw1_wr,
+      r1_en      => rbw2_en,
+      r1_we      => rbw2_we,
+      r1_addr    => rbw2_addr,
+      r1_write   => rbw2_wr,
       --r_read    => rbw_rd,
       -- Input from previous stage
       mui       => muo,

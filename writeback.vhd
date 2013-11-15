@@ -8,11 +8,18 @@ entity writeback is
   port (
     clk:  in std_logic;
     rst:  in std_logic;
-    -- Register access
-    r_en:   out std_logic;
-    r_we:   out std_logic;
-    r_addr:   out regaddress_type;
-    r_write:   out word_type_std;
+
+    -- Register 0 access writeback
+    r0_en:       out std_logic;
+    r0_we:       out std_logic;
+    r0_addr:     out regaddress_type;
+    r0_write:    out word_type_std;
+    -- Register 1 access writeback
+    r1_en:       out std_logic;
+    r1_we:       out std_logic;
+    r1_addr:     out regaddress_type;
+    r1_write:    out word_type_std;
+
     busy:   out std_logic;
     -- Input for previous stages
     mui:  in memory_output_type;
@@ -26,65 +33,71 @@ architecture behave of writeback is
 
 begin
     process(mui,eui)
-      variable wdata: unsigned(31 downto 0);
+      variable wdata0: unsigned(31 downto 0);
+      variable wdata1: unsigned(31 downto 0);
+      variable wec: std_logic_vector(1 downto 0);
     begin
 
-      wdata := (others => DontCareValue);
-      r_en <= '1';
-      r_addr <= (others => DontCareValue);
+      wdata0 := (others => DontCareValue);
+      r0_en <= '1';
+      r0_addr <= (others => DontCareValue);
+      busy <= '0';
 
       if mui.mregwe='1' then
         -- Memory access - This means we finish a load
         -- and we need to write contents back to the register
         -- file.
-        -- While this happens, we must stall the pipeline if it is trying to wb also
-        busy <= eui.r.regwe;
-        wdata := unsigned(mui.mdata);
-        r_we <= '1';
-        r_addr <= mui.mreg;
+
+        -- While this happens, we must stall the pipeline if it is trying to wb also.
+        -- We can use the second port if we are not writing back two registers
+        -- at this point.
+
+        wec := eui.r.regwe0 & eui.r.regwe1;
+        case wec is
+          when "00" | "01" =>
+            wdata0 := unsigned(mui.mdata);
+            r0_we <= '1';
+            r0_addr <= mui.mreg;
+          when "10" =>
+            wdata1 := unsigned(mui.mdata);
+            r1_we <= '1';
+            r1_addr <= mui.mreg;
+          when "11" =>
+            busy <= '1';
+            wdata1 := unsigned(mui.mdata);
+            r1_we <= '1';
+            r1_addr <= mui.mreg;
+          when others =>
+        end case;
       else
-        busy <= '0';
 
         if FAST_WRITEBACK then
 
-          case eui.reg_source is
+          case eui.reg_source0 is
             when reg_source_alu1 =>
-              wdata := eui.alur1;
+              wdata0 := eui.alur1;
             when reg_source_alu2 =>
-              wdata := eui.alur2;
+              wdata0 := eui.alur2;
             when reg_source_imm =>
-              wdata := eui.imreg;
+              wdata0 := eui.imreg;
             when reg_source_spr =>
-              -- MUX other SPR here.
-              wdata := eui.r.br;
-  
+              wdata0 := eui.r.br;
             when others =>
           end case;
     
-          r_we <=  eui.regwe;
-          r_addr <= eui.dreg;
+          r0_we <=  eui.regwe0;
+          r0_addr <= eui.dreg0;
+
+          r1_we <=  eui.regwe1;
+          r1_addr <= eui.dreg1;
 
         else
-
-        case eui.r.reg_source is
-          when reg_source_alu1 =>
-            wdata := eui.r.alur1;
-          when reg_source_alu2 =>
-            wdata := eui.r.alur2;
---          when reg_source_imm =>
---            wdata := eui.r.imreg;
-          when reg_source_spr =>
-            wdata := eui.r.br;
-          when others =>
-        end case;
-  
-        r_we <=  eui.r.regwe;
-        r_addr <= eui.r.dreg;
 
         end if;
       end if;
 
-      r_write <= std_logic_vector(wdata);
+      r0_write <= std_logic_vector(wdata0);
+      r1_write <= std_logic_vector(wdata1);
     end process;
 
   end behave;

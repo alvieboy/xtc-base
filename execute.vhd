@@ -89,7 +89,10 @@ begin
     ew.valid := fdui.r.drq.valid;
     ew.jump := '0';
     ew.jumpaddr := (others => 'X');
-    ew.regwe := '0';
+
+    ew.regwe0 := '0';
+    ew.regwe1 := '0';
+
     invalid_instr := false;
 
     -- ALUB selector
@@ -119,35 +122,42 @@ begin
     if fdui.r.drq.valid='1' and busy_int='0' then
       -- synthesis translate_off
       if rising_edge(clk) then
-         report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+         --report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
       end if;
       -- synthesis translate_on
 
       ew.alur1 := alu_a_r(31 downto 0);
       ew.alur2 := alu_b_r(31 downto 0);
 
-      ew.reg_source := fdui.r.drq.reg_source;
-
+      
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
       if fdui.r.drq.modify_flags then
-        if fdui.r.drq.reg_source=reg_source_alu1 then
-          ew.flag_carry   := alu1_co;
-          ew.flag_sign    := alu1_sign;
-          ew.flag_borrow  := alu1_bo;
-          ew.flag_zero    := alu1_zero;
-        else
-          ew.flag_carry   := alu2_co;
-          --ew.flag_sign    := alu2_sign;
-          --ew.flag_borrow  := alu2_bo;
-          ew.flag_zero    := alu2_zero;
-        end if;
+        case fdui.r.drq.flags_source is
+          when FLAGS_ALU1 =>
+            ew.flag_carry   := alu1_co;
+            ew.flag_sign    := alu1_sign;
+            ew.flag_borrow  := alu1_bo;
+            ew.flag_zero    := alu1_zero;
+          when FLAGS_ALU2 =>
+            ew.flag_carry   := alu2_co;
+            --ew.flag_sign    := alu2_sign;
+            --ew.flag_borrow  := alu2_bo;
+            ew.flag_zero    := alu2_zero;
+          when others =>
+        end case;
       end if;
 
-      ew.dreg := fdui.r.drq.dreg;
-      ew.mwreg := fdui.r.drq.sra2;
-      ew.regwe := fdui.r.drq.regwe;
-      ew.sr := fdui.r.drq.sr;
+      ew.reg_source0  := fdui.r.drq.reg_source0;
+      ew.regwe0       := fdui.r.drq.regwe0;
+      ew.dreg0        := fdui.r.drq.dreg0;
+
+      ew.reg_source1  := fdui.r.drq.reg_source1;
+      ew.regwe1       := fdui.r.drq.regwe1;
+      ew.dreg1        := fdui.r.drq.dreg1;
+
+      ew.mwreg    := fdui.r.drq.sra2;
+      ew.sr       := fdui.r.drq.sr;
 
       if mem_busy='0' or refetch='1' then
         ew.macc := fdui.r.drq.macc;
@@ -253,11 +263,17 @@ begin
     -- Fast writeback
     euo.alur1 <= alu_a_r(31 downto 0);
     euo.alur2 <= alu_b_r(31 downto 0);
-    euo.reg_source <= ew.reg_source;
-    euo.dreg <= ew.dreg;
-    euo.regwe <= ew.regwe;
-    euo.imreg <= fdui.r.drq.imreg;
-    euo.sr <= ew.sr;
+
+
+    euo.reg_source0  <= ew.reg_source0;
+    euo.dreg0        <= ew.dreg0;
+    euo.regwe0       <= ew.regwe0;
+    euo.reg_source1  <= ew.reg_source1;
+    euo.dreg1        <= ew.dreg1;
+    euo.regwe1       <= ew.regwe1;
+
+    euo.imreg       <= fdui.r.drq.imreg;
+    euo.sr          <= ew.sr;
 
     if rising_edge(clk) then
       if invalid_instr then

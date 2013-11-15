@@ -120,18 +120,23 @@ pll_base_inst : PLL_ADV
     DIVCLK_DIVIDE        => 1,
     CLKFBOUT_MULT        => 13,--30,
     CLKFBOUT_PHASE       => 0.000,
+
     CLKOUT0_DIVIDE       => 4,--10,
     CLKOUT0_PHASE        => 0.000,
     CLKOUT0_DUTY_CYCLE   => 0.500,
+
     CLKOUT1_DIVIDE       => 10,
     CLKOUT1_PHASE        => 250.0,--300.0,--155.52,--103.700,--343.125,
     CLKOUT1_DUTY_CYCLE   => 0.500,
+
     CLKOUT2_DIVIDE       => 10,
     CLKOUT2_PHASE        => 0.0,
     CLKOUT2_DUTY_CYCLE   => 0.500,
-    CLKOUT3_DIVIDE       => 5,
+
+    CLKOUT3_DIVIDE       => 2,
     CLKOUT3_PHASE        => 0.0,
     CLKOUT3_DUTY_CYCLE   => 0.500,
+
     CLKIN1_PERIOD         => 31.250,
     REF_JITTER           => 0.010,
     SIM_DEVICE           => "SPARTAN6")

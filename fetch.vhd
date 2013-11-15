@@ -22,6 +22,7 @@ entity fetch is
     freeze:    in std_logic;
     jump:     in std_logic;
     jumpaddr: in word_type;
+    dual:     in std_logic;
     -- Outputs for next stages
     fuo:  out fetch_output_type
   );
@@ -79,7 +80,7 @@ begin
         valid_q <= '0';
       else
         if clksync='1' then
-          valid_q <= not queue_empty;
+          valid_q <= queue_dual_valid;--not queue_empty;
         end if;
       end if;
     end if;
@@ -93,7 +94,7 @@ begin
 
   data_push_enable <= valid and not queue_full and not queue_clear;
 
-  queue_dual_pop<='0';
+  queue_dual_pop<=dual;
   queue_pop <= not freeze and not queue_empty and valid_q and not jump;
 
   address <= std_logic_vector(fpc);
@@ -125,72 +126,35 @@ begin
     end if;
   end process;
 
-  enable <= '1';
+  enable <= not queue_full;
   strobe <= '1';
 
-  process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr)
+  process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr, dual)
     variable fw: fetch_regs_type;
     variable npc: word_type;
     variable realnpc: word_type;
   begin
     fw := fr;
-    npc := fr.fpc + 2;
-    realnpc := fr.pc + 2;
 
-    --address <= std_logic_vector(fr.fpc);
-    --fuo.valid <= valid;
-
-
-    case fr.state is
-      when running =>
-        if jump='0' then
-          --and freeze='0'
-          if stall='0' and freeze='0' then
-            fw.fpc := npc;
-          end if;
-      
-          if valid='1' then
-            if freeze='0' then
-              fw.pc := realnpc;
-            end if;
-            --fr.ipc;
-            --end if;
-            --fw.ipc := fr.fpc;
-          end if;
+    if jump='0' then
+      if valid_q='1' and freeze='0' then
+        if dual='1' then
+          fw.pc := fr.pc+4;
+          fw.fpc := fr.pc + 6;
         else
-          -- Jump request
-          fw.fpc := jumpaddr;
-          fw.fpc(1 downto 0) := "00";
-
-          fw.pc := jumpaddr;
-          fw.pc(1 downto 0) := "00";
-
-          fw.state := jumping;
---          strobe <= '0';
---          enable <= '0';
-          --fuo.valid <= '0';
-
+          fw.pc := fr.pc+2;
+          fw.fpc := fr.pc + 4;
         end if;
-      when jumping =>
-        if stall='0' then
-          fw.fpc := npc;
-  --        strobe <= '1';
---          enable <= '1';
-          --fw.ipc := fr.fpc;
-          --fw.pc := realnpc;
-          fw.state := running;
-        end if;
-        --fuo.valid<='0';
-      when others =>
-    end case;
+      end if;
+    else
+      fw.pc := unsigned(jumpaddr);
+      fw.fpc := unsigned(jumpaddr) + 2;
+
+    end if;
+
 
     if rst='1' then
       fw.pc := (others => '0');
-      --fw.ipc := (others => '0');
-      fw.fpc := (others => '0');
---      strobe <= '0';
---      enable <= '0';
-      fw.state := running;
     end if;
 
     if rising_edge(clk) then

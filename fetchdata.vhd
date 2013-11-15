@@ -55,8 +55,8 @@ begin
         end if;
       end if;
       -- This is only to check for conflicts
-      w_addr <= dui.r.dreg;
-      w_en   <= dui.r.regwe;
+--      w_addr <= dui.r.dreg;
+--      w_en   <= dui.r.regwe;
       --
       r1_en   <= dui.r.rd1;
       r2_en   <= dui.r.rd2;

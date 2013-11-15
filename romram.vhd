@@ -141,7 +141,7 @@ begin
 ram: internalram
   port map (
     CLKA  => rom_wb_clk_i,
-    CLKB  => rom_wb_clk_i,
+    CLKB  => ram_wb_clk_i,
     WEA   => '0',
     ENA   => rom_enable,
     MASKA => "1111",

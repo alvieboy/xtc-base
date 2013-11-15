@@ -38,8 +38,17 @@ architecture behave of insnqueue is
 
 begin
 
-  dout0 <= qq(rdptr);
-  dout1 <= qq(rdptrplus);
+
+--  process(clkr)
+--  begin
+--    if rising_edge(clkr) then
+  process(rdptr,rdptrplus,qq)
+  begin
+      dout0 <= qq(rdptr);
+      dout1 <= qq(rdptrplus);
+  end process;
+--    end if;
+--  end process;
 
   empty <= '1' when rdptr=wrptr else '0';
 

@@ -187,17 +187,21 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("NOP ");
         -- synthesis translate_on
+        d.uses := uses_nothing;
       when O_IM =>
         d.loadimm     := LOAD12;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("IM 0x" & hstr(d.imm12));
         -- synthesis translate_on
+        d.blocking := false;
+        d.uses := uses_nothing;
 
       when O_LIMR =>
         d.loadimm     := LOAD8;
         -- Load IMMediate into register target
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_imm;
-        
+        d.blocking := false;
+        d.uses := uses_nothing;
 
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("LIMR 0x" & hstr(d.imm8) &", "& regname(d.dreg));
@@ -208,6 +212,8 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADD " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
+
 
       when O_ADDC =>
         d.modify_flags := true;
@@ -215,6 +221,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADDC " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_AND =>
         d.modify_flags := true;
@@ -222,6 +229,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("AND " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_OR =>
         d.modify_flags := true;
@@ -229,6 +237,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("OR " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_SUB =>
         d.modify_flags := true;
@@ -236,6 +245,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("SUB " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_COPY =>
         d.modify_flags := false;
@@ -243,6 +253,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("COPY " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_ADDI =>
         d.loadimm     := LOAD8;
@@ -251,6 +262,8 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADDI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
         -- synthesis translate_on
+        d.blocking := false;
+        d.uses := uses_alu2;
 
       when O_CMPI =>
         d.loadimm     := LOAD8;
@@ -259,6 +272,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CMPI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
         -- synthesis translate_on
+        d.uses := uses_alu2;
 
       when O_BRR =>
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
@@ -276,6 +290,8 @@ begin
         d.alu2_op := ALU_ADD; 
         d.memory_access := '1';
         d.memory_write := '1';
+        d.blocking := false;
+
         d.rd1:='1'; d.rd2:='1';
         case mtype is
 
