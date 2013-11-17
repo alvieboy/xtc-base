@@ -15,7 +15,7 @@ entity fetch is
     stall:    in std_logic;
     valid:    in std_logic;
     address:  out std_logic_vector(31 downto 0);
-    read:     in std_logic_vector(15 downto 0);
+    read:     in std_logic_vector(31 downto 0);
     enable:   out std_logic;
     strobe:   out std_logic;
     -- Control
@@ -49,85 +49,16 @@ architecture behave of fetch is
 
 begin
 
-  queue: insnqueue
-  port map (
-    rst       => rst,
-    clkw      => clk2x,
-    din       => read,
-    en        => data_push_enable,
-    clr       => queue_clear,
-    full      => queue_full,
-
-    clkr      => clk,
-    pop       => queue_pop,
-    dualpop   => queue_dual_pop,
-    dout0     => opcode0,
-    dout1     => opcode1,
-    empty     => queue_empty,
-    dvalid    => queue_dual_valid
-  );
-
-  process(clk)
-  begin
-    if rising_edge(clk2x) then
-      if rst='1' then
-        clksync<='1';
-      else
-        clksync<=not clksync;
-      end if;
-
-      if queue_clear='1' then
-        valid_q <= '0';
-      else
-        if clksync='1' then
-          valid_q <= queue_dual_valid;--not queue_empty;
-        end if;
-      end if;
-    end if;
-  end process;
-
-  fuo.valid <= valid_q;
+ 
+  fuo.valid <= valid;
 
 
   fuo.r <= fr;
-  fuo.opcode <= opcode0 & opcode1;--read(31 downto 0);
 
-  data_push_enable <= valid and not queue_full and not queue_clear;
+  fuo.opcode <= opcode0 & opcode1;
 
-  queue_dual_pop<=dual;
-  queue_pop <= not freeze and not queue_empty and valid_q and not jump;
+  address <= std_logic_vector(fr.fpc);
 
-  address <= std_logic_vector(fpc);
-
---  queue_clear <= jump and clksync;
-
-  process(clk2x)
-  begin
-    if rising_edge(clk2x) then
-      if rst='1' then
-        fpc <= (others => '0');
-      else
-        if infetch='0' then
-          queue_clear <= '0';
-        else
-          infetch <='0';
-        end if;
-        if queue_full='0' and stall='0' then
-          fpc <= fpc + 2;
-        end if;
-
-        if clksync='1' and jump='1' then
-          fpc <= jumpaddr(31 downto 0);
-          queue_clear <= '1';
-          infetch<='1';
-        end if;
-
-      end if;
-    end if;
-  end process;
-
-  enable <= not queue_full;
-  strobe <= '1';
 
   process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr, dual)
     variable fw: fetch_regs_type;
@@ -135,16 +66,24 @@ begin
     variable realnpc: word_type;
   begin
     fw := fr;
+    npc := fr.fpc + 4;
+
+    enable <= '1';
+    strobe <= '1';
 
     if jump='0' then
       if valid_q='1' and freeze='0' then
         if dual='1' then
           fw.pc := fr.pc+4;
-          fw.fpc := fr.pc + 6;
+          fw.fpc := fr.pc + 4;
         else
           fw.pc := fr.pc+2;
           fw.fpc := fr.pc + 4;
         end if;
+
+        fw.qopc := read(15 downto 0);
+
+
       end if;
     else
       fw.pc := unsigned(jumpaddr);

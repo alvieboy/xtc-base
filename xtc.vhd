@@ -26,7 +26,7 @@ entity xtc is
     -- ROM wb interface
 
     rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(15 downto 0);
+    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
     rom_wb_adr_o:       out std_logic_vector(31 downto 0);
     rom_wb_cyc_o:       out std_logic;
     rom_wb_stb_o:       out std_logic;
@@ -75,7 +75,7 @@ architecture behave of xtc is
   signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
   signal cache_flush:          std_logic;
-  signal cache_data:           std_logic_vector(15 downto 0);
+  signal cache_data:           std_logic_vector(31 downto 0);
   signal cache_address:        std_logic_vector(31 downto 0);
   signal cache_strobe:         std_logic;
   signal cache_enable:         std_logic;

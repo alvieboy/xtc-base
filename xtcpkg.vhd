@@ -173,12 +173,15 @@ package xtcpkg is
   type fetch_regs_type is record
     pc, fpc:        word_type;
     state:          fetchunit_state_type;
+    qopc:           std_logic_vector(15 downto 0);
   end record;
 
   type fetch_output_type is record
     r:        fetch_regs_type;
     opcode:   dual_opcode_type;
     valid:    std_logic;
+    bothvalid:std_logic;
+    inverted: std_logic;
   end record;
 
 

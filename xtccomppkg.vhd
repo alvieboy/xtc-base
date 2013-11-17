@@ -75,7 +75,7 @@ package xtccomppkg is
     -- ROM wb interface
 
     rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(15 downto 0);
+    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
     rom_wb_adr_o:       out std_logic_vector(31 downto 0);
     rom_wb_cyc_o:       out std_logic;
     rom_wb_stb_o:       out std_logic;
@@ -168,7 +168,7 @@ package xtccomppkg is
     stall: in std_logic;
     valid: in std_logic;
     address: out std_logic_vector(31 downto 0);
-    read: in     std_logic_vector(15 downto 0);
+    read: in     std_logic_vector(31 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
 
