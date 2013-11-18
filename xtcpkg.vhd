@@ -135,6 +135,23 @@ package xtcpkg is
     uses_nothing
   );
 
+  constant JUMP_RI_PCREL: std_logic_vector(1 downto 0) := "00";
+  constant JUMP_I_PCREL:  std_logic_vector(1 downto 0) := "01";
+  constant JUMP_BR_ABS:   std_logic_vector(1 downto 0) := "10";
+  constant JUMP_RI_ABS:   std_logic_vector(1 downto 0) := "11";
+
+  constant JUMP_NONE:           std_logic_vector(2 downto 0) := "000";
+  constant JUMP_INCONDITIONAL:  std_logic_vector(2 downto 0) := "001";
+  constant JUMP_NE:             std_logic_vector(2 downto 0) := "010";
+  constant JUMP_E:              std_logic_vector(2 downto 0) := "011";
+  constant JUMP_GE:             std_logic_vector(2 downto 0) := "100";
+
+  type br_source_type is (
+    br_source_pc,
+    br_source_reg,
+    br_source_none
+  );
+
   type opdec_type is record
     blocking:       boolean; -- OP is blocking.
     modify_gpr:     boolean; -- Modifies GPR
@@ -154,6 +171,7 @@ package xtcpkg is
     rd1:            std_logic;      -- Read enable for GPR0
     rd2:            std_logic;      -- Read enable for GPR1
     reg_source:     reg_source_type;
+    alu2_imreg:     std_logic;
     -- IMMediate helpers
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
@@ -162,6 +180,9 @@ package xtcpkg is
     sr:             std_logic_vector(2 downto 0);
     loadimm:        loadimmtype;
     op:             decoded_opcode_type;
+    jump:           std_logic_vector(1 downto 0);
+    jump_clause:    std_logic_vector(2 downto 0);
+    br_source:      br_source_type;
 -- synthesis translate_off
     strasm:     string(1 to 25);    -- Assembly string, for debugging purposes
 -- synthesis translate_on
@@ -173,6 +194,9 @@ package xtcpkg is
   type fetch_regs_type is record
     pc, fpc:        word_type;
     state:          fetchunit_state_type;
+    unaligned:      std_logic;
+    unaligned_jump: std_logic;
+    invert_readout: std_logic;
     qopc:           std_logic_vector(15 downto 0);
   end record;
 
@@ -204,10 +228,12 @@ package xtcpkg is
     modify_flags:   boolean;
     flags_source:   flagssource_type;
 
-    op:             decoded_opcode_type;
+    --op:             decoded_opcode_type;
     alu1_op:        alu1_op_type;
     alu2_op:        alu2_op_type;
     alu2_opcode:    opcode_type;
+    alu2_imreg:     std_logic;
+
     swap_target_reg:std_logic;
     memory_write:   std_logic;
     memory_access:  std_logic;
@@ -222,9 +248,12 @@ package xtcpkg is
     imm8:           std_logic_vector(7 downto 0);
     imm4:           std_logic_vector(3 downto 0);
 
+    jump:           std_logic_vector(1 downto 0);
+    jump_clause:    std_logic_vector(2 downto 0);
 
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;
+    br_source:      br_source_type;
 
     opcode_q:       std_logic_vector(15 downto 0);
 

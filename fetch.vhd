@@ -31,27 +31,10 @@ end entity fetch;
 architecture behave of fetch is
 
   signal fr: fetch_regs_type;
-  signal data_push_enable: std_logic;
-  signal queue_clear: std_logic;
-  signal queue_full: std_logic;
-  signal queue_pop:  std_logic;
-  signal queue_dual_pop:  std_logic;
-  signal queue_empty: std_logic;
-  signal queue_dual_valid: std_logic;
 
   signal opcode0, opcode1: std_logic_vector(15 downto 0);
 
-  signal fpc: unsigned(31 downto 0);
-
-  signal clksync: std_logic;
-  signal valid_q: std_logic;
-  signal infetch: std_logic;
-
 begin
-
- 
-  fuo.valid <= valid;
-
 
   fuo.r <= fr;
 
@@ -59,41 +42,111 @@ begin
 
   address <= std_logic_vector(fr.fpc);
 
-
-  process(fr, rst, clk, stall, valid, freeze, jump, jumpaddr, dual)
+  process(fr, rst, clk, stall, valid, freeze, dual, jump, jumpaddr,read)
     variable fw: fetch_regs_type;
     variable npc: word_type;
     variable realnpc: word_type;
   begin
     fw := fr;
     npc := fr.fpc + 4;
-
-    enable <= '1';
-    strobe <= '1';
-
-    if jump='0' then
-      if valid_q='1' and freeze='0' then
-        if dual='1' then
-          fw.pc := fr.pc+4;
-          fw.fpc := fr.pc + 4;
-        else
-          fw.pc := fr.pc+2;
-          fw.fpc := fr.pc + 4;
-        end if;
-
-        fw.qopc := read(15 downto 0);
-
-
-      end if;
+    if dual='1' then
+      realnpc := fr.pc + 4;
     else
-      fw.pc := unsigned(jumpaddr);
-      fw.fpc := unsigned(jumpaddr) + 2;
-
+      realnpc := fr.pc + 2;
     end if;
 
+    fuo.valid <= valid;
+
+    address <= std_logic_vector(fr.fpc);
+    fuo.valid <= valid;
+
+    enable <= not freeze;
+    strobe <= not freeze;
+
+    opcode0 <= read(31 downto 16);
+
+    if fr.invert_readout='1' then
+      opcode1 <= fr.qopc;
+    else
+      opcode1 <= read(15 downto 0);
+    end if;
+
+    fuo.inverted <= fr.unaligned;
+
+    case fr.state is
+      when running =>
+        if jump='0' then
+          if stall='0' and freeze='0' then
+            fw.fpc := npc;
+          end if;
+      
+          if valid='1' then
+            if freeze='0' then
+              fw.pc := realnpc;
+              fw.qopc := read(15 downto 0);
+              fw.unaligned_jump := '0';
+            end if;
+          end if;
+          if dual='0' and valid='1' and freeze='0' then
+            -- Will go unaligned
+            if fr.unaligned='0' then
+              fw.unaligned := '1';
+              fw.invert_readout:='1';
+              --enable <= '0';
+              --strobe <= '0';
+            else
+              if fw.invert_readout='1' then
+                strobe<='0';
+                fw.fpc := fr.fpc;
+              else
+                strobe <='1';
+              end if;
+              
+              -- If we had an unaligned jump, we have to trick
+              -- the system into outputting directly from the RAM, since this
+              -- is the value usually queued.
+              fw.unaligned := '0';
+              fw.invert_readout := '0';
+            end if;
+          end if;
+        else
+          -- Jump request
+          fw.fpc := jumpaddr;
+          fw.unaligned := jumpaddr(1);
+          fw.fpc(1 downto 0) := "00";
+
+          fw.pc := jumpaddr;
+          fw.pc(0) := '0';
+          fw.unaligned_jump := jumpaddr(1);
+          fw.state := jumping;
+          strobe <= '0';
+          enable <= '0';
+          --fuo.valid <= '0';
+
+        end if;
+
+      when jumping =>
+        if stall='0' then
+          fw.fpc := npc;
+          strobe <= '1';
+          enable <= '1';
+          fw.unaligned := fr.unaligned_jump;
+          fw.invert_readout := '0';
+          fw.state := running;
+        end if;
+        fuo.valid<='0';
+      when others =>
+    end case;
 
     if rst='1' then
       fw.pc := (others => '0');
+      fw.fpc := (others => '0');
+      strobe <= '0';
+      enable <= '0';
+      fw.unaligned := '0';
+      fw.unaligned_jump := '0';
+      fw.invert_readout := '0';
+      fw.state := running;
     end if;
 
     if rising_edge(clk) then

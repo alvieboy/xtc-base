@@ -96,14 +96,19 @@ begin
     invalid_instr := false;
 
     -- ALUB selector
-    case fdui.r.drq.op is
-      when O_ADDI | O_BRR | O_CALLR | O_CALLI | O_CMPI =>
+    alu_b_b <= (others => 'X');
+    if fdui.r.drq.alu2_imreg='1' then
+      alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
+    end if;
+
+    --case fdui.r.drq.op is
+      --when O_ADDI | O_BRR | O_CALLR | O_CALLI | O_CMPI =>
         --alu_b_b <= std_logic_vector(im8_fill);
-        alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
-      when others =>
-        alu_b_b <= (others => 'X');
+      --  alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
+      --when others =>
+      --  alu_b_b <= (others => 'X');
         -- See below for memory alub usage
-    end case;
+    --end case;
 
 
     if ( mem_busy='1' and fdui.r.drq.memory_access='1' ) or
@@ -122,7 +127,7 @@ begin
     if fdui.r.drq.valid='1' and busy_int='0' then
       -- synthesis translate_off
       if rising_edge(clk) then
-         --report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+         report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
       end if;
       -- synthesis translate_on
 
@@ -211,51 +216,47 @@ begin
       end if;
 
       -- Branching
-
-      case fdui.r.drq.op is
-        when O_BRR | O_CALLR =>
-        when O_CALLI  =>
-          ew.jump := '1'; ew.jumpaddr := alu_b_r(31 downto 0) + fdui.r.drq.npc(31 downto 0);
-        when O_BRI =>
-          -- NOTE: if we use sync output here, we can use imreg.
+      case fdui.r.drq.jump_clause is
+        when JUMP_NONE =>
+          ew.jump := '0';
+        when JUMP_INCONDITIONAL =>
           ew.jump := '1';
-          --ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
-          ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
-        when O_BRINE =>
+        when JUMP_NE =>
           ew.jump := not er.flag_zero;
-          --ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
-          ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
-        when O_BRIE =>
-          --ew.jump := er.flag_zero; ew.jumpaddr := im8_fill(31 downto 0) + fdui.r.drq.npc(31 downto 0);
-          ew.jump := er.flag_zero; ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
-        when O_BRIG =>
-          ew.jump := er.flag_sign; ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
-        when O_RET =>
-          ew.jump := '1'; ew.jumpaddr := er.br;
+        when JUMP_E =>
+          ew.jump := er.flag_zero;
+        when JUMP_GE =>
+          ew.jump := er.flag_sign;
         when others =>
-
+          ew.jump := '0';
       end case;
+
+      case fdui.r.drq.jump is
+        when JUMP_RI_PCREL =>
+          ew.jumpaddr := alu_b_r(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+        when JUMP_I_PCREL =>
+          ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
+        when JUMP_BR_ABS =>
+          ew.jumpaddr := er.br;
+        when JUMP_RI_ABS =>
+          ew.jumpaddr := alu_b_r;
+        when others =>
+          ew.jumpaddr := (others => 'X');
+      end case;
+
       -- Never jump if busy
       if busy_int='1' then
         ew.jump := '0';
       end if;
 
-      -- Link register
-      case fdui.r.drq.op is
-        when O_CALLR | O_CALLI =>
+      case fdui.r.drq.br_source is
+        when br_source_pc =>
           ew.br := fdui.r.drq.fpc;  -- This is PC+2. We have to skip delay slot
-        when O_SSR =>
-
-          case fdui.r.drq.sr is
-            when SR_BR =>
-              ew.br := unsigned(fdui.rr1);
-            when others =>
-              invalid_instr := true;
-
-          end case;
-
+        when br_source_reg =>
+          ew.br := unsigned(fdui.rr1);
         when others =>
       end case;
+
     end if;
 
     busy <= busy_int;

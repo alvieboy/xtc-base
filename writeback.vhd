@@ -39,8 +39,13 @@ begin
     begin
 
       wdata0 := (others => DontCareValue);
+      wdata1 := (others => DontCareValue);
       r0_en <= '1';
+      r0_we <= '0';
       r0_addr <= (others => DontCareValue);
+      r1_en <= '1';
+      r1_we <= '0';
+      r1_addr <= (others => DontCareValue);
       busy <= '0';
 
       if mui.mregwe='1' then

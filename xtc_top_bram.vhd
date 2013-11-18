@@ -203,7 +203,7 @@ begin
     ram_wb_we_i     => ram_wb_we,
     ram_wb_stall_o  => ram_wb_stall,
 
-    rom_wb_clk_i    => wb_clk_i_2x,
+    rom_wb_clk_i    => wb_clk_i,
     rom_wb_rst_i    => wb_rst_i,
     rom_wb_ack_o    => rom_wb_ack,
     rom_wb_dat_o    => rom_wb_read,

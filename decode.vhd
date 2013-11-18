@@ -51,8 +51,8 @@ architecture behave of decode is
 
 begin
 
-    opcode1 <= fui.opcode(31 downto 16);
-    opcode2 <= fui.opcode(15 downto 0);
+    opcode1 <= fui.opcode(31 downto 16) when fui.inverted='0' else fui.opcode(15 downto 0);
+    opcode2 <= fui.opcode(15 downto 0) when fui.inverted='0' else fui.opcode(31 downto 16);
 
     duo.r <= dr;
 
@@ -70,7 +70,7 @@ begin
 
     process(fui, dr, clk, rst, dec1, dec2, freeze, jump, jumpmsb, flush)
       variable dw: decode_regs_type;
-      variable op: decoded_opcode_type;
+      --variable op: decoded_opcode_type;
       variable opc1,opc2: std_logic_vector(15 downto 0);
       variable rd1,rd2: std_logic;
       variable ra1,ra2: regaddress_type;
@@ -101,6 +101,10 @@ begin
       variable memory_write: std_logic;
       variable modify_flags: boolean;
       variable compositeloadimm: compositeloadimmtype;
+      variable jump: std_logic_vector(1 downto 0);
+      variable jump_clause: std_logic_vector(2 downto 0);
+      variable br_source: br_source_type;
+      variable alu2_imreg: std_logic;
     begin
       dw := dr;
       busy <= '0';
@@ -108,9 +112,15 @@ begin
 
       rd1 := '0';
       rd2 := '0';
-
+      imm20 := (others => 'X');
+      imm24 := (others => 'X');
       can_issue_both := false;
-      if not dec1.blocking and not dec2.blocking then
+      modify_flags:=false;
+      jump := (others => 'X');
+      jump_clause := (others => 'X');
+      br_source := br_source_none;
+
+      if not dec1.blocking then
         -- We can issue both instructions if they do not share the same LU,
         -- nor they share the same output type.
 
@@ -147,6 +157,9 @@ begin
           imm8  := dec1.imm8;
           imm4  := dec1.imm4;
           sr := dec1.sr;
+          jump := dec1.jump;
+          jump_clause := dec1.jump_clause;
+          br_source := dec1.br_source;
 
           case dec1.loadimm is
             when LOAD8 =>  compositeloadimm := LOAD8;
@@ -154,10 +167,11 @@ begin
             when others =>  compositeloadimm := LOADNONE;
           end case;
 
-          op := dec1.op;
+        --  op := dec1.op;
           alu1_op := dec1.alu1_op;
           alu2_op := dec1.alu2_op;
           alu2_opcode := dec1.opcode;
+          alu2_imreg := dec1.alu2_imreg;
 
           reg_source := dec1.reg_source;
           --is_pc_lsb := true;
@@ -189,10 +203,11 @@ begin
             when others =>  compositeloadimm := LOADNONE;
           end case;
 
-          op := dec2.op;
+          --op := dec2.op;
           alu1_op := dec2.alu1_op;
           alu2_op := dec2.alu2_op;
           alu2_opcode := dec2.opcode;
+          alu2_imreg := dec2.alu2_imreg;
           reg_source := dec2.reg_source;
           dreg := dec2.dreg;
           if dec2.modify_gpr then regwe:='1'; else regwe:='0'; end if;
@@ -223,12 +238,28 @@ begin
           alu1_op := dec1.alu1_op;
           alu2_op := dec2.alu2_op;
           alu2_opcode := dec2.opcode;
+          alu2_imreg  := dec2.alu2_imreg;
         else
           rd1 := dec2.rd1;
           rd2 := dec1.rd2;
           alu1_op := dec2.alu1_op;
           alu2_op := dec1.alu2_op;
           alu2_opcode := dec1.opcode;
+          alu2_imreg  := dec1.alu2_imreg;
+        end if;
+
+        if dec2.br_source=BR_SOURCE_NONE then
+          br_source := dec1.br_source;
+        else
+          br_source := dec2.br_source;
+        end if;
+        -- Jump
+        if dec1.jump_clause=JUMP_NONE then
+          jump_clause := dec2.jump_clause;
+          jump := dec2.jump;
+        else
+          jump_clause := dec1.jump_clause;
+          jump := dec1.jump;
         end if;
         -- synthesis translate_off
         strasm := dec1.strasm & dec2.strasm;
@@ -246,6 +277,13 @@ begin
 
         imm12 := (others => 'X');--dec2.imm12;
         imm8  := (others => 'X');--dec2.imm8;
+
+        if dec1.memory_access='1' then
+          macc := dec1.macc;
+        else
+          macc := dec2.macc;
+        end if;
+
 
         case dec1.loadimm is
           when LOAD12 =>
@@ -291,7 +329,7 @@ begin
       end if;
 
       if fui.valid='1' and freeze='0' then
-        dw.decoded := op;
+        --dw.decoded := op;
         dw.rd1 := rd1;
         dw.rd2 := rd2;
         dw.sra1 := ra1;
@@ -301,10 +339,10 @@ begin
         dw.pc   := fui.r.pc;
         dw.npc  := fui.r.pc + 2;
 
-        dw.op := op;
+        --dw.op := op;
         dw.imm12 := imm12;
         dw.imm8  := imm8;
-        dw.imm4  := imm4;
+        --dw.imm4  := imm4;
 
         if dr.imflag='0' then
           dw.imreg := (others => '0');
@@ -365,6 +403,7 @@ begin
         dw.alu1_op := alu1_op;
         dw.alu2_op := alu2_op;
         dw.alu2_opcode := alu2_opcode;
+        dw.alu2_imreg := alu2_imreg;
         --dw.pc_lsb      := is_pc_lsb;
         dw.wb_is_data_address := '0';
         dw.macc := macc;
@@ -381,6 +420,9 @@ begin
         dw.reg_source1 := reg_source;
         dw.regwe1      := '0';--regwe;
 
+        dw.jump         := jump;
+        dw.jump_clause  := jump_clause;
+        dw.br_source    := br_source;
         -- synthesis translate_off
         dw.strasm := strasm;
         -- synthesis translate_on

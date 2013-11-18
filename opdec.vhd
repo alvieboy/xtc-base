@@ -180,6 +180,10 @@ begin
     d.reg_source  := reg_source_alu1;
     d.modify_flags:= false;
     d.loadimm     := LOADNONE;
+    d.jump_clause := JUMP_NONE;
+    d.jump        := (others => 'X');
+    d.alu2_imreg  := 'X';
+    d.br_source   := br_source_none;
 
     case decoded_op is
 
@@ -258,6 +262,7 @@ begin
       when O_ADDI =>
         d.loadimm     := LOAD8;
         d.modify_flags := true;
+        d.alu2_imreg := '1';
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADDI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
@@ -269,6 +274,7 @@ begin
         d.loadimm     := LOAD8;
         d.modify_flags := true;
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_CMPI; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.alu2_imreg:='1';
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CMPI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
         -- synthesis translate_on
@@ -276,12 +282,18 @@ begin
 
       when O_BRR =>
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.alu2_imreg:='1';
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
         -- synthesis translate_on
 
       when O_CALLR =>
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.alu2_imreg:='1';
+        d.br_source := br_source_pc;
+        d.jump_clause := JUMP_INCONDITIONAL;
+        d.jump := JUMP_RI_PCREL;
+
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
         -- synthesis translate_on
@@ -439,25 +451,38 @@ begin
 
       when O_BRI =>
         d.loadimm := LOAD8;
+        d.jump_clause := JUMP_INCONDITIONAL;
+        d.jump := JUMP_I_PCREL;
+
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRI 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIE =>
         d.loadimm := LOAD8;
+        d.jump_clause := JUMP_E;
+        d.jump := JUMP_I_PCREL;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIE 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRINE =>
         d.loadimm := LOAD8;
+        d.jump_clause := JUMP_NE;
+        d.jump := JUMP_I_PCREL;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRINE 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIG =>
+        --d.jump_clause := JUMP_G;
+        d.jump := JUMP_I_PCREL;
+
         d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIG 0x" & hstr(d.imm8));
         -- synthesis translate_on
       when O_BRIGE =>
+        d.jump_clause := JUMP_GE;
+        d.jump := JUMP_I_PCREL;
+
         d.loadimm := LOAD8;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIGE 0x" & hstr(d.imm8));
@@ -481,6 +506,10 @@ begin
       when O_CALLI =>
         d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
         d.loadimm := LOAD8;
+        d.br_source := br_source_pc;
+        d.jump_clause := JUMP_INCONDITIONAL;
+        d.jump := JUMP_I_PCREL;
+
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -493,6 +522,9 @@ begin
 
       when O_SSR =>
         d.rd1:='1';
+        if d.sreg1="001" then
+          d.br_source := br_source_reg;
+        end if;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("SSR ");
         -- synthesis translate_on
