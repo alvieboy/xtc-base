@@ -177,7 +177,7 @@ begin
     d.imm4        := opcode(11 downto 8);
     d.op          := decoded_op;
     d.macc        := mtype;
-    d.reg_source  := reg_source_alu1;
+    d.reg_source  := reg_source_alu;
     d.modify_flags:= false;
     d.loadimm     := LOADNONE;
     d.jump_clause := JUMP_NONE;
@@ -212,7 +212,7 @@ begin
         -- synthesis translate_on
       when O_ADD =>
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADD " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -221,7 +221,7 @@ begin
 
       when O_ADDC =>
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADDC; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_ADDC; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADDC " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -229,7 +229,7 @@ begin
 
       when O_AND =>
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_AND; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_AND; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("AND " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -237,7 +237,7 @@ begin
 
       when O_OR =>
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_OR; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_OR; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("OR " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -245,7 +245,7 @@ begin
 
       when O_SUB =>
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_SUB; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_SUB; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("SUB " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -253,7 +253,7 @@ begin
 
       when O_COPY =>
         d.modify_flags := false;
-        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_COPY; d.modify_gpr:=true; d.reg_source:=reg_source_alu1;
+        d.rd1:='1'; d.rd2:='1'; d.alu1_op:=ALU_COPY; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("COPY " & regname(d.sreg1) & ", " & regname(d.sreg2) );
         -- synthesis translate_on
@@ -263,7 +263,7 @@ begin
         d.loadimm     := LOAD8;
         d.modify_flags := true;
         d.alu2_imreg := '1';
-        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("ADDI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
         -- synthesis translate_on
@@ -273,7 +273,7 @@ begin
       when O_CMPI =>
         d.loadimm     := LOAD8;
         d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_CMPI; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_CMPI; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.alu2_imreg:='1';
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CMPI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
@@ -281,14 +281,14 @@ begin
         d.uses := uses_alu2;
 
       when O_BRR =>
-        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.alu2_imreg:='1';
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
         -- synthesis translate_on
 
       when O_CALLR =>
-        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.alu2_imreg:='1';
         d.br_source := br_source_pc;
         d.jump_clause := JUMP_INCONDITIONAL;
@@ -305,6 +305,10 @@ begin
         d.blocking := false;
 
         d.rd1:='1'; d.rd2:='1';
+        d.alu2_imreg :='1';
+        d.uses := uses_alu2;
+        d.loadimm := LOAD0;
+
         case mtype is
 
           when M_WORD =>
@@ -312,22 +316,22 @@ begin
             d.strasm := opcode_txt_pad("STW " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("ST+W " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_PREDEC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("ST-W " & regname(d.sreg2) & ", [--" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STW+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_WORD_POSTDEC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STW- " & regname(d.sreg2) & ", [" & regname(d.dreg) & "--]" );
             -- synthesis translate_on
@@ -336,12 +340,12 @@ begin
             d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_HWORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STS+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_HWORD_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("ST+S " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
@@ -350,12 +354,12 @@ begin
             d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_BYTE_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STB+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_BYTE_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("ST+B " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
@@ -380,6 +384,10 @@ begin
         d.memory_access := '1';
         d.memory_write := '0';
         d.rd1:='1'; d.rd2:='1';
+        d.alu2_imreg :='1';
+        d.uses := uses_alu2;
+        d.loadimm := LOAD0;
+
         case mtype is
 
           when M_WORD =>
@@ -387,22 +395,22 @@ begin
             d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_PREDEC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [--" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_WORD_POSTDEC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "--]" );
             -- synthesis translate_on
@@ -411,12 +419,12 @@ begin
             d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_HWORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_HWORD_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
@@ -425,12 +433,12 @@ begin
             d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_BYTE_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_BYTE_PREINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu2;
+            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
@@ -502,9 +510,12 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("RET ");
         -- synthesis translate_on
+        d.jump_clause := JUMP_INCONDITIONAL;
+        d.jump := JUMP_BR_ABS;
+        d.blocking := true;
 
       when O_CALLI =>
-        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu2;
+        d.rd1:='1'; d.rd2:='0'; d.alu2_op:=ALU_ADD; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.loadimm := LOAD8;
         d.br_source := br_source_pc;
         d.jump_clause := JUMP_INCONDITIONAL;

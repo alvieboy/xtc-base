@@ -220,6 +220,14 @@ begin
       r2_en      => rb2_en,
       r2_addr    => rb2_addr,
       r2_read    => rb2_rd,
+      r3_en      => rb3_en,
+      r3_addr    => rb3_addr,
+      r3_read    => rb3_rd,
+      r4_en      => rb4_en,
+      r4_addr    => rb4_addr,
+      r4_read    => rb4_rd,
+
+
       freeze     => execute_busy,
       flush      => '0',-- euo.jump, -- DELAY SLOT
       refetch    => execute_busy,-- TEST TEST: was refetch,

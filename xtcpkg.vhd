@@ -111,6 +111,7 @@ package xtcpkg is
 
   type loadimmtype is (
     LOADNONE,
+    LOAD0,
     LOAD8,
     LOAD12
   );
@@ -121,8 +122,7 @@ package xtcpkg is
   );
 
   type reg_source_type is (
-    reg_source_alu1,
-    reg_source_alu2,
+    reg_source_alu,
     reg_source_memory,
     reg_source_imm,
     reg_source_spr
@@ -212,9 +212,9 @@ package xtcpkg is
   type decode_regs_type is record
     decoded:        decoded_opcode_type;
     valid:          std_logic;
-    rd1, rd2:       std_logic;
-    sra1, sra2:     regaddress_type;
-    dra:            regaddress_type;
+    rd1, rd2, rd3, rd4:       std_logic;
+    sra1, sra2, sra3, sra4:     regaddress_type;
+    --dra:            regaddress_type;
 
     -- Target writeback registers
     reg_source0:    reg_source_type;
@@ -266,8 +266,8 @@ package xtcpkg is
 
   type decode_output_type is record
     -- Fast-forward
-    rd1, rd2:       std_logic;
-    sra1, sra2:     regaddress_type;
+    rd1, rd2, rd3, rd4:       std_logic;
+    sra1, sra2,sra3,sra4:     regaddress_type;
     r: decode_regs_type;
   end record;
 
@@ -276,8 +276,8 @@ package xtcpkg is
   end record;
 
   type fetchdata_output_type is record
-    r:            fetchdata_regs_type;
-    rr1,rr2:      word_type_std; -- Register data
+    r:                    fetchdata_regs_type;
+    rr1,rr2,rr3,rr4:      word_type_std; -- Register data
   end record;
 
   type execute_regs_type is record

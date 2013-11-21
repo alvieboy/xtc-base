@@ -215,6 +215,16 @@ package xtccomppkg is
     r2_addr:   out regaddress_type;
     r2_read:   in word_type_std;
 
+    -- Register access
+    r3_en:      out std_logic;
+    r3_addr:    out regaddress_type;
+    r3_read:    in word_type_std;
+    -- Register access
+    r4_en:      out std_logic;
+    r4_addr:    out regaddress_type;
+    r4_read:    in word_type_std;
+
+
     w_addr: out regaddress_type;
     w_en:     out std_logic;
     -- Input for previous stages

@@ -41,7 +41,7 @@ begin
   euo.r <= er;
   alu_a_a <= fdui.rr1;
   alu_a_b <= fdui.rr2;
-  alu_b_a <= fdui.rr1;
+  alu_b_a <= fdui.rr3;
 
 
   myaluA: alu_A
@@ -97,6 +97,7 @@ begin
 
     -- ALUB selector
     alu_b_b <= (others => 'X');
+
     if fdui.r.drq.alu2_imreg='1' then
       alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
     end if;
@@ -127,7 +128,7 @@ begin
     if fdui.r.drq.valid='1' and busy_int='0' then
       -- synthesis translate_off
       if rising_edge(clk) then
-         report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+         --report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
       end if;
       -- synthesis translate_on
 
@@ -161,22 +162,25 @@ begin
       ew.regwe1       := fdui.r.drq.regwe1;
       ew.dreg1        := fdui.r.drq.dreg1;
 
-      ew.mwreg    := fdui.r.drq.sra2;
+      ew.mwreg    := fdui.r.drq.sra4;
       ew.sr       := fdui.r.drq.sr;
 
       if mem_busy='0' or refetch='1' then
         ew.macc := fdui.r.drq.macc;
-        ew.data_write := fdui.rr2;
+        
+        ew.data_write := fdui.rr4; -- Memory always go through Alu2
 
         case fdui.r.drq.macc is
           when M_WORD  |
                M_HWORD |
-               M_BYTE |
-               M_WORD_POSTINC |
+               M_BYTE =>
+            ew.data_address := std_logic_vector(alu_b_r);
+          when M_WORD_POSTINC |
                M_WORD_POSTDEC |
                M_HWORD_POSTINC |
                M_BYTE_POSTINC =>
-            ew.data_address := fdui.rr1;
+            --ew.data_address := std_logic_vector(alu_b_r);
+            ew.data_address := fdui.rr3;
 
           when M_WORD_PREINC  |
                M_WORD_PREDEC  |
@@ -207,6 +211,7 @@ begin
                  M_BYTE_IND =>
                 alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
             when others =>
+              alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
           end case;
         end if;
 
@@ -265,7 +270,7 @@ begin
     euo.alur1 <= alu_a_r(31 downto 0);
     euo.alur2 <= alu_b_r(31 downto 0);
 
-
+    -- REG sources are also per ALU
     euo.reg_source0  <= ew.reg_source0;
     euo.dreg0        <= ew.dreg0;
     euo.regwe0       <= ew.regwe0;

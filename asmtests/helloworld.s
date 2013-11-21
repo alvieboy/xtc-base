@@ -2,12 +2,12 @@
 
 .globl _start
 _start:
+        call    tests, r0
+        nop
         limr    0x80000000, r3    /* Load IO base address into r3 */
         limr    55, r6            /* 104MHz. Baud rate: 115200, 16x oversample, 
                                      gives 55 for baud divider */
-        copy    r4, r3            /* r4 <- r3 */
-        addi    4, r4             /* Add 4 for the UART control register. */
-        stw     r6, (r4-4)        /* Store baud rate divider in UART control reg */
+        stw     r6, (r3+4)        /* Store baud rate divider in UART control reg */
 .endless:
         limr    mystring, r2      /* Load mystring offset into r2 */
         call    putstring, r0     /* Call putstring */
@@ -31,19 +31,35 @@ delay:
 .type putstring, @function
 putstring:
         limr    2, r5               /* Load 2 into r5 */
+        limr	0, r4		    /* Clear r4 - TODO: use XOR*/
 .waitready:
-        ldw     (r4), r1              /* Load the UART control register */
+        ldw     (r3+4), r1              /* Load the UART control register */
         and     r1, r5              /* Check if bit 1 is set (and with 2) */
         brine   .waitready          /* No, jump into wait ready, UART is still busy */
         nop
-        ldb+    (r2), r1              /* Load a char from string (at r2) into r1, increment r2 */
+        ldb+    (r2), r1            /* Load a char from string (at r2) into r1, increment r2 */
         or      r1, r1              /* Is a null char ? */
-        brine   .waitready          /* No, not a null char, jump ... */
-        stw     r1, (r3)              /* But store it in UART transmit register (this is delay slot) */
-        ret                         /* Return from subroutine and ... */
-        limr  0, r1                 /* set r1 to zero (the subroutine return value (this is delay slot) */
+        brieq   .end		    /* Yes, a null char, jump ... */
+        nop
+        stw     r1, (r3)            /* Store it in UART transmit register */
+        bri	.waitready
+        addi	1, r4               /* One more byte */
+        
+.end:   ret                         /* Return from subroutine and ... */
+        copy    r1, r4              /* Copy */
 
-
+.align 4
+    tests:
+    limr 0, r6
+    limr 0, r7
+    limr 1, r8
+    limr 0, r9
+    addi 1, r6
+    add r7, r8
+    addi 1, r9
+    add r7, r8
+    ret
+    nop
 .data
         .global xpto
 

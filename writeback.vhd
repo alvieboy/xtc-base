@@ -79,14 +79,22 @@ begin
         if FAST_WRITEBACK then
 
           case eui.reg_source0 is
-            when reg_source_alu1 =>
+            when reg_source_alu =>
               wdata0 := eui.alur1;
-            when reg_source_alu2 =>
-              wdata0 := eui.alur2;
             when reg_source_imm =>
               wdata0 := eui.imreg;
             when reg_source_spr =>
               wdata0 := eui.r.br;
+            when others =>
+          end case;
+
+          case eui.reg_source1 is
+            when reg_source_alu =>
+              wdata1 := eui.alur2;
+            when reg_source_imm =>
+              wdata1 := eui.imreg;
+            when reg_source_spr =>
+              wdata1 := eui.r.br;
             when others =>
           end case;
     
