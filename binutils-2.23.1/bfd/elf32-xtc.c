@@ -1123,11 +1123,8 @@ static void xtc_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 static void xtc_emit_imm_12(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FFF;
     inst |= (value)&0x0FFF;
-    printf("EMIT 12 %04lx\n", inst);
-    
     bfd_put_16 (abfd, inst, address);
 }
 

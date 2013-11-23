@@ -53,6 +53,8 @@ const char FLT_CHARS[] = "rRsSfFdDxXpP";
 #define PLT_OFFSET           9
 #define GOTOFF_OFFSET        10
 
+#define INST_IMM 0x8000
+
 /* Initialize the relax table.  */
 const relax_typeS md_relax_table[] =
 {
@@ -563,6 +565,138 @@ static inline int xtc_can_represent_as_imm8(int immed)
 {
     return immed <= 127 && immed >= -128;
 }
+#if 0
+static int xtc_bytes_12_12_8(long int value)
+{
+    if ((value & 0xfff80000)==0 /* unsigned */
+        ||(value & 0xfff80000)==0xfff80000 /* signed */ ) {
+
+        /* Two bytes (12+8) or one. */
+        if (((value & 0xffffff80) == 0) ||
+            (value & 0xffffff80) == 0xffffff80 ) {
+            /* A single byte will do it */
+            return 1;
+        }
+        return 2;
+    } else {
+        return 3;
+    }
+}
+#endif
+
+static int xtc_bytes_12_12_12(long int value)
+{
+    if ((value & 0xff800000)==0 /* unsigned */
+        ||(value & 0xff800000)==0xff800000 /* signed */ ) {
+
+        /* Two bytes (12+12) or one. */
+        if (((value & 0xfffff800) == 0) ||
+            (value & 0xfffff800) == 0xfffff800 ) {
+            /* A single byte will do it */
+            return 1;
+        }
+        return 2;
+    } else {
+        return 3;
+    }
+}
+#if 0
+static char *xtc_frag_fixed_immed(long int value)
+{
+    // 000 000
+    fprintf(stderr, "FIXED immed: %ld\n",value);
+    char *o;
+    int i;
+    for (i=0;i<3;i++) {
+        o = frag_more(2);
+        o[0] = 0x80 | ((value >>20)&0xf);
+        o[1] = (value>>16) & 0xff;
+        value<<=12;
+    }
+    return o;
+}
+#endif
+
+static void xtc_emit_imm_12(int value, unsigned op)
+{
+    op &= ~0x0FFF;
+    op |= (value)&0x0FFF;
+    char *output = frag_more(2);
+    output[0] = op>>8;
+    output[1] = op;
+}
+#if 0
+static void xtc_emit_imm_8(long int value, unsigned op)
+{
+    op &= ~0x0FF0;
+    op |= (value<<4)&0xFF;
+    char *output = frag_more(2);
+    output[0] = op>>8;
+    output[1] = op;
+}
+#endif
+
+static void xtc_emit_imm_12_12(long int value, unsigned op)
+{
+    xtc_emit_imm_12(value>>12, INST_IMM);
+    xtc_emit_imm_12(value, op);
+}
+
+static void xtc_emit_imm_12_12_12(long int value, unsigned op)
+{
+    xtc_emit_imm_12(value>>24, INST_IMM);
+    xtc_emit_imm_12(value>>12, INST_IMM);
+    xtc_emit_imm_12(value, op);
+}
+#if 0
+static void xtc_emit_imm_12_8(long int value, unsigned op)
+{
+    xtc_emit_imm_12(value>>8, INST_IMM);
+    xtc_emit_imm_8(value, op);
+}
+
+static void xtc_emit_imm_12_12_8(long int value, unsigned op)
+{
+    xtc_emit_imm_12(value>>20, INST_IMM);
+    xtc_emit_imm_12(value>>8, INST_IMM);
+    xtc_emit_imm_8(value, op);
+}
+#endif
+
+static void xtc_emit_imm_121212(long int value, unsigned op, int size)
+{
+    switch(size) {
+    case 3:
+        xtc_emit_imm_12_12_12(value,op);
+        break;
+    case 2:
+        xtc_emit_imm_12_12(value,op);
+        break;
+    case 1:
+        xtc_emit_imm_12(value,op);
+        break;
+    default:
+        abort();
+    }
+}
+#if 0
+static void xtc_emit_imm_12128(long int value, unsigned op, int size)
+{
+    switch(size) {
+    case 3:
+        xtc_emit_imm_12_12_8(value,op);
+        break;
+    case 2:
+        xtc_emit_imm_12_8(value,op);
+        break;
+    case 1:
+        xtc_emit_imm_8(value,op);
+        break;
+    default:
+        abort();
+    }
+}
+#endif
 
 void
 md_assemble (char * str)
@@ -695,21 +829,13 @@ md_assemble (char * str)
 
         /* Now, check if we need to add a displacement */
         if (hasimm==1) {
-            if (exp.X_op != O_constant || exp.X_add_number!=0) {
+            if (exp.X_op != O_constant) {
 
 
                 int newReloc = BFD_RELOC_XTC_IMM_12_12_12;
     
                 fix_new_exp (frag_now, frag_now_fix (), 6, &exp, 0, newReloc);
-                output = frag_more(6);
-    
-                output[0] = 0x80;
-                output[1] = 0x0;
-                output[2] = 0x80;
-                output[3] = 0x0;
-                output[4] = 0x80;
-                output[5] = 0x0;
-
+                xtc_emit_imm_12_12_12(0, INST_IMM);
                 output = frag_more(INST_WORD_SIZE);
                 output[0] = INST_BYTE0(inst);
                 output[1] = INST_BYTE1(inst);
@@ -717,7 +843,14 @@ md_assemble (char * str)
                 return;
                 //as_bad("Cannot yet handle offsets in memory access");
             } else {
+                if (exp.X_add_number!=0)
+                    xtc_emit_imm_121212( exp.X_add_number, INST_IMM, xtc_bytes_12_12_12(exp.X_add_number) );
 
+                output = frag_more(INST_WORD_SIZE);
+                output[0] = INST_BYTE0(inst);
+                output[1] = INST_BYTE1(inst);
+                return;
+                //as_bad("Missing constants for memory");
             }
         }
 

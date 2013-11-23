@@ -203,6 +203,9 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
         case INST_TYPE_IMM8_R:
             print_func (stream, "\t%s, %s", get_field_imm8 (inst), get_field_r1(inst));
             break;
+        case INST_TYPE_MEM_IMM8_R:
+            print_func (stream, "\t%s + %s", get_field_imm8 (inst), get_field_r1(inst));
+            break;
         case INST_TYPE_NOARGS:
             break;
          default:

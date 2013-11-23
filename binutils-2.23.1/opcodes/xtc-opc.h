@@ -35,6 +35,7 @@
 #define INST_TYPE_NOARGS 7
 #define INST_TYPE_MEM_INDIRECT 8
 #define INST_TYPE_SR 9
+#define INST_TYPE_MEM_IMM8_R 10
 
 /* Instructions where the label address is resolved as a PC offset
    (for branch label).  */
@@ -130,8 +131,8 @@ struct op_code_struct
     {"brilt", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00C, OPCODE_MASK_BRIF, bril, branch_inst },
     {"brile", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00D, OPCODE_MASK_BRIF, brile, branch_inst },
 
-    {"brr", INST_TYPE_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xB000, OPCODE_MASK_H, brr, branch_inst },
-    {"calla", INST_TYPE_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xC000, OPCODE_MASK_H, call, branch_inst },
+    {"brr", INST_TYPE_MEM_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xB000, OPCODE_MASK_H, brr, branch_inst },
+    {"calla", INST_TYPE_MEM_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xC000, OPCODE_MASK_H, call, branch_inst },
 
     {"call", INST_TYPE_IMM8_R,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xD000, OPCODE_MASK_H, callr, branch_inst },
 
