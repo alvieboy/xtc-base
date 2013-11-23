@@ -107,6 +107,7 @@ begin
       variable br_source: br_source_type;
       variable alu2_imreg: std_logic;
       variable no_reg_conflict: boolean;
+      variable flags_source: flagssource_type;
     begin
       dw := dr;
       busy <= '0';
@@ -212,10 +213,15 @@ begin
         memory_access := dec1.memory_access;
         memory_write := dec1.memory_write;
         modify_flags := dec1.modify_flags;
-
         -- synthesis translate_off
         strasm := dec1.strasm & opcode_txt_pad("");
         -- synthesis translate_on
+
+        if dec1.uses=uses_alu1 then
+          flags_source := FLAGS_ALU1;
+        else
+          flags_source := FLAGS_ALU2;
+        end if;
 
         if dec1.modify_gpr then
           if dec1.uses = uses_alu1 then
@@ -308,6 +314,12 @@ begin
           alu2_opcode := dec1.opcode;
           alu2_imreg  := dec1.alu2_imreg;
 
+        end if;
+
+        if dec1.uses=uses_alu1 then
+          flags_source := FLAGS_ALU1;
+        else
+          flags_source := FLAGS_ALU2;
         end if;
 
         if dec2.br_source=BR_SOURCE_NONE then
@@ -473,6 +485,7 @@ begin
         dw.memory_access := memory_access;
         dw.memory_write := memory_write;
         dw.modify_flags := modify_flags;
+        dw.flags_source := flags_source;
 
         dw.dreg0       := dreg0;
         dw.dreg1       := dreg1;

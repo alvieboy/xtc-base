@@ -416,35 +416,35 @@ begin
             -- synthesis translate_on
           when M_HWORD =>
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            d.strasm := opcode_txt_pad("LDS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_HWORD_POSTINC =>
             d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            d.strasm := opcode_txt_pad("LDS+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_HWORD_PREINC =>
             d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            d.strasm := opcode_txt_pad("LD+S " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_BYTE =>
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            d.strasm := opcode_txt_pad("LDB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_BYTE_POSTINC =>
             d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
+            d.strasm := opcode_txt_pad("LDB+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
             -- synthesis translate_on
           when M_BYTE_PREINC =>
             d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
+            d.strasm := opcode_txt_pad("LD+B " & regname(d.sreg2) & ", [++" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_WORD_IND =>
             -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
+            d.strasm := opcode_txt_pad("LDI " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_HWORD_IND =>
             -- synthesis translate_off
