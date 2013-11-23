@@ -156,7 +156,7 @@ case $os in
 	-convergent* | -ncr* | -news | -32* | -3600* | -3100* | -hitachi* |\
 	-c[123]* | -convex* | -sun | -crds | -omron* | -dg | -ultra | -tti* | \
 	-harris | -dolphin | -highlevel | -gould | -cbm | -ns | -masscomp | \
-	-apple | -axis | -knuth | -cray | -microblaze*)
+	-apple | -axis | -knuth | -cray | -microblaze* | -xtc*)
 		os=
 		basic_machine=$1
 		;;
@@ -318,6 +318,7 @@ case $basic_machine in
 	| v850 | v850e | v850e1 | v850e2 | v850es | v850e2v3 \
 	| we32k \
 	| x86 | xc16x | xstormy16 | xtensa \
+        | xtc \
 	| z8k | z80)
 		basic_machine=$basic_machine-unknown
 		;;
@@ -439,6 +440,7 @@ case $basic_machine in
 	| x86-* | x86_64-* | xc16x-* | xps100-* \
 	| xstormy16-* | xtensa*-* \
 	| ymp-* \
+        | xtc-* \
 	| z8k-* | z80-*)
 		;;
 	# Recognize the basic CPU types without company name, with glob match.
@@ -793,6 +795,9 @@ case $basic_machine in
 		;;
 	microblaze*)
 		basic_machine=microblaze-xilinx
+		;;
+	xtc*)
+		basic_machine=xtc-unknown
 		;;
 	mingw64)
 		basic_machine=x86_64-pc
