@@ -53,6 +53,9 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0x0:
             opcode->opv = OP_ADD;
             break;
+        case 0x8:
+            opcode->opv = OP_AND;
+            break;
         default:
             UNKNOWN_OP(op);
         }
@@ -201,6 +204,12 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode)
     case OP_ADD:
         cpu->regs[opcode->r1] += cpu->regs[opcode->r2];
         printf(" r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        break;
+
+    case OP_AND:
+        cpu->regs[opcode->r1] &= cpu->regs[opcode->r2];
+        printf(" r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        /* Set flags */
         break;
 
     default:
