@@ -14,7 +14,10 @@ typedef enum {
     OP_ADDI,
     OP_IMM,
     OP_LIMR,
-    OP_CALLI
+    OP_CALLI,
+    OP_RET,
+    OP_STWI,
+    OP_LDWI
 } opcode_type_t;
 
 
