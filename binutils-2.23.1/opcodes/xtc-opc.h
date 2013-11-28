@@ -36,6 +36,7 @@
 #define INST_TYPE_MEM_INDIRECT 8
 #define INST_TYPE_SR 9
 #define INST_TYPE_MEM_IMM8_R 10
+#define INST_TYPE_R 11
 
 /* Instructions where the label address is resolved as a PC offset
    (for branch label).  */
@@ -46,9 +47,11 @@
 
 #define OPCODE_MASK_H   0xF000  /* High 4 bits only.  */
 #define OPCODE_MASK_EXT 0xFF00  /* High 8 bits only.  */
+#define OPCODE_MASK_REGONLY 0xFFF0  /* High 8 bits only.  */
+
 #define OPCODE_MASK_MEM OPCODE_MASK_EXT
 #define OPCODE_MASK_ARITH  0xFF00
-#define OPCODE_MASK_BRI    0xF008
+#define OPCODE_MASK_BRI    0xF000
 #define OPCODE_MASK_BRIF   0xF00F
 
 #define IMMVAL_MASK_NON_SPECIAL 0x0000
@@ -58,7 +61,7 @@
 #define DELAY_SLOT 1
 #define NO_DELAY_SLOT 0
 
-#define MAX_OPCODES 53
+#define MAX_OPCODES 68
 
 
 struct op_code_struct
@@ -82,7 +85,23 @@ struct op_code_struct
     {"sub",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1400, OPCODE_MASK_ARITH, sub, arithmetic_inst },
     {"and",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1800, OPCODE_MASK_ARITH, and, logical_inst },
     {"or",    INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1A00, OPCODE_MASK_ARITH, or,  logical_inst },
+    {"xor",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1B00, OPCODE_MASK_ARITH, xor,  logical_inst },
     {"copy",  INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1C00, OPCODE_MASK_ARITH, copy,logical_inst },
+    {"cmp",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1D00, OPCODE_MASK_ARITH, cmp,logical_inst },
+    {"shr",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1E00, OPCODE_MASK_ARITH, shr,logical_inst },
+    {"shl",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1F00, OPCODE_MASK_ARITH, shl,logical_inst },
+    {"srl",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1900, OPCODE_MASK_ARITH, srl,logical_inst },
+    {"sra",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1300, OPCODE_MASK_ARITH, sra,logical_inst },
+    {"subb",  INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1500, OPCODE_MASK_ARITH, subb, arithmetic_inst },
+
+    /* Single-reg ops */
+    {"not",   INST_TYPE_R,     INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0010, OPCODE_MASK_REGONLY, not,logical_inst },
+    {"sextb",   INST_TYPE_R,     INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0020, OPCODE_MASK_REGONLY, sextb,logical_inst },
+    {"sexts",   INST_TYPE_R,     INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0030, OPCODE_MASK_REGONLY, sexts,logical_inst },
+
+    /* Single-reg ops */
+
+    {"sra",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1300, OPCODE_MASK_ARITH, sra,logical_inst },
 
     {"limr",  INST_TYPE_IMM8_R, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0xE000, OPCODE_MASK_H, limr, immediate_inst },
 
@@ -101,7 +120,7 @@ struct op_code_struct
     {"stb+",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x2A00, OPCODE_MASK_MEM, stbpostinc, memory_store_inst },
 
     {"stwi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x2B00, OPCODE_MASK_MEM, stwi, memory_store_inst },
-    {"sthi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x2C00, OPCODE_MASK_MEM, sthi, memory_store_inst },
+    {"stsi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x2C00, OPCODE_MASK_MEM, sthi, memory_store_inst },
     {"stbi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x2D00, OPCODE_MASK_MEM, stbi, memory_store_inst },
 
 
@@ -120,10 +139,11 @@ struct op_code_struct
     {"ldb+",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x4A00, OPCODE_MASK_MEM, ldbpostinc, memory_load_inst },
 
     {"ldwi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x4B00, OPCODE_MASK_MEM, ldwi, memory_load_inst },
-    {"ldhi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x4C00, OPCODE_MASK_MEM, ldhi, memory_load_inst },
+    {"ldsi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x4C00, OPCODE_MASK_MEM, ldhi, memory_load_inst },
     {"ldbi",   INST_TYPE_MEM,    INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x4D00, OPCODE_MASK_MEM, ldbi, memory_load_inst },
 
-    {"bri",   INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA000, OPCODE_MASK_BRI, bri, branch_inst },
+    // TODO: BRI will be IMM8_R, not IMM0
+    {"bri",   INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0x9000, OPCODE_MASK_H, bri, branch_inst },
     {"brieq", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA008, OPCODE_MASK_BRIF, brie, branch_inst },
     {"brine", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA009, OPCODE_MASK_BRIF, brine, branch_inst },
     {"brigt", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00A, OPCODE_MASK_BRIF, brig, branch_inst },
@@ -131,6 +151,12 @@ struct op_code_struct
     {"brilt", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00C, OPCODE_MASK_BRIF, bril, branch_inst },
     {"brile", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00D, OPCODE_MASK_BRIF, brile, branch_inst },
 
+    {"briugt", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00E, OPCODE_MASK_BRIF, briugt, branch_inst },
+    {"briuge", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00F, OPCODE_MASK_BRIF, briuge, branch_inst },
+    {"briult", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA010, OPCODE_MASK_BRIF, briult, branch_inst },
+    {"briule", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA011, OPCODE_MASK_BRIF, briule, branch_inst },
+
+    // TODO: this will be renamed to BR.
     {"brr", INST_TYPE_MEM_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xB000, OPCODE_MASK_H, brr, branch_inst },
     {"calla", INST_TYPE_MEM_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xC000, OPCODE_MASK_H, call, branch_inst },
 

@@ -119,7 +119,6 @@ md_section_align (segT segment ATTRIBUTE_UNUSED, valueT size)
 long
 md_pcrel_from_section (fixS * fixp, segT sec ATTRIBUTE_UNUSED)
 {
-    printf("md_pcrel_from_section: enter\n");
 #ifdef OBJ_ELF
   /* If the symbol is undefined or defined in another section
      we leave the add number alone for the linker to fix it later.
@@ -385,7 +384,6 @@ parse_reg (char * s, unsigned * reg)
               as_bad (_("Invalid register number at '%.6s'"), s);
               *reg = 0;
             }
-          printf("REG %s -> %d\n", s, *reg);
 
           return s;
         }
@@ -508,12 +506,10 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
   while (ISSPACE (* s))
     ++ s;
 
-  printf("parse_memory: parsing %s\n", s);
 
   if ( *s == '(' ) {
       s++;
       /* First argument must be a register */
-      printf("Calling parsereg with '%s'\n",s);
       s = parse_reg(s, ptr_reg);
       if (!check_gpr_reg(ptr_reg)) {
           as_fatal("Only GPR registers allowed");
@@ -525,11 +521,9 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
       if (*s == ')') {
           if (hasimm)
               *hasimm = 0; // No immediate;
-          printf("No immediate, it's OK\n");
           s++;
           return s;
       } else {
-          printf("Parse IMM: %s\n",s);
           s = parse_imm( s, imval, MIN_IMM, MAX_IMM );
           if (hasimm) {
               *hasimm = 1;
@@ -584,7 +578,7 @@ static int xtc_bytes_12_12_8(long int value)
 }
 #endif
 
-static int xtc_bytes_12_12_12(long int value)
+static int xtc_words_12_12_12(long int value)
 {
     if ((value & 0xff800000)==0 /* unsigned */
         ||(value & 0xff800000)==0xff800000 /* signed */ ) {
@@ -604,7 +598,6 @@ static int xtc_bytes_12_12_12(long int value)
 static char *xtc_frag_fixed_immed(long int value)
 {
     // 000 000
-    fprintf(stderr, "FIXED immed: %ld\n",value);
     char *o;
     int i;
     for (i=0;i<3;i++) {
@@ -617,11 +610,10 @@ static char *xtc_frag_fixed_immed(long int value)
 }
 #endif
 
-static void xtc_emit_imm_12(int value, unsigned op)
+static void xtc_emit_imm_12(char *output, int value, unsigned op)
 {
     op &= ~0x0FFF;
     op |= (value)&0x0FFF;
-    char *output = frag_more(2);
     output[0] = op>>8;
     output[1] = op;
 }
@@ -630,23 +622,22 @@ static void xtc_emit_imm_8(long int value, unsigned op)
 {
     op &= ~0x0FF0;
     op |= (value<<4)&0xFF;
-    char *output = frag_more(2);
     output[0] = op>>8;
     output[1] = op;
 }
 #endif
 
-static void xtc_emit_imm_12_12(long int value, unsigned op)
+static void xtc_emit_imm_12_12(char *output, long int value, unsigned op)
 {
-    xtc_emit_imm_12(value>>12, INST_IMM);
-    xtc_emit_imm_12(value, op);
+    xtc_emit_imm_12(&output[0],value>>12, INST_IMM);
+    xtc_emit_imm_12(&output[2],value, op);
 }
 
-static void xtc_emit_imm_12_12_12(long int value, unsigned op)
+static void xtc_emit_imm_12_12_12(char *output, long int value, unsigned op)
 {
-    xtc_emit_imm_12(value>>24, INST_IMM);
-    xtc_emit_imm_12(value>>12, INST_IMM);
-    xtc_emit_imm_12(value, op);
+    xtc_emit_imm_12(&output[0],value>>24, INST_IMM);
+    xtc_emit_imm_12(&output[2],value>>12, INST_IMM);
+    xtc_emit_imm_12(&output[4],value, op);
 }
 #if 0
 static void xtc_emit_imm_12_8(long int value, unsigned op)
@@ -663,17 +654,17 @@ static void xtc_emit_imm_12_12_8(long int value, unsigned op)
 }
 #endif
 
-static void xtc_emit_imm_121212(long int value, unsigned op, int size)
+static void xtc_emit_imm_121212(char *output,long int value, unsigned op, int size)
 {
     switch(size) {
     case 3:
-        xtc_emit_imm_12_12_12(value,op);
+        xtc_emit_imm_12_12_12(output,value,op);
         break;
     case 2:
-        xtc_emit_imm_12_12(value,op);
+        xtc_emit_imm_12_12(output,value,op);
         break;
     case 1:
-        xtc_emit_imm_12(value,op);
+        xtc_emit_imm_12(output,value,op);
         break;
     default:
         abort();
@@ -748,7 +739,6 @@ md_assemble (char * str)
     }
 
     inst = opcode->bit_sequence;
-    printf("At start: bit sequence %04lx\n", opcode->bit_sequence);
     isize = 2;
 
     //int ismem = 0;
@@ -772,7 +762,6 @@ md_assemble (char * str)
             as_fatal (_("Error in statement syntax"));
             reg2 = 0;
         }
-        printf("R1 %d, R2 %d\n", reg1, reg2);
         /* Check for spl registers.  */
         if (!check_gpr_reg (& reg1))
             as_fatal (_("Cannot use special register with this instruction"));
@@ -782,7 +771,24 @@ md_assemble (char * str)
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= ((reg2-32) << SPR_LOW) & SPR_MASK;
-        printf("now: bit sequence %04lx\n", inst);
+
+        output = frag_more (isize);
+        break;
+
+    case INST_TYPE_R:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
+        }
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (& reg1))
+            as_fatal (_("Cannot use special register with this instruction"));
+
+        inst |= (reg1 << RA_LOW) & RA_MASK;
 
         output = frag_more (isize);
         break;
@@ -821,7 +827,6 @@ md_assemble (char * str)
         }
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= (reg2 << RB_LOW) & RB_MASK;
-        printf("Opcode for mem: %04lx\n", inst);
 
         /* Check for spl registers.  */
         if (!check_gpr_reg (& reg2))
@@ -833,20 +838,27 @@ md_assemble (char * str)
 
 
                 int newReloc = BFD_RELOC_XTC_IMM_12_12_12;
-    
-                fix_new_exp (frag_now, frag_now_fix (), 6, &exp, 0, newReloc);
-                xtc_emit_imm_12_12_12(0, INST_IMM);
-                output = frag_more(INST_WORD_SIZE);
-                output[0] = INST_BYTE0(inst);
-                output[1] = INST_BYTE1(inst);
+
+                output = frag_more(INST_WORD_SIZE*4);
+
+                int where = output - frag_now->fr_literal;
+                fix_new_exp (frag_now, where, 6, &exp, 0, newReloc);
+
+                xtc_emit_imm_12_12_12(&output[0], 0, INST_IMM);
+                output[6] = INST_BYTE0(inst);
+                output[7] = INST_BYTE1(inst);
 
                 return;
                 //as_bad("Cannot yet handle offsets in memory access");
             } else {
-                if (exp.X_add_number!=0)
-                    xtc_emit_imm_121212( exp.X_add_number, INST_IMM, xtc_bytes_12_12_12(exp.X_add_number) );
-
-                output = frag_more(INST_WORD_SIZE);
+                if (exp.X_add_number!=0) {
+                    int size = xtc_words_12_12_12(exp.X_add_number);
+                    output = frag_more(INST_WORD_SIZE*(size+1));
+                    xtc_emit_imm_121212( output, exp.X_add_number, INST_IMM, size);
+                    output+=(size*2);
+                } else {
+                    output = frag_more(INST_WORD_SIZE);
+                }
                 output[0] = INST_BYTE0(inst);
                 output[1] = INST_BYTE1(inst);
                 return;
@@ -854,7 +866,6 @@ md_assemble (char * str)
             }
         }
 
-        printf("now: bit sequence %04lx\n", inst);
 
         output = frag_more (isize);
         break;
@@ -886,7 +897,6 @@ md_assemble (char * str)
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= (reg2 << RB_LOW) & RB_MASK;
-        printf("now: bit sequence %04lx\n", inst);
 
         output = frag_more (isize);
         break;
@@ -902,16 +912,17 @@ md_assemble (char * str)
             int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
                             BFD_RELOC_XTC_IMM_12_12_8 );
 
-            fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
-            output = frag_more(2);
+            output = frag_more(3 * INST_WORD_SIZE);
 
             output[0] = 0x80;
-            output[1] = 0x0;
-            output = frag_more(2*INST_WORD_SIZE);
-            output[0] = 0x80;
             output[1] = 0x00;
-            output[2] = INST_BYTE0(inst);
-            output[3] = INST_BYTE1(inst);
+            output[2] = 0x80;
+            output[3] = 0x00;
+            output[4] = INST_BYTE0(inst);
+            output[5] = INST_BYTE1(inst);
+            int where = output - frag_now->fr_literal;
+
+            fix_new_exp (frag_now, where, 4, &exp, 1, newReloc);
 
             return;
 
@@ -1012,7 +1023,6 @@ md_assemble (char * str)
             char *opc = NULL;
             relax_substateT subtype = opcode->inst_offset_type;
 
-            printf("Call FRAG var\n");
             output = frag_var (rs_machine_dependent,
                                isize, /* maxm of 3 words.  */
                                isize,     /* minm of 1 word.  */
@@ -1024,17 +1034,19 @@ md_assemble (char * str)
             int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
                             BFD_RELOC_XTC_IMM_12_12_8 );
 
-            fix_new_exp (frag_now, frag_now_fix (), 4, &exp, 1, newReloc);
-            output = frag_more(2);
+            output = frag_more(3*INST_WORD_SIZE);
 
             output[0] = 0x80;
             output[1] = 0x0;
-            output = frag_more(2*INST_WORD_SIZE);
-            output[0] = 0x80;
-            output[1] = 0x00;
-            output[2] = INST_BYTE0(inst);
-            output[3] = INST_BYTE1(inst);
-            printf("EMIT INST %04lx\n",inst);
+            output[2] = 0x80;
+            output[3] = 0x00;
+            output[4] = INST_BYTE0(inst);
+            output[5] = INST_BYTE1(inst);
+
+            int where = output - frag_now->fr_literal;
+
+            fix_new_exp (frag_now, where, 4, &exp, 1, newReloc);
+            
             return;
             immed = 0;
             abort();
@@ -1043,9 +1055,15 @@ md_assemble (char * str)
         {
             int bits = xtc_count_bits(exp.X_add_number);
 
-            output = frag_more (isize);
-            printf("Need to emit constant IMM, value %08x\n", (unsigned)exp.X_add_number);
             immed = exp.X_add_number >> 8;
+
+            if (bits>=20) {
+                output = frag_more (INST_WORD_SIZE*3);
+            } else if (bits>8) {
+                output = frag_more (INST_WORD_SIZE*2);
+            } else {
+                output = frag_more (INST_WORD_SIZE);
+            }
 
             if (bits>=20) {
                 // emit very high IM12
@@ -1054,36 +1072,30 @@ md_assemble (char * str)
                 // and not the correct ones.
 
                 inst2 = 0x8000 | (((immed>>12) << IMM_LOW) & IMM_MASK);
-                printf("IMM EMIT %04x\n",inst2);
                 output[0] = INST_BYTE0 (inst2);
                 output[1] = INST_BYTE1 (inst2);
                 dwarf2_emit_insn (2);
-
-                output = frag_more (isize);
                 immed<<=12;
                 bits-=12;
+                output+=2;
             }
             if (bits>8) {
                 // emit very high IM12
                 unsigned inst2;
                 inst2 = 0x8000 | (((immed) << IMM_LOW) & IMM_MASK);
-                printf("IMM EMIT %04x\n",inst2);
                 output[0] = INST_BYTE0 (inst2);
                 output[1] = INST_BYTE1 (inst2);
                 dwarf2_emit_insn (2);
-                output = frag_more (isize);
+                output+=2;
                 bits-=8;
             }
 
             inst |= (reg1 << RA_LOW) & RA_MASK;
             inst |= (exp.X_add_number << IMM8_LOW) & IMM8_MASK;
-            printf("IMM EMIT %04lx\n",inst);
                 
             output[0] = INST_BYTE0 (inst);
             output[1] = INST_BYTE1 (inst);
-            //output = frag_more (isize);
-
-            //abort();
+            return;
         }
 
         break;
@@ -1104,7 +1116,6 @@ md_assemble (char * str)
     if (strcmp (op_end, opcode->name) && strcmp (op_end, ""))
         as_warn (_("ignoring operands: %s "), op_end);
 
-    printf("outputting %02lx%02lx\n", INST_BYTE0(inst),INST_BYTE1(inst));
     output[0] = INST_BYTE0 (inst);
     output[1] = INST_BYTE1 (inst);
 
@@ -1122,23 +1133,18 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
 {
     //fixS *fixP;
 
-    printf("md_convert_frag: converting frag subtype %d, fix at %lu\n", fragP->fr_subtype,
-           fragP->fr_fix);
 
     switch (fragP->fr_subtype)
     {
     case UNDEFINED_PC_OFFSET:
-        printf("md_convert_frag: undefined PC offset\n");
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 3, fragP->fr_symbol,
                  fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8);
         fragP->fr_fix += INST_WORD_SIZE * 2;
         fragP->fr_var = 0;
-        //abort();
         break;
 
     case DEFINED_ABS_SEGMENT:
-        printf("md_convert_frag: defined ABS segment\n");
 
         //if (fragP->fr_symbol == GOT_symbol) {
         //    as_fatal("md_convert_frag: GOT not supported");
@@ -1153,14 +1159,13 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
 
     case DEFINED_PC_OFFSET:
 
-        printf("md_convert_frag: defined PC offset  -reloc type %d\n", BFD_RELOC_XTC_IMM_12_12_8_PCREL);
 
         //fragP->fr_fix += INST_WORD_SIZE*2;
         //fragP->fr_fix -= 4;
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE*3, fragP->fr_symbol,
                  fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8_PCREL);
-
+                          abort();
         fragP->fr_fix += INST_WORD_SIZE * 2;
 
         fragP->fr_var = 0;
@@ -1280,7 +1285,6 @@ cons_fix_new_xtc (fragS * frag,
           r = BFD_RELOC_32;
           break;
         }
-        printf("cons_fix_new_xtc: %d\n", r);
 #if 0
     }
 #endif
@@ -1290,7 +1294,6 @@ cons_fix_new_xtc (fragS * frag,
 int
 tc_xtc_fix_adjustable (struct fix *fixP ATTRIBUTE_UNUSED)
 {
-    printf("tc_xtc_fix_adjustable: enter\n");
 #if 0
   if (GOT_symbol && fixP->fx_subsy == GOT_symbol)
     return 0;
@@ -1314,8 +1317,6 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   arelent * rel;
   bfd_reloc_code_real_type code;
 
-  printf("tc_gen_reloc: called, type %d size %d pcrel %d\n", fixp->fx_r_type, fixp->fx_size,
-        fixp->fx_pcrel);
 
   switch (fixp->fx_r_type)
     {
@@ -1334,7 +1335,6 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_12_8_PCREL:
     case BFD_RELOC_XTC_IMM_8_PCREL:
-        printf("Copy type\n");
         code = fixp->fx_r_type;
         break;
 
@@ -1371,8 +1371,6 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
   /* Always pass the addend along!  */
   rel->addend = fixp->fx_offset;
 
-  printf("GEN RELOC: addend is %ld\n", (long)fixp->fx_offset);
-
   rel->howto = bfd_reloc_type_lookup (stdoutput, code);
 
   if (rel->howto == NULL)
@@ -1408,8 +1406,6 @@ md_apply_fix (fixS *   fixP,
   struct op_code_struct * opcode1;
   unsigned long inst1;
 
-  printf("md_apply_fix: Applying fixup\n");
-
   //symname = fixP->fx_addsy ? S_GET_NAME (fixP->fx_addsy) : _("<unknown>");
 
   /* fixP->fx_offset is supposed to be set up correctly for all
@@ -1419,9 +1415,6 @@ md_apply_fix (fixS *   fixP,
     {
          if (!fixP->fx_pcrel)
         fixP->fx_offset = val; /* Absolute relocation.  */
-      else
-        fprintf (stderr, "NULL symbol PC-relative relocation? offset = %08x, val = %08x\n",
-                 (unsigned int) fixP->fx_offset, (unsigned int) val);
     }
 
   /* If we aren't adjusting this fixup to be against the section
@@ -1457,17 +1450,15 @@ md_apply_fix (fixS *   fixP,
           || (S_GET_SEGMENT (fixP->fx_addsy) != segment)))
     {
         fixP->fx_done = 0;
-        printf("md_apply_fix: no defined symbol, or different segment\n");
+
 #ifdef OBJ_ELF
       /* For ELF we can just return and let the reloc that will be generated
          take care of everything.  For COFF we still have to insert 'val'
          into the insn since the addend field will be ignored.  */
-      /* return; */
 #endif
     }
   /* All fixups in the text section must be handled in the linker.  */
   else if (segment->flags & SEC_CODE) {
-      printf("md_apply_fix: text section fixup is for linker\n");
       fixP->fx_done = 0;
   }
   else if (!fixP->fx_pcrel && fixP->fx_addsy != NULL)
@@ -1475,7 +1466,6 @@ md_apply_fix (fixS *   fixP,
   else
     fixP->fx_done = 1;
 
-  printf("md_apply_fix: at this point, fix_done == %d\n", fixP->fx_done);
 
   switch (fixP->fx_r_type)
     {
@@ -1519,26 +1509,14 @@ md_apply_fix (fixS *   fixP,
     case BFD_RELOC_32:
     case BFD_RELOC_RVA:
     case BFD_RELOC_32_PCREL:
-        abort();
-    //case BFD_RELOC_MICROBLAZE_32_SYM_OP_SYM:
       /* Don't do anything if the symbol is not defined.  */
       if (fixP->fx_addsy == NULL || S_IS_DEFINED (fixP->fx_addsy))
-	{
-	  if (target_big_endian)
-	    {
-	      buf[0] |= ((val >> 24) & 0xff);
-	      buf[1] |= ((val >> 16) & 0xff);
-	      buf[2] |= ((val >> 8) & 0xff);
-	      buf[3] |= (val & 0xff);
-	    }
-	  else
-	    {
-	      buf[3] |= ((val >> 24) & 0xff);
-	      buf[2] |= ((val >> 16) & 0xff);
-	      buf[1] |= ((val >> 8) & 0xff);
-	      buf[0] |= (val & 0xff);
-	    }
-	}
+      {
+          buf[0] |= ((val >> 24) & 0xff);
+          buf[1] |= ((val >> 16) & 0xff);
+          buf[2] |= ((val >> 8) & 0xff);
+          buf[3] |= (val & 0xff);
+      }
       break;
     case BFD_RELOC_64_PCREL:
     case BFD_RELOC_64:
@@ -1606,9 +1584,13 @@ md_apply_fix (fixS *   fixP,
       return;
 #endif
     default:
+             /*
+        as_bad(_("Don't know how to handle reloc type %d: %s"),fixP->fx_r_type,
+              bfd_get_reloc_code_name (fixP->fx_r_type));
+              abort();
+              */
       break;
     }
-  printf("md_apply_fix: at this point, fx_addsy %p\n", fixP->fx_addsy);
   if (fixP->fx_addsy == NULL)
     {
       /* This fixup has been resolved.  Create a reloc in case the linker
@@ -1640,7 +1622,6 @@ md_estimate_size_before_relax (fragS * fragP ATTRIBUTE_UNUSED,
   sdata_segment = bfd_get_section_by_name (stdoutput, ".sdata");
   sdata2_segment = bfd_get_section_by_name (stdoutput, ".sdata2");
 
-  printf("Estimate size before relax\n");
 
   switch (fragP->fr_subtype)
     {

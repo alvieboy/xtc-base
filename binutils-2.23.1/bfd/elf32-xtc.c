@@ -24,20 +24,17 @@ init_insn_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 	  || reloc_entry->addend == 0))
     {
         reloc_entry->address += input_section->output_offset;
-        printf("No reloc needed\n");
       return bfd_reloc_ok;
     }
 
   /* This works because partial_inplace is FALSE.  */
   if (output_bfd != NULL) {
-      printf("Continure\n");
 
 
       return bfd_reloc_continue;
   }
 
   if (reloc_entry->address > bfd_get_section_limit (abfd, input_section)) {
-      printf("Out of range");
 
       return bfd_reloc_outofrange;
   }
@@ -364,33 +361,27 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
   switch (code)
     {
     case BFD_RELOC_NONE:
-        printf("xtc_elf_reloc_type_lookup: none\n");
       xtc_reloc = R_XTC_NONE;
       break;
     case BFD_RELOC_32:
-        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_32\n");
       xtc_reloc = R_XTC_32;
       break;
       /* RVA is treated the same as 32 */
     case BFD_RELOC_RVA:
-        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_RVA\n");
 
       xtc_reloc = R_XTC_32;
       break;
     case BFD_RELOC_32_PCREL:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_32_PCREL\n");
 
       xtc_reloc = R_XTC_32_PCREL;
       break;
 
     case BFD_RELOC_XTC_32:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32\n");
 
         xtc_reloc = R_XTC_32;
         break;
 
     case BFD_RELOC_XTC_32_PCREL:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32_PCREL\n");
 
         xtc_reloc = R_XTC_32_PCREL;
         break;
@@ -426,7 +417,6 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
         break;
 
     default:
-        printf("xtc_elf_reloc_type_lookup: unknown %d\n", code);
         abort();
 
       return (reloc_howto_type *) NULL;
@@ -656,7 +646,6 @@ xtc_elf_relocate_section (bfd *output_bfd,
   asection *sreloc;
   //bfd_vma *local_got_offsets;
 
-  printf("kjshkdhsaldhajsh\n");
 
   if (!xtc_elf_howto_table[R_XTC_max-1])
     xtc_elf_howto_init ();
@@ -809,18 +798,15 @@ xtc_elf_relocate_section (bfd *output_bfd,
 
                         unsigned inst = bfd_get_16( input_bfd, contents + offset);
                         inst |= (relocation >> (8+12))&0xFFF;
-                        printf("INST0 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 2);
                         inst |= (relocation >> 8) & 0xFFF;
-                        printf("INST1 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset + 2);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 4);
 
                         inst |= (relocation & 0xFF)<<4;
-                        printf("INST2 emit %04x\n", inst);
 
                         bfd_put_16 (input_bfd, inst,
 				    contents + offset + 4);
@@ -918,28 +904,23 @@ xtc_elf_relocate_section (bfd *output_bfd,
 		    else
 		      {
                           if (r_type == R_XTC_32_PCREL) {
-                              printf("Is a PCREL relocation\n");
                               relocation -= (input_section->output_section->vma
                                              + input_section->output_offset
                                              + offset + INST_WORD_SIZE*3);
                           }
 
-                        printf("Relocation is %ld\n", relocation);
 
                         unsigned inst = bfd_get_16( input_bfd, contents + offset);
                         inst |= (relocation >> (8+12))&0xFFF;
-                        printf("INST0 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 2);
                         inst |= (relocation >> 8) & 0xFFF;
-                        printf("INST1 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset + 2);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 4);
 
                         inst |= (relocation & 0xFF)<<4;
-                        printf("INST2 emit %04x\n", inst);
 
                         bfd_put_16 (input_bfd, inst,
 				    contents + offset + 4);
@@ -1263,13 +1244,10 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
               {
                   reserved = R_XTC_32_IMM_8_PCREL - r_type + 1 ;
                   phys_addr = relocation + rel->r_addend;
-                  printf("Reloc phys 0x%lx addend %lu\n", relocation, rel->r_addend);
                   phys_addr -= (input_section->output_section->vma
                                 + input_section->output_offset);
-                  printf("Input section VMA %ld, offset %ld\n",input_section->output_section->vma,
-                         input_section->output_offset);
+                         
                   phys_addr -= rel->r_offset;
-                  printf("Reloc offset %ld\n", rel->r_offset);
                   phys_addr += rel->r_addend;
                   phys_addr -= (reserved*2);
               } else
@@ -1279,25 +1257,21 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                   else
                       reserved = R_XTC_32_IMM_8 - r_type + 1;
                   phys_addr = relocation + rel->r_addend;
-                  printf("Reloc offset ABSOLUTE %ld\n", rel->r_offset);
               }
               if (fullim)
                   len = xtc_bytes_12_12_12(phys_addr);
               else
                   len = xtc_bytes_12_12_8(phys_addr);
 
-              printf("Reserved: %d, len: %d, target address is delta %ld\n", reserved,len,phys_addr);
               
               for (i=0; i<reserved-len; i++)
               {
                   /* if we write 0, then execution will crash if we get this wrong
                    */
-                  printf("Emit NOP\n");
                   bfd_put_16 (input_bfd, 0x0000,
                              (bfd_byte*) contents + rel->r_offset+i);
               }
               if (fullim) {
-                  printf("Emmiting FULL 12+12+12 Immediate len %d: %ld\n", len,phys_addr);
                   xtc_emit_imm_121212(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
                                       len);
               }
@@ -1315,6 +1289,8 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
           break;
 
       default:
+          abort();
+
       break;
         }
         if (r_type!=R_XTC_NONE)
@@ -1397,7 +1373,6 @@ xtc_elf_check_relocs (bfd * abfd,
     struct elf32_mb_link_hash_table *htab;
     asection *sreloc = NULL;
 
-    printf("CHECK RELOCS\n");
 
 
     if (info->relocatable)
@@ -1638,6 +1613,8 @@ xtc_elf_check_relocs (bfd * abfd,
                 }
             }
             break;
+        default:
+            abort();
         }
     }
 
@@ -1659,7 +1636,6 @@ calc_fixup (bfd_vma addr, asection *sec)
   /* Look for addr in relax table, total fixup value.  */
   for (i = 0; i < sec->relax_count; i++)
   {
-      printf("Check calc_fixup address %08lx against relax entry at %08lx\n", addr, sec->relax[i].addr);
       if (addr <= sec->relax[i].addr)
         break;
       fixup -= sec->relax[i].size;
@@ -1725,13 +1701,11 @@ xtc_elf_relax_delete_bytes (bfd *abfd, asection *sec,
       if (isym->st_shndx == sec_shndx
 	  && isym->st_value > addr
           && isym->st_value <= toaddr) {
-
+#if 0
           char *name = (bfd_elf_string_from_elf_section
                         (abfd, symtab_hdr->sh_link, isym->st_name));
 	      
-
-          printf("Adjust %s %d, before %lx after %lx\n", name, -count, isym->st_value,
-                isym->st_value-count);
+#endif
           isym->st_value -= count;
       }
     }
@@ -1824,7 +1798,6 @@ xtc_elf_relax_section (bfd *abfd,
     {
         bfd_vma symval;
 
-        printf("relax RELOC: %ld %ld\n", irel->r_info, ELF32_R_TYPE (irel->r_info));
 
         if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8_PCREL)
             && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8_PCREL )
@@ -1857,7 +1830,6 @@ xtc_elf_relax_section (bfd *abfd,
         /* Get the value of the symbol referred to by the reloc.  */
         if (ELF32_R_SYM (irel->r_info) < symtab_hdr->sh_info)
         {
-            printf("Local symbol\n");
             /* A local symbol.  */
             asection *sym_sec;
 
@@ -1911,8 +1883,6 @@ xtc_elf_relax_section (bfd *abfd,
 
         bfd_vma value = symval;
 
-        printf("About to check relax: value is %ld (0x%08lx) at address %lx\n", symval, symval,
-              irel->r_offset);
 
         int bytesNeeded;
         int newReloc = ELF32_R_TYPE(irel->r_info);
@@ -1939,7 +1909,6 @@ xtc_elf_relax_section (bfd *abfd,
                 deleteBytes = 2;
             }
             //newsize = bytesNeeded;
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
 
             break;
 
@@ -1958,7 +1927,6 @@ xtc_elf_relax_section (bfd *abfd,
                 deleteBytes = 2;
             }
 
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
 
             break;
 
@@ -1976,7 +1944,6 @@ xtc_elf_relax_section (bfd *abfd,
                 deleteBytes = 1;
             }
 
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
 
             break;
 
@@ -1995,7 +1962,6 @@ xtc_elf_relax_section (bfd *abfd,
                 newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
                 deleteBytes = 1;
             }
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
             break;
 
         case R_XTC_32_IMM_8_PCREL:
@@ -2005,12 +1971,13 @@ xtc_elf_relax_section (bfd *abfd,
 
         default:
             {
+#if 0
                 char *name=NULL;
                 reloc_howto_type *howto = bfd_reloc_type_lookup(abfd, ELF32_R_TYPE(irel->r_info));
                 if (howto) {
                     name = howto->name;
                 }
-                printf("Cannot handle reloc type %ld (%s)\n", ELF32_R_TYPE(irel->r_info),name);
+#endif
             }
             abort();
         }
