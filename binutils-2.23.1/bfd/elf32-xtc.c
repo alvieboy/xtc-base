@@ -1614,7 +1614,8 @@ xtc_elf_check_relocs (bfd * abfd,
             }
             break;
         default:
-            abort();
+            //  abort();
+            break;
         }
     }
 
