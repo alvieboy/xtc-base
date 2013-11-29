@@ -17,7 +17,20 @@ typedef enum {
     OP_CALLI,
     OP_RET,
     OP_STWI,
-    OP_LDWI
+    OP_LDWI,
+    OP_LDpW,
+    OP_LDWp,
+    OP_LDmW,
+    OP_LDWm,
+    OP_LDS,
+    OP_LDpS,
+    OP_LDSp,
+    OP_LDB,
+    OP_LDpB,
+    OP_LDBp,
+    OP_BRI,
+    OP_BRIE,
+    OP_BRINE,
 } opcode_type_t;
 
 

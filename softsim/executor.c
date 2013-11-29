@@ -5,7 +5,7 @@
 #include "cpu.h"
 #include <string.h>
 
-#define UNKNOWN_OP(op) do { printf("Invalid opcode %04x\n", op); abort(); } while (0)
+#define UNKNOWN_OP(op) do { printf("Invalid opcode %04x, PC 0x%08x\n", op,cpu->pc); abort(); } while (0)
 
 #define IS_IO(x) (x&0x80000000)
 
@@ -25,7 +25,20 @@ const char *opcodeNames[] = {
     "calli",
     "ret",
     "stwi",
-    "ldwi"
+    "ldwi",
+    "ld+w",
+    "ldw+",
+    "ld-w",
+    "ld+w",
+    "lds",
+    "ld+s",
+    "lds+",
+    "ldb",
+    "ld+b",
+    "ldb+",
+    "bri",
+    "brieq",
+    "brine"
 };
 
 void printOpcode(opcode_t *opcode, FILE *stream)
@@ -33,11 +46,36 @@ void printOpcode(opcode_t *opcode, FILE *stream)
     fprintf(stream,"%s", opcodeNames[opcode->opv]);
 }
 
+static unsigned get_imm8(xtc_cpu_t *cpu, unsigned op)
+{
+    if (cpu->imflag) {
+        return (cpu->imm<<8) | ((op>>4)&0xff);
+    } else {
+        if (op & 0x800) {
+            // Negative
+            return 0xffffff00 | (op>>4)&0xff;
+        } else {
+            return (op>>4)&0xff;
+        }
+    }
+}
+
+static unsigned get_imm12(xtc_cpu_t *cpu, unsigned op)
+{
+    if (cpu->imflag) {
+        return (cpu->imm<<12) | ((op)&0xfff);
+    } else {
+        if (op & 0x800) {
+            // Negative
+            return 0xfffff000 | (op)&0xfff;
+        } else {
+            return (op)&0xfff;
+        }
+    }
+}
+
 static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
 {
-
-#define IMM8 (cpu->imm<<8) | ((op>>4)&0xff)
-#define IMM12 (cpu->imm<<12) | ((op)&0xfff)
 
     opcode->r1 = op & 0xF;
     opcode->r2 = (op>>4) & 0xF;
@@ -56,6 +94,16 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0x8:
             opcode->opv = OP_AND;
             break;
+        case 0x9:
+            opcode->opv = OP_AND;
+            break;
+        case 0xa:
+            opcode->opv = OP_OR;
+            break;
+        case 0xc:
+            opcode->opv = OP_COPY;
+            break;
+
         default:
             UNKNOWN_OP(op);
         }
@@ -75,12 +123,44 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
     case 0x3:
         UNKNOWN_OP(op);
     case 0x4:
-        /* Store */
+        /* Load */
+        opcode->immed = cpu->imm;
+
         switch ((op>>8) & 0xf) {
         case 0:
             opcode->opv = OP_LDWI;
-            opcode->immed = cpu->imm;
             break;
+        case 1:
+            opcode->opv = OP_LDpW;
+            break;
+        case 2:
+            opcode->opv = OP_LDWp;
+            break;
+        case 3:
+            opcode->opv = OP_LDmW;
+            break;
+        case 4:
+            opcode->opv = OP_LDWm;
+            break;
+        case 5:
+            opcode->opv = OP_LDS;
+            break;
+        case 6:
+            opcode->opv = OP_LDpS;
+            break;
+        case 7:
+            opcode->opv = OP_LDSp;
+            break;
+        case 8:
+            opcode->opv = OP_LDB;
+            break;
+        case 9:
+            opcode->opv = OP_LDpB;
+            break;
+        case 10:
+            opcode->opv = OP_LDBp;
+            break;
+
         default:
             UNKNOWN_OP(op);
         }
@@ -90,27 +170,44 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         UNKNOWN_OP(op);
     case 0x6:
         opcode->opv = OP_ADDI;
-        opcode->immed = IMM12;
+        opcode->immed = get_imm12(cpu,op);
         break;
     case 0x7:
         UNKNOWN_OP(op);
     case 0x8:
         opcode->opv = OP_IMM;
-        opcode->immed = IMM12;
+        opcode->immed = get_imm12(cpu,op);
         break;
     case 0x9:
+        UNKNOWN_OP(op);
     case 0xA:
+        opcode->immed = get_imm8(cpu,op);
+        switch (op & 0xf) {
+        case 0x0:
+            opcode->opv = OP_BRI;
+            break;
+        case 0x8:
+            opcode->opv = OP_BRIE;
+            break;
+        case 0x9:
+            opcode->opv = OP_BRINE;
+            break;
+
+        default:
+            UNKNOWN_OP(op);
+        }
+        break;
     case 0xB:
     case 0xC:
         UNKNOWN_OP(op);
     case 0xD:
         // Calli
-        opcode->immed = IMM8;
+        opcode->immed = get_imm8(cpu,op);
         opcode->opv = OP_CALLI;
         break;
     case 0xE:
         opcode->opv = OP_LIMR;
-        opcode->immed = IMM8;
+        opcode->immed = get_imm8(cpu,op);
         break;
     case 0xF:
         opcode->opv = OP_RET;
@@ -143,7 +240,7 @@ static cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
 
     if (realaddr < cpu->memsize) {
-        return cpu->memory[realaddr];
+        return *((uint32_t*)&cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             return handle_read_io( realaddr );
@@ -154,28 +251,66 @@ static cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
     }
 }
 
-static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode)
+static cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+
+    if (realaddr < cpu->memsize) {
+        return *((uint16_t*)&cpu->memory[realaddr]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+static cpu_word_t handle_read_byte(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+
+    if (realaddr < cpu->memsize) {
+        return *((uint8_t*)&cpu->memory[realaddr]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+
+static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     unsigned npc = cpu->pc+2;
 
     /*Delay slot*/
-    if (cpu->branchNext!=-1)
+    if (cpu->branchNext!=-1) {
         npc=cpu->branchNext;
+    }
 
     cpu->branchNext = -1;
     int resetImmed=1;
 
     switch (opcode->opv) {
     case OP_STWI:
-        printf(" r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
+        fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
         handle_store( cpu, opcode->r1, opcode->r2, opcode->immed);
         break;
 
     case OP_LDWI:
-        printf(" (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
+        fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
                cpu->regs[opcode->r1]+opcode->immed);
         cpu->regs[opcode->r2] = handle_read( cpu, opcode->r1, opcode->immed);
+
+        break;
+
+    case OP_LDBp:
+        fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
+               cpu->regs[opcode->r1]+opcode->immed);
+        cpu->regs[opcode->r2] = handle_read_byte( cpu, opcode->r1, opcode->immed);
+        cpu->regs[opcode->r1]++;
 
         break;
     case OP_RET:
@@ -183,7 +318,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode)
         break;
     case OP_IMM:
         resetImmed=0;
-        printf(" %d", opcode->immed);
+        fprintf(stream," %d", opcode->immed);
         break;
 
     case OP_CALLI:
@@ -191,28 +326,60 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode)
         cpu->br = npc + 2;
         break;
 
+    case OP_BRI:
+        cpu->branchNext = npc + opcode->immed;
+        break;
+
+    case OP_BRIE:
+        if (cpu->zero)
+            cpu->branchNext = npc + opcode->immed;
+        break;
+
+    case OP_BRINE:
+        if (!cpu->zero)
+            cpu->branchNext = npc + opcode->immed;
+        break;
+
     case OP_LIMR:
         cpu->regs[opcode->r1] = opcode->immed;
-        printf(" r%d ( <= %08x )", opcode->r1, opcode->immed);
+        fprintf(stream," r%d ( <= %08x )", opcode->r1, opcode->immed);
         break;
 
     case OP_ADDI:
         cpu->regs[opcode->r1] += opcode->immed;
-        printf(" %d, r%d ( <= %08x )", opcode->immed, opcode->r1, cpu->regs[opcode->r1] );
+        fprintf(stream," %d, r%d ( <= %08x )", opcode->immed, opcode->r1, cpu->regs[opcode->r1] );
+        break;
+
+    case OP_COPY:
+        cpu->regs[opcode->r1] = opcode->immed;
+        fprintf(stream," %d, r%d ( <= %08x )", opcode->immed, opcode->r1, cpu->regs[opcode->r1] );
         break;
 
     case OP_ADD:
         cpu->regs[opcode->r1] += cpu->regs[opcode->r2];
-        printf(" r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
         break;
 
     case OP_AND:
         cpu->regs[opcode->r1] &= cpu->regs[opcode->r2];
-        printf(" r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
         /* Set flags */
+        cpu->zero = (cpu->regs[opcode->r1]==0);
+        cpu->carry = 0;
         break;
 
+    case OP_OR:
+        cpu->regs[opcode->r1] |= cpu->regs[opcode->r2];
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        /* Set flags */
+        cpu->zero = (cpu->regs[opcode->r1]==0);
+        cpu->carry = 0;
+        break;
+
+    case OP_NOP:
+        break;
     default:
+        UNKNOWN_OP(-1);
         break;
     }
 
@@ -244,15 +411,20 @@ xtc_cpu_t *initialize()
 
 int execute(xtc_cpu_t *cpu)
 {
+    FILE *trace = fopen("trace.txt","w");
+    if (NULL==trace) {
+        perror("fopen");
+        return -1;
+    }
     do {
         opcode_t opcode;
         inst_t inst = (unsigned)(cpu->memory[cpu->pc]<<8) | cpu->memory[cpu->pc+1];
         decode_single_opcode(cpu,inst,&opcode);
-        printf("0x%08x ",cpu->pc);
-        printf("0x%04x ",inst);
-        printOpcode(&opcode, stdout);
-        execute_single_opcode(cpu, &opcode);
-        printf("\n");
+        fprintf(trace,"0x%08x ",cpu->pc);
+        fprintf(trace,"0x%04x ",inst);
+        printOpcode(&opcode, trace);
+        execute_single_opcode(cpu, &opcode, trace);
+        fprintf(trace,"\n");
 
     }while (1);
 }
