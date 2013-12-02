@@ -61,7 +61,7 @@
 #define DELAY_SLOT 1
 #define NO_DELAY_SLOT 0
 
-#define MAX_OPCODES 68
+#define MAX_OPCODES 69
 
 
 struct op_code_struct
@@ -93,6 +93,7 @@ struct op_code_struct
     {"srl",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1900, OPCODE_MASK_ARITH, srl,logical_inst },
     {"sra",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1300, OPCODE_MASK_ARITH, sra,logical_inst },
     {"subb",  INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1500, OPCODE_MASK_ARITH, subb, arithmetic_inst },
+    {"mul",   INST_TYPE_R1_R2, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x1600, OPCODE_MASK_ARITH, mul, arithmetic_inst },
 
     /* Single-reg ops */
     {"not",   INST_TYPE_R,     INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0010, OPCODE_MASK_REGONLY, not,logical_inst },

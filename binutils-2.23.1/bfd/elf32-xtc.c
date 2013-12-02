@@ -1287,9 +1287,19 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
         case R_XTC_NONE:
           r = bfd_reloc_ok;
           break;
+      case R_XTC_32:
+          /* Waht... */
+#if 0
+          bfd_put_32( input_bfd,
+                     contents + rel->r_offset,
+                     relocation + rel->r_addend);
+#endif
+          r = bfd_reloc_ok;
+          break;
 
       default:
-          abort();
+          fprintf(stderr,"Cannot handle relocation type %d\n", r_type);
+          return FALSE;
 
       break;
         }
