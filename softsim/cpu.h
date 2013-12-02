@@ -18,5 +18,12 @@ typedef struct xtc_cpu {
 
 typedef uint16_t inst_t;
 
+uint32_t xtc_read_mem_u32(unsigned char *addr);
+uint16_t xtc_read_mem_u16(unsigned char *addr);
+uint8_t xtc_read_mem_u8(unsigned char *addr);
+
+void xtc_store_mem_u32(unsigned char *addr, uint32_t val);
+void xtc_store_mem_u16(unsigned char *addr, uint16_t val);
+void xtc_store_mem_u8(unsigned char *addr, uint8_t val);
 
 #endif

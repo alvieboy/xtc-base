@@ -25,6 +25,8 @@ const char *opcodeNames[] = {
     "calli",
     "ret",
     "stwi",
+    "sts",
+    "stb",
     "ldwi",
     "ld+w",
     "ldw+",
@@ -39,6 +41,8 @@ const char *opcodeNames[] = {
     "bri",
     "brieq",
     "brine",
+    "brilt",
+    "brigt",
     "cmpi"
 };
 
@@ -47,13 +51,56 @@ void printOpcode(opcode_t *opcode, FILE *stream)
     fprintf(stream,"%s", opcodeNames[opcode->opv]);
 }
 
+uint32_t xtc_read_mem_u32(unsigned char *addr){
+    uint32_t r;
+    r = ((uint32_t)(*addr++))<<24;
+    r+= ((uint32_t)(*addr++))<<16;
+    r+= ((uint32_t)(*addr++))<<8;
+    r+= ((uint32_t)(*addr));
+    return r;
+}
+
+uint16_t xtc_read_mem_u16(unsigned char *addr){
+    uint16_t r;
+    r= ((uint16_t)(*addr++))<<8;
+    r+= ((uint16_t)(*addr));
+    return r;
+}
+
+uint8_t xtc_read_mem_u8(unsigned char *addr) {
+    uint8_t r;
+    r = ((uint8_t)(*addr));
+    return r;
+
+}
+
+void xtc_store_mem_u32(unsigned char *addr, uint32_t val)
+{
+    *addr++ = val>>24;
+    *addr++ = val>>18;
+    *addr++ = val>>8;
+    *addr = val;
+}
+void xtc_store_mem_u16(unsigned char *addr, uint16_t val)
+{
+    *addr++ = val>>8;
+    *addr = val;
+}
+void xtc_store_mem_u8(unsigned char *addr, uint8_t val)
+{
+    *addr = val;
+}
+
+
+
 static void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
-        cpu->memory[realaddr]=cpu->regs[reg_val];
+        xtc_store_mem_u32( &cpu->memory[realaddr], cpu->regs[reg_val]);
     } else {
         if (IS_IO(realaddr)) {
             handle_store_io( realaddr, cpu->regs[reg_val] );
@@ -64,13 +111,44 @@ static void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, in
     }
 }
 
+static void handle_store_short(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~1;
+
+    if (realaddr < cpu->memsize) {
+        xtc_store_mem_u16( &cpu->memory[realaddr], cpu->regs[reg_val]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+
+static void handle_store_byte(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    if (realaddr < cpu->memsize) {
+        xtc_store_mem_u8( &cpu->memory[realaddr], cpu->regs[reg_val]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+
 static cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
-        return *((uint32_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u32( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             return handle_read_io( realaddr );
@@ -85,9 +163,10 @@ static cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offse
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~1;
 
     if (realaddr < cpu->memsize) {
-        return *((uint16_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u16( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
@@ -101,7 +180,7 @@ static cpu_word_t handle_read_byte(xtc_cpu_t *cpu, unsigned reg_addr, int offset
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
 
     if (realaddr < cpu->memsize) {
-        return *((uint8_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u8( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
@@ -182,6 +261,18 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
             opcode->opv = OP_STWI;
             opcode->immed = cpu->imm;
             break;
+
+        case 5:
+        case 0xc: // Remove later
+            opcode->opv = OP_STS;
+            opcode->immed = cpu->imm;
+            break;
+
+        case 8:
+        case 0xd: // Remove later
+            opcode->opv = OP_STB;
+            opcode->immed = cpu->imm;
+            break;
         default:
             UNKNOWN_OP(op);
         }
@@ -251,18 +342,27 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         opcode->immed = get_imm12(cpu,op);
         break;
     case 0x9:
-        UNKNOWN_OP(op);
+        // BRI - new format
+        opcode->immed = get_imm8(cpu,op);
+        opcode->opv = OP_BRI;
+        break;
     case 0xA:
         opcode->immed = get_imm8(cpu,op);
         switch (op & 0xf) {
         case 0x0:
-            opcode->opv = OP_BRI;
+            opcode->opv = OP_BRI; // Compat... TODO: remove
             break;
         case 0x8:
             opcode->opv = OP_BRIE;
             break;
         case 0x9:
             opcode->opv = OP_BRINE;
+            break;
+        case 0xa:
+            opcode->opv = OP_BRIGT;
+            break;
+        case 0xc:
+            opcode->opv = OP_BRILT;
             break;
 
         default:
@@ -306,6 +406,18 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
         handle_store( cpu, opcode->r1, opcode->r2, opcode->immed);
+        break;
+
+    case OP_STS:
+        fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
+               cpu->regs[opcode->r1]+opcode->immed);
+        handle_store_short( cpu, opcode->r1, opcode->r2, opcode->immed);
+        break;
+
+    case OP_STB:
+        fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
+               cpu->regs[opcode->r1]+opcode->immed);
+        handle_store_byte( cpu, opcode->r1, opcode->r2, opcode->immed);
         break;
 
     case OP_LDWI:
@@ -356,9 +468,19 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
             cpu->branchNext = npc + opcode->immed;
         break;
 
+    case OP_BRILT:
+        if (!cpu->carry && !cpu->zero)
+            cpu->branchNext = npc + opcode->immed;
+        break;
+
+    case OP_BRIGT:
+        if (cpu->carry)
+            cpu->branchNext = npc + opcode->immed;
+        break;
+
     case OP_LIMR:
         cpu->regs[opcode->r1] = opcode->immed;
-        fprintf(stream," r%d ( <= %08x )", opcode->r1, opcode->immed);
+        fprintf(stream," %d, r%d ( <= %08x )", opcode->immed, opcode->r1, opcode->immed);
         break;
 
     case OP_ADDI:
@@ -367,8 +489,8 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         break;
 
     case OP_COPY:
-        cpu->regs[opcode->r1] = opcode->immed;
-        fprintf(stream," %d, r%d ( <= %08x )", opcode->immed, opcode->r1, cpu->regs[opcode->r1] );
+        cpu->regs[opcode->r1] = cpu->regs[opcode->r2];
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
         break;
 
     case OP_ADD:
