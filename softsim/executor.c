@@ -19,6 +19,10 @@ const char *opcodeNames[] = {
     "or",
     "copy",
     "xor",
+    "sra",
+    "srl",
+    "shl",
+    "cmp",
     "addi",
     "imm",
     "limr",
@@ -43,6 +47,7 @@ const char *opcodeNames[] = {
     "brine",
     "brilt",
     "brigt",
+    "briugt",
     "cmpi"
 };
 
@@ -236,17 +241,29 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0x0:
             opcode->opv = OP_ADD;
             break;
+        case 0x3:
+            opcode->opv = OP_SRA;
+            break;
+        case 0x4:
+            opcode->opv = OP_SUB;
+            break;
         case 0x8:
             opcode->opv = OP_AND;
             break;
         case 0x9:
-            opcode->opv = OP_AND;
+            opcode->opv = OP_SRL;
             break;
         case 0xa:
             opcode->opv = OP_OR;
             break;
         case 0xc:
             opcode->opv = OP_COPY;
+            break;
+        case 0xf:
+            opcode->opv = OP_SHL;
+            break;
+        case 0xd:
+            opcode->opv = OP_CMP;
             break;
 
         default:
@@ -364,6 +381,9 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0xc:
             opcode->opv = OP_BRILT;
             break;
+        case 0xe:
+            opcode->opv = OP_BRIUGT;
+            break;
 
         default:
             UNKNOWN_OP(op);
@@ -474,6 +494,13 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         break;
 
     case OP_BRIGT:
+        // TODO: sign
+        if (cpu->carry)
+            cpu->branchNext = npc + opcode->immed;
+        break;
+
+    case OP_BRIUGT:
+        // TODO: sign
         if (cpu->carry)
             cpu->branchNext = npc + opcode->immed;
         break;
@@ -498,6 +525,21 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
         break;
 
+    case OP_SRL:
+        cpu->regs[opcode->r1] >>= cpu->regs[opcode->r2];
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        break;
+
+    case OP_SHL:
+        cpu->regs[opcode->r1] <<= cpu->regs[opcode->r2];
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        break;
+
+    case OP_SRA:
+        cpu->regs[opcode->r1] = (cpu_word_t)( (int) cpu->regs[opcode->r1]  >> cpu->regs[opcode->r2]);
+        fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+        break;
+
     case OP_AND:
         cpu->regs[opcode->r1] &= cpu->regs[opcode->r2];
         fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
@@ -512,6 +554,21 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         /* Set flags */
         cpu->zero = (cpu->regs[opcode->r1]==0);
         cpu->carry = 0;
+        break;
+
+    case OP_CMP:
+        fprintf(stream," r%d, r%d", opcode->r2, opcode->r1);
+        /* Set flags */
+        cpu->zero = (cpu->regs[opcode->r1] == cpu->regs[opcode->r2]);
+        cpu->carry = (cpu->regs[opcode->r1] > cpu->regs[opcode->r2]);
+        break;
+
+    case OP_SUB:
+        cpu->regs[opcode->r1] -= cpu->regs[opcode->r2];
+        fprintf(stream," r%d, r%d", opcode->r2, opcode->r1);
+        /* Set flags */
+        cpu->zero = (cpu->regs[opcode->r1] == cpu->regs[opcode->r2]);
+        cpu->carry = (cpu->regs[opcode->r1] > cpu->regs[opcode->r2]);
         break;
 
     case OP_CMPI:
