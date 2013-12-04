@@ -1,293 +1,72 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include "opcodes.h"
-#include <fcntl.h>
+
 #include "cpu.h"
-#include <string.h>
+#include "opcodes.h"
+#include "decode.h"
+#include "memory.h"
+#include "executer.h"
+#include "alu_ops.h"
+#include "cflow_ops.h"
+#include "mem_ops.h"
+#include "reg_ops.h"
 
-#define UNKNOWN_OP(op) do { printf("Invalid opcode %04x, PC 0x%08x\n", op,cpu->pc); abort(); } while (0)
 
-#define IS_IO(x) (x&0x80000000)
+/** @brief function pointer declaration for instruction handlers
+ */
+typedef void(*inst_handler_t)(xtc_cpu_t *cpu,
+                              const opcode_t *opcode,
+                              FILE *stream);
 
-const char *opcodeNames[] = {
-    "nop",
-    "add",
-    "addc",
-    "sub",
-    "subb",
-    "and",
-    "or",
-    "copy",
-    "xor",
-    "addi",
-    "imm",
-    "limr",
-    "calli",
-    "ret",
-    "stwi",
-    "ldwi",
-    "ld+w",
-    "ldw+",
-    "ld-w",
-    "ld+w",
-    "lds",
-    "ld+s",
-    "lds+",
-    "ldb",
-    "ld+b",
-    "ldb+",
-    "bri",
-    "brieq",
-    "brine",
-    "cmpi"
+/** @brief Structure that holds instruction handler function pointers
+ */
+typedef struct inst_handling
+{
+      opcode_type_t opcode;
+      char *opcode_name;
+      inst_handler_t handler;
+} inst_handling_t;
+
+
+const inst_handling_t opc_handling[] = {
+    /* OP_NOP   */ {OP_NOP,   "nop",   0},
+    /* OP_ADD   */ {OP_ADD,   "add",   alu_add},
+    /* OP_ADDC  */ {OP_ADDC,  "addc",  alu_addc},
+    /* OP_SUB   */ {OP_SUB,   "sub",   alu_sub},
+    /* OP_SUBB  */ {OP_SUBB,  "subb",  alu_subb},
+    /* OP_AND   */ {OP_AND,   "and",   alu_and},
+    /* OP_OR    */ {OP_OR,    "or",    alu_or},
+    /* OP_COPY  */ {OP_COPY,  "copy",  alu_copy},
+    /* OP_XOR   */ {OP_XOR,   "xor",   alu_xor},
+    /* OP_ADDI  */ {OP_ADDI,  "addi",  reg_addi},
+    /* OP_IMM   */ {OP_IMM,   "imm",   reg_imm},
+    /* OP_LIMR  */ {OP_LIMR,  "limr",  reg_limr},
+    /* OP_CALLI */ {OP_CALLI, "calli", cflow_calli},
+    /* OP_RET   */ {OP_RET,   "ret",   cflow_ret},
+    /* OP_STWI  */ {OP_STWI,  "stwi",  mem_stwi},
+    /* OP_LDWI  */ {OP_LDWI,  "ldwi",  mem_ldwi},
+    /* OP_LDpW  */ {OP_LDpW,  "ld+w",  mem_ldpw},
+    /* OP_LDWp  */ {OP_LDWp,  "ldw+",  mem_ldwp},
+    /* OP_LDmW  */ {OP_LDmW,  "ld-w",  mem_ldmw},
+    /* OP_LDWm  */ {OP_LDWm,  "ld+w",  mem_ldwm},
+    /* OP_LDS   */ {OP_LDS,   "lds",   mem_lds},
+    /* OP_LDpS  */ {OP_LDpS,  "ld+s",  mem_ldps},
+    /* OP_LDSp  */ {OP_LDSp,  "lds+",  mem_ldsp},
+    /* OP_LDB   */ {OP_LDB,   "ldb",   mem_ldb},
+    /* OP_LDpB  */ {OP_LDpB,  "ld+b",  mem_ldpb},
+    /* OP_LDBp  */ {OP_LDBp,  "ldb+",  mem_ldbp},
+    /* OP_BRI   */ {OP_BRI,   "bri",   cflow_bri},
+    /* OP_BRIE  */ {OP_BRIE,  "brieq", cflow_brie},
+    /* OP_BRINE */ {OP_BRINE, "brine", cflow_brine},
+    /* OP_CMPI  */ {OP_CMPI,  "cmpi",  reg_cmpi}
 };
+
 
 void printOpcode(opcode_t *opcode, FILE *stream)
 {
-    fprintf(stream,"%s", opcodeNames[opcode->opv]);
+    fprintf(stream,"%s", opc_handling[opcode->opv].opcode_name);
 }
 
-static void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
-{
-    /* Check overflow, underflow, manage IO */
-    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
-
-    if (realaddr < cpu->memsize) {
-        cpu->memory[realaddr]=cpu->regs[reg_val];
-    } else {
-        if (IS_IO(realaddr)) {
-            handle_store_io( realaddr, cpu->regs[reg_val] );
-        } else {
-            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
-            abort();
-        }
-    }
-}
-
-static cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
-{
-    /* Check overflow, underflow, manage IO */
-    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
-
-    if (realaddr < cpu->memsize) {
-        return *((uint32_t*)&cpu->memory[realaddr]);
-    } else {
-        if (IS_IO(realaddr)) {
-            return handle_read_io( realaddr );
-        } else {
-            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
-            abort();
-        }
-    }
-}
-
-static cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
-{
-    /* Check overflow, underflow, manage IO */
-    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
-
-    if (realaddr < cpu->memsize) {
-        return *((uint16_t*)&cpu->memory[realaddr]);
-    } else {
-        if (IS_IO(realaddr)) {
-            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
-            abort();
-        }
-    }
-}
-static cpu_word_t handle_read_byte(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
-{
-    /* Check overflow, underflow, manage IO */
-    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
-
-    if (realaddr < cpu->memsize) {
-        return *((uint8_t*)&cpu->memory[realaddr]);
-    } else {
-        if (IS_IO(realaddr)) {
-            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
-            abort();
-        }
-    }
-}
-
-
-static unsigned get_imm8(xtc_cpu_t *cpu, unsigned op)
-{
-    if (cpu->imflag) {
-        return (cpu->imm<<8) | ((op>>4)&0xff);
-    } else {
-        if (op & 0x800) {
-            // Negative
-            return 0xffffff00 | (op>>4)&0xff;
-        } else {
-            return (op>>4)&0xff;
-        }
-    }
-}
-
-static unsigned get_imm12(xtc_cpu_t *cpu, unsigned op)
-{
-    if (cpu->imflag) {
-        return (cpu->imm<<12) | ((op)&0xfff);
-    } else {
-        if (op & 0x800) {
-            // Negative
-            return 0xfffff000 | (op)&0xfff;
-        } else {
-            return (op)&0xfff;
-        }
-    }
-}
-
-static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
-{
-
-    opcode->op = op;
-    opcode->r1 = op & 0xF;
-    opcode->r2 = (op>>4) & 0xF;
-    opcode->hasImmed=0;
-
-    switch (op>>12) {
-    case 0x0:
-        opcode->opv = OP_NOP;
-        break;
-    case 0x1:
-        /* ALU operations */
-        switch ((op>>8) & 0xf) {
-        case 0x0:
-            opcode->opv = OP_ADD;
-            break;
-        case 0x8:
-            opcode->opv = OP_AND;
-            break;
-        case 0x9:
-            opcode->opv = OP_AND;
-            break;
-        case 0xa:
-            opcode->opv = OP_OR;
-            break;
-        case 0xc:
-            opcode->opv = OP_COPY;
-            break;
-
-        default:
-            UNKNOWN_OP(op);
-        }
-        break;
-    case 0x2:
-        /* Store */
-        switch ((op>>8) & 0xf) {
-        case 0:
-        case 0xb: // Remove later
-            opcode->opv = OP_STWI;
-            opcode->immed = cpu->imm;
-            break;
-        default:
-            UNKNOWN_OP(op);
-        }
-        
-        break;
-    case 0x3:
-        UNKNOWN_OP(op);
-    case 0x4:
-        /* Load */
-        opcode->immed = cpu->imm;
-
-        switch ((op>>8) & 0xf) {
-        case 0:
-        case 0xb: // This will be removed later
-            opcode->opv = OP_LDWI;
-            break;
-        case 1:
-            opcode->opv = OP_LDpW;
-            break;
-        case 2:
-            opcode->opv = OP_LDWp;
-            break;
-        case 3:
-            opcode->opv = OP_LDmW;
-            break;
-        case 4:
-            opcode->opv = OP_LDWm;
-            break;
-        case 5:
-        case 0xc: // Remove later
-            opcode->opv = OP_LDS;
-            break;
-        case 6:
-            opcode->opv = OP_LDpS;
-            break;
-        case 7:
-            opcode->opv = OP_LDSp;
-            break;
-        case 8:
-        case 0xd: // Remove later
-            opcode->opv = OP_LDB;
-            break;
-        case 9:
-            opcode->opv = OP_LDpB;
-            break;
-        case 0xa:
-            opcode->opv = OP_LDBp;
-            break;
-
-        default:
-            UNKNOWN_OP(op);
-        }
-        
-        break;
-    case 0x5:
-        UNKNOWN_OP(op);
-    case 0x6:
-        opcode->opv = OP_ADDI;
-        opcode->immed = get_imm8(cpu,op);
-        break;
-    case 0x7:
-        opcode->opv = OP_CMPI;
-        opcode->immed = get_imm8(cpu,op);
-        break;
-    case 0x8:
-        opcode->opv = OP_IMM;
-        opcode->immed = get_imm12(cpu,op);
-        break;
-    case 0x9:
-        UNKNOWN_OP(op);
-    case 0xA:
-        opcode->immed = get_imm8(cpu,op);
-        switch (op & 0xf) {
-        case 0x0:
-            opcode->opv = OP_BRI;
-            break;
-        case 0x8:
-            opcode->opv = OP_BRIE;
-            break;
-        case 0x9:
-            opcode->opv = OP_BRINE;
-            break;
-
-        default:
-            UNKNOWN_OP(op);
-        }
-        break;
-    case 0xB:
-    case 0xC:
-        UNKNOWN_OP(op);
-    case 0xD:
-        // Calli
-        opcode->immed = get_imm8(cpu,op);
-        opcode->opv = OP_CALLI;
-        break;
-    case 0xE:
-        opcode->opv = OP_LIMR;
-        opcode->immed = get_imm8(cpu,op);
-        break;
-    case 0xF:
-        opcode->opv = OP_RET;
-        break;
-    default:
-        UNKNOWN_OP(op);
-    }
-}
 
 static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
@@ -416,19 +195,44 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     }
 
     cpu->pc=npc;
+    return 0;
 }
 
-xtc_cpu_t *initialize()
+static int execute_single_opcode_new(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    xtc_cpu_t *cpu = malloc(sizeof(xtc_cpu_t));
-    cpu->memsize = 16384;
-    cpu->memory = malloc(cpu->memsize);
-    cpu->pc=cpu->br=cpu->y=0;
-    cpu->imm = 0;
-    cpu->imflag = 0;
+    cpu->npc = cpu->pc+2;
+
+    /*Delay slot*/
+    if (cpu->branchNext!=-1) {
+        cpu->npc=cpu->branchNext;
+    }
+
     cpu->branchNext = -1;
-    memset(cpu->regs, 0, sizeof(cpu->regs));
-    return cpu;
+    cpu->resetImmed=1;
+
+
+    if (opcode->opv == OP_NOP)
+    {
+        /* Do nothing to nopeit out*/
+    }
+    else if (opcode->opv > OP_NOP && opcode->opv <= OP_CMPI)
+    {
+        opc_handling[opcode->opv].handler(cpu, opcode, stream);
+    }
+    else {
+        UNKNOWN_OP(opcode->op);
+    }
+
+    if ( cpu->resetImmed ) {
+        cpu->imm=0;
+        cpu->imflag=0;
+    } else {
+        cpu->imm=opcode->immed;
+        cpu->imflag=1;
+    }
+
+    cpu->pc=cpu->npc;
+    return 0;
 }
 
 
@@ -446,29 +250,10 @@ int execute(xtc_cpu_t *cpu)
         fprintf(trace,"0x%08x ",cpu->pc);
         fprintf(trace,"0x%04x ",inst);
         printOpcode(&opcode, trace);
-        execute_single_opcode(cpu, &opcode, trace);
+        //execute_single_opcode(cpu, &opcode, trace);
+        execute_single_opcode_new(cpu, &opcode, trace);
         fprintf(trace,"\n");
 
     }while (1);
 }
 
-int run(const char *memfile)
-{
-    xtc_cpu_t *cpu = initialize();
-
-    int fd = open(memfile,O_RDONLY);
-    if (fd<0) {
-        perror("Cannot open file");
-        return -1;
-    }
-
-    read(fd,cpu->memory,cpu->memsize);
-
-    execute(cpu);
-}
-
-
-int main(int argc, char **argv)
-{
-    return run(argv[1]);
-}

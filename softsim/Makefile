@@ -1,5 +1,21 @@
-CFLAGS=-O2 -g
+CFLAGS=-O2 -g -Wall
+
+OBJ = softsim.o \
+	executor.o \
+	decode.o \
+	io.o \
+	memory.o \
+	alu_ops.o \
+	cflow_ops.o \
+	mem_ops.o \
+	reg_ops.o
+
+
 all: xtce
 
-xtce: executor.o io.o
+clean:
+	rm -fv $(OBJ)
+	rm -fv xtce
+
+xtce: $(OBJ)
 	$(CC) -o $@ $+

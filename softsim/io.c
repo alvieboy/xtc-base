@@ -1,5 +1,6 @@
 #include "io.h"
 #include <stdio.h>
+#include <stdlib.h>
 
 void handle_store_io(cpu_pointer_t address, cpu_word_t value)
 {
