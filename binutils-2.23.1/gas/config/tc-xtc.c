@@ -743,6 +743,8 @@ md_assemble (char * str)
 
     //int ismem = 0;
 
+    int isSpecialReg=0;
+
     switch (opcode->inst_type)
     {
 
@@ -792,6 +794,8 @@ md_assemble (char * str)
 
         output = frag_more (isize);
         break;
+    case INST_TYPE_MEM_S:
+        isSpecialReg=1;
 
     case INST_TYPE_MEM:
 
@@ -829,8 +833,11 @@ md_assemble (char * str)
         inst |= (reg2 << RB_LOW) & RB_MASK;
 
         /* Check for spl registers.  */
-        if (!check_gpr_reg (& reg2))
+        if (isSpecialReg == 0 && !check_gpr_reg (& reg2))
             as_fatal (_("Cannot use special register with this instruction"));
+
+        if (isSpecialReg == 1  && check_gpr_reg (& reg2))
+            as_fatal (_("Cannot use general purpose register with this instruction"));
 
         /* Now, check if we need to add a displacement */
         if (hasimm==1) {
