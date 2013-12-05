@@ -58,11 +58,5 @@ typedef struct opcode {
 
 } opcode_t;
 
-#define NOT_IMPLEMENT_OP(op) \
-do { \
-    printf("Opcode Not Implemented %04x, PC 0x%08x\n", op,cpu->pc);\
-    abort();\
-} while (0)
-
 
 #endif

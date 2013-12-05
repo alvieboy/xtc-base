@@ -11,7 +11,7 @@ void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offse
     realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
-        cpu->memory[realaddr]=cpu->regs[reg_val];
+        xtc_store_mem_u32( &cpu->memory[realaddr], cpu->regs[reg_val]);
     } else {
         if (IS_IO(realaddr)) {
             handle_store_io( realaddr, cpu->regs[reg_val] );
@@ -59,7 +59,7 @@ cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
     realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
-        return *((uint32_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u32( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             return handle_read_io( realaddr );
@@ -68,6 +68,7 @@ cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
             abort();
         }
     }
+    return 0;
 }
 
 cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
@@ -86,6 +87,7 @@ cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
     }
     return 0;
 }
+
 cpu_word_t handle_read_byte(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
 {
     /* Check overflow, underflow, manage IO */

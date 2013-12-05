@@ -82,24 +82,40 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         break;
     case 0x2:
         /* Store */
-        switch ((op>>8) & 0xf) {
+        switch ((op>>8) & 0x7) {
         case 0:
-        case 0xb: // Remove later
-            opcode->opv = OP_STWI;
+            opcode->opv = OP_STW;
             opcode->immed = cpu->imm;
             break;
-
-        case 5:
-        case 0xc: // Remove later
+        case 1:
             opcode->opv = OP_STS;
             opcode->immed = cpu->imm;
             break;
-
-        case 8:
-        case 0xd: // Remove later
+        case 2:
             opcode->opv = OP_STB;
             opcode->immed = cpu->imm;
             break;
+        case 3:
+            opcode->opv = OP_STSPR;
+            opcode->immed = cpu->imm;
+            break;
+        case 4:
+            opcode->opv = OP_STWp;
+            opcode->immed = cpu->imm;
+            break;
+        case 5:
+            opcode->opv = OP_STSp;
+            opcode->immed = cpu->imm;
+            break;
+        case 6:
+            opcode->opv = OP_STBp;
+            opcode->immed = cpu->imm;
+            break;
+        case 7:
+            opcode->opv = OP_STSPRp;
+            opcode->immed = cpu->imm;
+            break;
+
         default:
             UNKNOWN_OP(op);
         }
@@ -111,44 +127,31 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         /* Load */
         opcode->immed = cpu->imm;
 
-        switch ((op>>8) & 0xf) {
+        switch ((op>>8) & 0x7) {
         case 0:
-        case 0xb: // This will be removed later
-            opcode->opv = OP_LDWI;
+            opcode->opv = OP_LDW;
             break;
         case 1:
-            opcode->opv = OP_LDpW;
-            break;
-        case 2:
-            opcode->opv = OP_LDWp;
-            break;
-        case 3:
-            opcode->opv = OP_LDmW;
-            break;
-        case 4:
-            opcode->opv = OP_LDWm;
-            break;
-        case 5:
-        case 0xc: // Remove later
             opcode->opv = OP_LDS;
             break;
-        case 6:
-            opcode->opv = OP_LDpS;
-            break;
-        case 7:
-            opcode->opv = OP_LDSp;
-            break;
-        case 8:
-        case 0xd: // Remove later
+        case 2:
             opcode->opv = OP_LDB;
             break;
-        case 9:
-            opcode->opv = OP_LDpB;
+        case 3:
+            opcode->opv = OP_LDSPR;
             break;
-        case 0xa:
+        case 4:
+            opcode->opv = OP_LDWp;
+            break;
+        case 5:
+            opcode->opv = OP_LDSp;
+            break;
+        case 6:
             opcode->opv = OP_LDBp;
             break;
-
+        case 7:
+            opcode->opv = OP_LDSPRp;
+            break;
         default:
             UNKNOWN_OP(op);
         }

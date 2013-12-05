@@ -2,7 +2,7 @@
 
 void cflow_calli(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
     cpu->branchNext = cpu->npc + opcode->immed;
-    cpu->br = cpu->npc + 2;
+    cpu->br = npc + 2;
 }
 
 void cflow_ret(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
@@ -39,8 +39,8 @@ void cflow_brigt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 void cflow_briugt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     // TODO: sign
-        if (cpu->carry)
-            cpu->branchNext = cpu->npc + opcode->immed;
+    if (cpu->carry)
+        cpu->branchNext = cpu->npc + opcode->immed;
 }
 
 
