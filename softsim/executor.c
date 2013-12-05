@@ -6,6 +6,7 @@
 #include <string.h>
 
 #define UNKNOWN_OP(op) do { printf("Invalid opcode %04x, PC 0x%08x\n", op,cpu->pc); abort(); } while (0)
+#define UNHANDLED_OP(name,op) do { printf("Unhandled opcode %s %04x, PC 0x%08x. Fill in a bug report\n", name,op,cpu->pc); abort(); } while (0)
 
 #define IS_IO(x) (x&0x80000000)
 
@@ -28,20 +29,25 @@ const char *opcodeNames[] = {
     "limr",
     "calli",
     "ret",
-    "stwi",
+
+    "stw",
     "sts",
     "stb",
-    "ldwi",
-    "ld+w",
-    "ldw+",
-    "ld-w",
-    "ld+w",
+    "stspr",
+    "stw+",
+    "sts+",
+    "stb+",
+    "stspr+",
+
+    "ldw",
     "lds",
-    "ld+s",
-    "lds+",
     "ldb",
-    "ld+b",
+    "ldspr",
+    "ldw+",
+    "lds+",
     "ldb+",
+    "ldspr+",
+
     "bri",
     "brieq",
     "brine",
@@ -272,24 +278,40 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         break;
     case 0x2:
         /* Store */
-        switch ((op>>8) & 0xf) {
+        switch ((op>>8) & 0x7) {
         case 0:
-        case 0xb: // Remove later
-            opcode->opv = OP_STWI;
+            opcode->opv = OP_STW;
             opcode->immed = cpu->imm;
             break;
-
-        case 5:
-        case 0xc: // Remove later
+        case 1:
             opcode->opv = OP_STS;
             opcode->immed = cpu->imm;
             break;
-
-        case 8:
-        case 0xd: // Remove later
+        case 2:
             opcode->opv = OP_STB;
             opcode->immed = cpu->imm;
             break;
+        case 3:
+            opcode->opv = OP_STSPR;
+            opcode->immed = cpu->imm;
+            break;
+        case 4:
+            opcode->opv = OP_STWp;
+            opcode->immed = cpu->imm;
+            break;
+        case 5:
+            opcode->opv = OP_STSp;
+            opcode->immed = cpu->imm;
+            break;
+        case 6:
+            opcode->opv = OP_STBp;
+            opcode->immed = cpu->imm;
+            break;
+        case 7:
+            opcode->opv = OP_STSPRp;
+            opcode->immed = cpu->imm;
+            break;
+
         default:
             UNKNOWN_OP(op);
         }
@@ -301,44 +323,31 @@ static int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         /* Load */
         opcode->immed = cpu->imm;
 
-        switch ((op>>8) & 0xf) {
+        switch ((op>>8) & 0x7) {
         case 0:
-        case 0xb: // This will be removed later
-            opcode->opv = OP_LDWI;
+            opcode->opv = OP_LDW;
             break;
         case 1:
-            opcode->opv = OP_LDpW;
-            break;
-        case 2:
-            opcode->opv = OP_LDWp;
-            break;
-        case 3:
-            opcode->opv = OP_LDmW;
-            break;
-        case 4:
-            opcode->opv = OP_LDWm;
-            break;
-        case 5:
-        case 0xc: // Remove later
             opcode->opv = OP_LDS;
             break;
-        case 6:
-            opcode->opv = OP_LDpS;
-            break;
-        case 7:
-            opcode->opv = OP_LDSp;
-            break;
-        case 8:
-        case 0xd: // Remove later
+        case 2:
             opcode->opv = OP_LDB;
             break;
-        case 9:
-            opcode->opv = OP_LDpB;
+        case 3:
+            opcode->opv = OP_LDSPR;
             break;
-        case 0xa:
+        case 4:
+            opcode->opv = OP_LDWp;
+            break;
+        case 5:
+            opcode->opv = OP_LDSp;
+            break;
+        case 6:
             opcode->opv = OP_LDBp;
             break;
-
+        case 7:
+            opcode->opv = OP_LDSPRp;
+            break;
         default:
             UNKNOWN_OP(op);
         }
@@ -422,7 +431,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     int resetImmed=1;
 
     switch (opcode->opv) {
-    case OP_STWI:
+    case OP_STW:
         fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
         handle_store( cpu, opcode->r1, opcode->r2, opcode->immed);
@@ -440,7 +449,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         handle_store_byte( cpu, opcode->r1, opcode->r2, opcode->immed);
         break;
 
-    case OP_LDWI:
+    case OP_LDW:
         fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
                cpu->regs[opcode->r1]+opcode->immed);
         cpu->regs[opcode->r2] = handle_read( cpu, opcode->r1, opcode->immed);
@@ -581,7 +590,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     case OP_NOP:
         break;
     default:
-        UNKNOWN_OP(opcode->op);
+        UNHANDLED_OP(opcodeNames[opcode->opv],opcode->op);
         break;
     }
 
