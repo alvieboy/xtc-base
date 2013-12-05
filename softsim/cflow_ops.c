@@ -23,3 +23,24 @@ void cflow_brine(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
         cpu->branchNext = cpu->npc + opcode->immed;
 }
 
+void cflow_brilt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+{
+    if (!cpu->carry && !cpu->zero)
+        cpu->branchNext = cpu->npc + opcode->immed;
+}
+
+void cflow_brigt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+{
+    // TODO: sign
+    if (cpu->carry)
+        cpu->branchNext = cpu->npc + opcode->immed;
+}
+
+void cflow_briugt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+{
+    // TODO: sign
+        if (cpu->carry)
+            cpu->branchNext = cpu->npc + opcode->immed;
+}
+
+

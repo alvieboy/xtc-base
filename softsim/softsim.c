@@ -6,21 +6,8 @@
 
 #include "cpu.h"
 #include "opcodes.h"
-#include "executer.h"
+#include "executor.h"
 
-
-xtc_cpu_t *initialize()
-{
-    xtc_cpu_t *cpu = malloc(sizeof(xtc_cpu_t));
-    cpu->memsize = 16384;
-    cpu->memory = malloc(cpu->memsize);
-    cpu->pc=cpu->br=cpu->y=0;
-    cpu->imm = 0;
-    cpu->imflag = 0;
-    cpu->branchNext = -1;
-    memset(cpu->regs, 0, sizeof(cpu->regs));
-    return cpu;
-}
 
 int run(const char *memfile)
 {
@@ -34,11 +21,11 @@ int run(const char *memfile)
     }
 
     read_size = read(fd,cpu->memory,cpu->memsize);
-
     if (read_size==-1) {
         perror("File could not open for reading");
         return -1;
     }
+
     execute(cpu);
     return 0;
 }

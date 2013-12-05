@@ -39,6 +39,7 @@ enum xtc_instr
     shr,
     srl,
     sra,
+    mul,
 
     not,
     sextb,

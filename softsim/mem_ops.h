@@ -6,6 +6,8 @@
 #include "opcodes.h"
 
 void mem_stwi(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
+void mem_sts(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
+void mem_stb(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void mem_ldwi(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void mem_ldpw(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void mem_ldwp(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);

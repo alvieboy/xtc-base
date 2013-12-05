@@ -8,6 +8,7 @@ void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offse
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
         cpu->memory[realaddr]=cpu->regs[reg_val];
@@ -21,10 +22,41 @@ void handle_store(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offse
     }
 }
 
+void handle_store_short(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~1;
+
+    if (realaddr < cpu->memsize) {
+        xtc_store_mem_u16( &cpu->memory[realaddr], cpu->regs[reg_val]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+
+void handle_store_byte(xtc_cpu_t *cpu, unsigned reg_addr, unsigned reg_val, int offset)
+{
+    /* Check overflow, underflow, manage IO */
+    cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    if (realaddr < cpu->memsize) {
+        xtc_store_mem_u8( &cpu->memory[realaddr], cpu->regs[reg_val]);
+    } else {
+        if (IS_IO(realaddr)) {
+            printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
+            abort();
+        }
+    }
+}
+
 cpu_word_t handle_read(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~3;
 
     if (realaddr < cpu->memsize) {
         return *((uint32_t*)&cpu->memory[realaddr]);
@@ -42,9 +74,10 @@ cpu_word_t handle_read_short(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
 {
     /* Check overflow, underflow, manage IO */
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
+    realaddr &= ~1;
 
     if (realaddr < cpu->memsize) {
-        return *((uint16_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u16( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);
@@ -59,7 +92,7 @@ cpu_word_t handle_read_byte(xtc_cpu_t *cpu, unsigned reg_addr, int offset)
     cpu_pointer_t realaddr = cpu->regs[reg_addr] + offset;
 
     if (realaddr < cpu->memsize) {
-        return *((uint8_t*)&cpu->memory[realaddr]);
+        return xtc_read_mem_u8( &cpu->memory[realaddr]);
     } else {
         if (IS_IO(realaddr)) {
             printf("\n\nAttempt to access unmapped region at 0x%08x", realaddr);

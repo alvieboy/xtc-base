@@ -8,7 +8,8 @@ OBJ = softsim.o \
 	alu_ops.o \
 	cflow_ops.o \
 	mem_ops.o \
-	reg_ops.o
+	reg_ops.o \
+	cpu.o
 
 
 all: xtce

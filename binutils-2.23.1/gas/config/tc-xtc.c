@@ -875,18 +875,18 @@ md_assemble (char * str)
     case INST_TYPE_R1_R2:
 
         if (strcmp (op_end, ""))
-            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
-        else
-        {
-            as_fatal (_("Error in statement syntax"));
-            reg1 = 0;
-        }
-        if (strcmp (op_end, ""))
-            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2.  */
         else
         {
             as_fatal (_("Error in statement syntax"));
             reg2 = 0;
+        }
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
         }
 
         /* Check for spl registers.  */

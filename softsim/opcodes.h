@@ -11,12 +11,18 @@ typedef enum {
     OP_OR,
     OP_COPY,
     OP_XOR,
+    OP_SRA,
+    OP_SRL,
+    OP_SHL,
+    OP_CMP,
     OP_ADDI,
     OP_IMM,
     OP_LIMR,
     OP_CALLI,
     OP_RET,
     OP_STWI,
+    OP_STS,
+    OP_STB,
     OP_LDWI,
     OP_LDpW,
     OP_LDWp,
@@ -31,6 +37,9 @@ typedef enum {
     OP_BRI,
     OP_BRIE,
     OP_BRINE,
+    OP_BRILT,
+    OP_BRIGT,
+    OP_BRIUGT,
     OP_CMPI
 } opcode_type_t;
 

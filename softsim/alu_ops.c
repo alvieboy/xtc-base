@@ -46,3 +46,26 @@ void alu_xor(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
     NOT_IMPLEMENT_OP(opcode->op);
 }
 
+void alu_sra(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
+    cpu->regs[opcode->r1] = (cpu_word_t)( (int) cpu->regs[opcode->r1]  >> cpu->regs[opcode->r2]);
+    fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+}
+
+void alu_srl(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
+    cpu->regs[opcode->r1] >>= cpu->regs[opcode->r2];
+    fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+}
+
+void alu_shl(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
+    cpu->regs[opcode->r1] <<= cpu->regs[opcode->r2];
+    fprintf(stream," r%d, r%d ( <= %08x )", opcode->r2, opcode->r1, cpu->regs[opcode->r1] );
+}
+
+void alu_cmp(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
+    fprintf(stream," r%d, r%d", opcode->r2, opcode->r1);
+    /* Set flags */
+    cpu->zero = (cpu->regs[opcode->r1] == cpu->regs[opcode->r2]);
+    cpu->carry = (cpu->regs[opcode->r1] > cpu->regs[opcode->r2]);
+}
+
+

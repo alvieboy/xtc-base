@@ -8,11 +8,11 @@
 static unsigned get_imm8(xtc_cpu_t *cpu, unsigned op)
 {
     if (cpu->imflag) {
-        return ((cpu->imm<<8) | ((op>>4)&0xff));
+        return (cpu->imm<<8) | ((op>>4)&0xff);
     } else {
         if (op & 0x800) {
             // Negative
-            return (0xffffff00 | ((op>>4)&0xff));
+            return 0xffffff00 | ((op>>4)&0xff);
         } else {
             return (op>>4)&0xff;
         }
@@ -22,17 +22,16 @@ static unsigned get_imm8(xtc_cpu_t *cpu, unsigned op)
 static unsigned get_imm12(xtc_cpu_t *cpu, unsigned op)
 {
     if (cpu->imflag) {
-        return ((cpu->imm<<12) | ((op)&0xfff));
+        return (cpu->imm<<12) | ((op)&0xfff);
     } else {
         if (op & 0x800) {
             // Negative
-            return (0xfffff000 | ((op)&0xfff));
+            return 0xfffff000 | ((op)&0xfff);
         } else {
             return (op)&0xfff;
         }
     }
 }
-
 
 int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
 {
@@ -52,17 +51,29 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0x0:
             opcode->opv = OP_ADD;
             break;
+        case 0x3:
+            opcode->opv = OP_SRA;
+            break;
+        case 0x4:
+            opcode->opv = OP_SUB;
+            break;
         case 0x8:
             opcode->opv = OP_AND;
             break;
         case 0x9:
-            opcode->opv = OP_AND;
+            opcode->opv = OP_SRL;
             break;
         case 0xa:
             opcode->opv = OP_OR;
             break;
         case 0xc:
             opcode->opv = OP_COPY;
+            break;
+        case 0xf:
+            opcode->opv = OP_SHL;
+            break;
+        case 0xd:
+            opcode->opv = OP_CMP;
             break;
 
         default:
@@ -75,6 +86,18 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0:
         case 0xb: // Remove later
             opcode->opv = OP_STWI;
+            opcode->immed = cpu->imm;
+            break;
+
+        case 5:
+        case 0xc: // Remove later
+            opcode->opv = OP_STS;
+            opcode->immed = cpu->imm;
+            break;
+
+        case 8:
+        case 0xd: // Remove later
+            opcode->opv = OP_STB;
             opcode->immed = cpu->imm;
             break;
         default:
@@ -146,18 +169,30 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         opcode->immed = get_imm12(cpu,op);
         break;
     case 0x9:
-        UNKNOWN_OP(op);
+        // BRI - new format
+        opcode->immed = get_imm8(cpu,op);
+        opcode->opv = OP_BRI;
+        break;
     case 0xA:
         opcode->immed = get_imm8(cpu,op);
         switch (op & 0xf) {
         case 0x0:
-            opcode->opv = OP_BRI;
+            opcode->opv = OP_BRI; // Compat... TODO: remove
             break;
         case 0x8:
             opcode->opv = OP_BRIE;
             break;
         case 0x9:
             opcode->opv = OP_BRINE;
+            break;
+        case 0xa:
+            opcode->opv = OP_BRIGT;
+            break;
+        case 0xc:
+            opcode->opv = OP_BRILT;
+            break;
+        case 0xe:
+            opcode->opv = OP_BRIUGT;
             break;
 
         default:
