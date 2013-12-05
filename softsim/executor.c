@@ -15,55 +15,6 @@
 #include "mem_ops.h"
 #include "reg_ops.h"
 
-
-const char *opcodeNames[] = {
-    "nop",
-    "add",
-    "addc",
-    "sub",
-    "subb",
-    "and",
-    "or",
-    "copy",
-    "xor",
-    "sra",
-    "srl",
-    "shl",
-    "cmp",
-    "addi",
-    "imm",
-    "limr",
-    "calli",
-    "ret",
-
-    "stw",
-    "sts",
-    "stb",
-    "stspr",
-    "stw+",
-    "sts+",
-    "stb+",
-    "stspr+",
-
-    "ldw",
-    "lds",
-    "ldb",
-    "ldspr",
-    "ldw+",
-    "lds+",
-    "ldb+",
-    "ldspr+",
-
-    "bri",
-    "brieq",
-    "brine",
-    "brilt",
-    "brigt",
-    "briugt",
-    "cmpi"
-};
-
-
 /** @brief function pointer declaration for instruction handlers
  */
 typedef void(*inst_handler_t)(xtc_cpu_t *cpu,
@@ -117,7 +68,7 @@ const inst_handling_t opc_handling[] = {
     /* OP_LDSp   */ {OP_LDSp,   "lds+",   mem_ldsp},
     /* OP_LDBp   */ {OP_LDBp,   "ldb+",   mem_ldbp},
     /* OP_LDSPRp */ {OP_LDSPRp, "ldspr+", mem_ldsprp},
-    
+
     /* OP_BRI    */ {OP_BRI,    "bri",    cflow_bri},
     /* OP_BRIE   */ {OP_BRIE,   "brieq",  cflow_brie},
     /* OP_BRINE  */ {OP_BRINE,  "brine",  cflow_brine},
@@ -129,7 +80,7 @@ const inst_handling_t opc_handling[] = {
 
 void printOpcode(opcode_t *opcode, FILE *stream)
 {
-    fprintf(stream,"%s", opcodeNames[opcode->opv]);
+    fprintf(stream,"%s", opc_handling[opcode->opv].opcode_name);
 }
 
 
@@ -305,7 +256,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     case OP_NOP:
         break;
     default:
-        UNHANDLED_OP(opcodeNames[opcode->opv],opcode->op);
+        UNHANDLED_OP(opc_handling[opcode->opv].opcode_name, opcode->op);
         break;
     }
 
@@ -373,7 +324,7 @@ int execute(xtc_cpu_t *cpu)
         fprintf(trace,"0x%08x ",cpu->pc);
         fprintf(trace,"0x%04x ",inst);
         printOpcode(&opcode, trace);
-        execute_single_opcode(cpu, &opcode, trace);
+        execute_single_opcode_new(cpu, &opcode, trace);
         fprintf(trace,"\n");
 
     }while (1);

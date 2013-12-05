@@ -2,7 +2,7 @@
 
 void cflow_calli(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
     cpu->branchNext = cpu->npc + opcode->immed;
-    cpu->br = npc + 2;
+    cpu->br = cpu->npc + 2;
 }
 
 void cflow_ret(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
