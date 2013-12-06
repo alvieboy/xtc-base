@@ -272,7 +272,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     cpu->pc=npc;
 }
 
-static int execute_single_opcode_new(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+static int execute_single_opcode_fjp(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     cpu->npc = cpu->pc+2;
 
@@ -324,7 +324,7 @@ int execute(xtc_cpu_t *cpu)
         fprintf(trace,"0x%08x ",cpu->pc);
         fprintf(trace,"0x%04x ",inst);
         printOpcode(&opcode, trace);
-        execute_single_opcode_new(cpu, &opcode, trace);
+        execute_single_opcode(cpu, &opcode, trace);
         fprintf(trace,"\n");
 
     }while (1);
