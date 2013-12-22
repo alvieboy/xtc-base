@@ -73,7 +73,7 @@ const relax_typeS md_relax_table[] =
 
 static bfd_boolean check_gpr_reg (unsigned *p)
 {
-    if ((*p)<32)
+    if ((*p)<REG_PC)
         return 1;
     return 0;
 }
@@ -689,6 +689,116 @@ static void xtc_emit_imm_12128(long int value, unsigned op, int size)
 }
 #endif
 
+enum imm_size {
+    IMM_8,
+    IMM_0
+};
+
+static unsigned int xtc_get_imm_steal(enum imm_size imms)
+{
+    return imms==IMM_8 ? 8 : 0;
+}
+#if 0
+static unsigned int xtc_get_imm_size_at_offset(enum imm_size imms, int offset)
+{
+    if (offset>0)
+        return 12;
+
+    return imms==IMM_8 ? 8 : 0;
+}
+#endif
+
+static void xtc_emit_var_imm(expressionS *exp,
+                             struct op_code_struct *opcode,
+                             unsigned inst,
+                             enum imm_size imms)
+{
+    unsigned char instbuf[8];
+    unsigned char *iptr = &instbuf[0];
+    char *output;
+    int immed;
+
+    int pcrel_reloc = imms==IMM_8 ? BFD_RELOC_XTC_IMM_12_12_8_PCREL :
+        BFD_RELOC_XTC_IMM_12_12_8_PCREL;
+
+    int normal_reloc = imms==IMM_8 ?  BFD_RELOC_XTC_IMM_12_12_8 :
+        BFD_RELOC_XTC_IMM_12_12_12;
+
+    if (exp->X_op != O_constant)
+    {
+        int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? pcrel_reloc: normal_reloc);
+        int idx=0, x;
+        int fsize = imms==IMM_8 ? 3 : 4;
+
+        output = frag_more(fsize*INST_WORD_SIZE);
+
+        for (x=0; x<fsize-1;x ++) {
+            output[idx++] = 0x80;
+            output[idx++] = 0x0;
+        }
+        output[idx++] = INST_BYTE0(inst);
+        output[idx++] = INST_BYTE1(inst);
+
+        int where = output - frag_now->fr_literal;
+
+        fix_new_exp (frag_now, where, fsize+1, exp, 1, newReloc);
+    }
+    else
+    {
+        int bits = xtc_count_bits(exp->X_add_number);
+        unsigned steal = xtc_get_imm_steal(imms);
+        unsigned mask, shift;
+        /* Hack */
+        if (steal) {
+            mask = 0xff;//IMM8_MASK;
+            shift = IMM8_LOW;
+        } else {
+            mask = 0;
+        }
+        
+
+        immed = exp->X_add_number;
+        int sbits = bits - steal;
+
+        /* Does the instruction include an imm ? */
+        int fsize = steal ? 1 : 2;
+
+        /* Compute how many IMM we need to inject */
+        while (sbits > 0) {
+            sbits-=12;
+            fsize++;
+        }
+        /* Allocate space for frag */
+        output = frag_more (INST_WORD_SIZE * fsize);
+
+        /* Emit the real instruction */
+        inst |= ((immed & ((1<<steal)-1)) & mask)<<shift;
+        *iptr++ = INST_BYTE0(inst);
+        *iptr++ = INST_BYTE1(inst);
+
+        immed >>= steal;
+        bits -= steal;
+
+        while (bits > 0) {
+            inst = 0x8000 | (immed & 0xFFF);
+            *iptr++ = INST_BYTE0(inst);
+            *iptr++ = INST_BYTE1(inst);
+            immed>>=12;
+            bits-=12;
+        }
+
+        /* Write them */
+        while (iptr != &instbuf[0]) {
+            iptr-=2;
+            *output++=*iptr;
+            *output++=*(iptr+1);
+        }
+    }
+}
+
+
+
+
 void
 md_assemble (char * str)
 {
@@ -772,7 +882,7 @@ md_assemble (char * str)
             as_fatal (_("Cannot use GPR register with this instruction"));
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
-        inst |= ((reg2-32) << SPR_LOW) & SPR_MASK;
+        inst |= ((reg2-REG_PC) << SPR_LOW) & SPR_MASK;
 
         output = frag_more (isize);
         break;
@@ -838,6 +948,7 @@ md_assemble (char * str)
 
         if (isSpecialReg == 1  && check_gpr_reg (& reg2))
             as_fatal (_("Cannot use general purpose register with this instruction"));
+
 
         /* Now, check if we need to add a displacement */
         if (hasimm==1) {
@@ -907,6 +1018,45 @@ md_assemble (char * str)
 
         output = frag_more (isize);
         break;
+
+    case INST_TYPE_R1_R2_IMM:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2.  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg2 = 0;
+        }
+
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
+        else
+            as_fatal (_("Error in statement syntax"));
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1  */
+        else
+        {
+            as_fatal (_("Error in statement syntax"));
+            reg1 = 0;
+        }
+
+        /* Check for spl registers.  */
+        if (!check_gpr_reg (& reg1))
+            as_fatal (_("Cannot use special register with this instruction"));
+        if (!check_gpr_reg (& reg2))
+            as_fatal (_("Cannot use special register with this instruction"));
+
+        inst |= (reg1 << RA_LOW) & RA_MASK;
+        inst |= (reg2 << RB_LOW) & RB_MASK;
+
+        xtc_emit_var_imm(&exp, opcode, inst, IMM_0);
+
+        //output = frag_more (isize);
+        return;
+        break;
+
 
     case INST_TYPE_IMM8:
         if (strcmp (op_end, ""))
@@ -1024,87 +1174,9 @@ md_assemble (char * str)
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
 
-        if (exp.X_op != O_constant)
-        {
-#if 0
-            char *opc = NULL;
-            relax_substateT subtype = opcode->inst_offset_type;
+        xtc_emit_var_imm(&exp, opcode, inst, IMM_8);
 
-            output = frag_var (rs_machine_dependent,
-                               isize, /* maxm of 3 words.  */
-                               isize,     /* minm of 1 word.  */
-                               subtype,   /* PC-relative or not.  */
-                               exp.X_add_symbol,
-                               exp.X_add_number,
-                               opc);
-#endif
-            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-                            BFD_RELOC_XTC_IMM_12_12_8 );
-
-            output = frag_more(3*INST_WORD_SIZE);
-
-            output[0] = 0x80;
-            output[1] = 0x0;
-            output[2] = 0x80;
-            output[3] = 0x00;
-            output[4] = INST_BYTE0(inst);
-            output[5] = INST_BYTE1(inst);
-
-            int where = output - frag_now->fr_literal;
-
-            fix_new_exp (frag_now, where, 4, &exp, 1, newReloc);
-            
-            return;
-            immed = 0;
-            abort();
-        }
-        else
-        {
-            int bits = xtc_count_bits(exp.X_add_number);
-
-            immed = exp.X_add_number >> 8;
-
-            if (bits>=20) {
-                output = frag_more (INST_WORD_SIZE*3);
-            } else if (bits>8) {
-                output = frag_more (INST_WORD_SIZE*2);
-            } else {
-                output = frag_more (INST_WORD_SIZE);
-            }
-
-            if (bits>=20) {
-                // emit very high IM12
-                unsigned inst2;
-                // this is WRONG - we're outputting high values
-                // and not the correct ones.
-
-                inst2 = 0x8000 | (((immed>>12) << IMM_LOW) & IMM_MASK);
-                output[0] = INST_BYTE0 (inst2);
-                output[1] = INST_BYTE1 (inst2);
-                dwarf2_emit_insn (2);
-                immed<<=12;
-                bits-=12;
-                output+=2;
-            }
-            if (bits>8) {
-                // emit very high IM12
-                unsigned inst2;
-                inst2 = 0x8000 | (((immed) << IMM_LOW) & IMM_MASK);
-                output[0] = INST_BYTE0 (inst2);
-                output[1] = INST_BYTE1 (inst2);
-                dwarf2_emit_insn (2);
-                output+=2;
-                bits-=8;
-            }
-
-            inst |= (reg1 << RA_LOW) & RA_MASK;
-            inst |= (exp.X_add_number << IMM8_LOW) & IMM8_MASK;
-                
-            output[0] = INST_BYTE0 (inst);
-            output[1] = INST_BYTE1 (inst);
-            return;
-        }
-
+        return;
         break;
 
     case INST_TYPE_NOARGS:

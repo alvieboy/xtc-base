@@ -38,6 +38,8 @@
 #define INST_TYPE_MEM_IMM8_R 10
 #define INST_TYPE_R 11
 #define INST_TYPE_MEM_S 12
+#define INST_TYPE_R1_R2_IMM 13
+
 
 /* Instructions where the label address is resolved as a PC offset
    (for branch label).  */
@@ -62,7 +64,7 @@
 #define DELAY_SLOT 1
 #define NO_DELAY_SLOT 0
 
-#define MAX_OPCODES 69
+#define MAX_OPCODES 70
 
 
 struct op_code_struct
@@ -131,8 +133,8 @@ struct op_code_struct
 
     {"briugt", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00E, OPCODE_MASK_BRIF, briugt, branch_inst },
     {"briuge", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA00F, OPCODE_MASK_BRIF, briuge, branch_inst },
-    {"briult", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA010, OPCODE_MASK_BRIF, briult, branch_inst },
-    {"briule", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA011, OPCODE_MASK_BRIF, briule, branch_inst },
+    {"briult", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA001, OPCODE_MASK_BRIF, briult, branch_inst },
+    {"briule", INST_TYPE_IMM8,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xA002, OPCODE_MASK_BRIF, briule, branch_inst },
 
     // TODO: this will be renamed to BR.
     {"brr", INST_TYPE_MEM_IMM8_R,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xB000, OPCODE_MASK_H, brr, branch_inst },
@@ -147,6 +149,7 @@ struct op_code_struct
     {"imm",   INST_TYPE_IMM,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_12, 0x8000, OPCODE_MASK_H, imm, immediate_inst },
 
     {"addi",  INST_TYPE_IMM8_R, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_8, 0x6000, OPCODE_MASK_H, addi, immediate_inst },
+    {"addri",  INST_TYPE_R1_R2_IMM, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_8, 0x5000, OPCODE_MASK_H, addri, immediate_inst },
     {"cmpi",  INST_TYPE_IMM8_R, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_8, 0x7000, OPCODE_MASK_H, cmpi, immediate_inst },
 
     {"ret",   INST_TYPE_NOARGS,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0xF000, OPCODE_MASK_H, ret, branch_inst },

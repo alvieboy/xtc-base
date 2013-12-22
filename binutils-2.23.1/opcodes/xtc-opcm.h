@@ -90,6 +90,7 @@ enum xtc_instr
 #endif
 
     addi,
+    addri,
     cmpi,
     call,
     callr,
@@ -113,9 +114,9 @@ enum xtc_instr_type
 #define MIN_REGNUM 0
 #define MAX_REGNUM 31
 
-#define REG_PC  32 /* PC.  */
-#define REG_Y  33 /* Y  */
-#define REG_BR  34 /* BR  */
+#define REG_PC  16 /* PC.  */
+#define REG_BR  17 /* BR  */
+#define REG_Y   18 /* Y  */
 
 /* Alternate names for gen purpose regs.  */
 #define REG_SP  15 /* stack pointer.  */

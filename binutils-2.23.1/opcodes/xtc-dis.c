@@ -82,7 +82,7 @@ get_field_imm8 (long instr)
 {
   char tmpstr[25];
 
-  sprintf (tmpstr, "%d", (short)((instr & IMM8_MASK) >> IMM_LOW));
+  sprintf (tmpstr, "%d", (short)((instr & IMM8_MASK) >> IMM8_LOW));
   return (strdup (tmpstr));
 }
 
@@ -168,7 +168,8 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
           print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_spr (inst));
           break;
         case INST_TYPE_R1_R2:
-            print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_r2 (inst));
+        case INST_TYPE_R1_R2_IMM:
+            print_func (stream, "\t%s, %s", get_field_r2(inst), get_field_r1 (inst));
             break;
         case INST_TYPE_MEM:
             if (op->instr_type == memory_load_inst) {
