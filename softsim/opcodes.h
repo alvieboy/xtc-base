@@ -43,9 +43,14 @@ typedef enum {
     OP_BRIE,
     OP_BRINE,
     OP_BRILT,
+    OP_BRILE,
     OP_BRIGT,
+    OP_BRIGE,
     OP_BRIUGT,
-    OP_CMPI
+    OP_BRIULT,
+    OP_CMPI,
+
+    MAX_OPCODES
 } opcode_type_t;
 
 
@@ -55,7 +60,7 @@ typedef struct opcode {
     int hasImmed;
     int immed;
     unsigned op;
-
+    int alu_op_immed;
 } opcode_t;
 
 

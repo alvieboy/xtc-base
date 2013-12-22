@@ -31,7 +31,7 @@ typedef struct inst_handling
 } inst_handling_t;
 
 
-const inst_handling_t opc_handling[] = {
+const inst_handling_t opc_handling[MAX_OPCODES] = {
     /* OP_NOP    */ {OP_NOP,    "nop",    0},
     /* OP_ADD    */ {OP_ADD,    "add",    alu_add},
     /* OP_ADDC   */ {OP_ADDC,   "addc",   alu_addc},
@@ -73,10 +73,26 @@ const inst_handling_t opc_handling[] = {
     /* OP_BRIE   */ {OP_BRIE,   "brieq",  cflow_brie},
     /* OP_BRINE  */ {OP_BRINE,  "brine",  cflow_brine},
     /* OP_BRILT  */ {OP_BRILT,  "brilt",  cflow_brilt},
+    /* OP_BRILE  */ {OP_BRILE,  "brile",  cflow_brile},
     /* OP_BRIGT  */ {OP_BRIGT,  "brigt",  cflow_brigt},
+    /* OP_BRIGE  */ {OP_BRIGE,  "brige",  cflow_brige},
     /* OP_BRIUGT */ {OP_BRIUGT, "briugt", cflow_briugt},
+    /* OP_BRIULT */ {OP_BRIULT, "briult", cflow_briult},
     /* OP_CMPI   */ {OP_CMPI,   "cmpi",   reg_cmpi}
 };
+
+void validateOpcodes()
+{
+    unsigned i;
+    for (i=0;i<MAX_OPCODES;i++) {
+        if (opc_handling[i].opcode !=i)  {
+            fprintf(stderr,"Invalid opcode table:\n");
+            fprintf(stderr,"Opcode '%s' expected index %d, but got %d\n",
+                    opc_handling[i].opcode_name, i, opc_handling[i].opcode);
+            abort();
+        }
+    }
+}
 
 void printOpcode(opcode_t *opcode, FILE *stream)
 {
@@ -86,7 +102,7 @@ void printOpcode(opcode_t *opcode, FILE *stream)
 
 static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    unsigned npc = cpu->pc+2;
+    unsigned npc = cpu->spr.r.pc+2;
 
     /*Delay slot*/
     if (cpu->branchNext!=-1) {
@@ -100,32 +116,32 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     case OP_STW:
         fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
-        handle_store( cpu, opcode->r1, opcode->r2, opcode->immed);
+        handle_store( cpu, opcode->r1, opcode->r2, opcode->immed, stream);
         break;
 
     case OP_STS:
         fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
-        handle_store_short( cpu, opcode->r1, opcode->r2, opcode->immed);
+        handle_store_short( cpu, opcode->r1, opcode->r2, opcode->immed, stream);
         break;
 
     case OP_STB:
         fprintf(stream," r%d, (r%d + %d); (0x%08x)", opcode->r2, opcode->r1, opcode->immed,
                cpu->regs[opcode->r1]+opcode->immed);
-        handle_store_byte( cpu, opcode->r1, opcode->r2, opcode->immed);
+        handle_store_byte( cpu, opcode->r1, opcode->r2, opcode->immed, stream);
         break;
 
     case OP_LDW:
         fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
                cpu->regs[opcode->r1]+opcode->immed);
-        cpu->regs[opcode->r2] = handle_read( cpu, opcode->r1, opcode->immed);
+        cpu->regs[opcode->r2] = handle_read( cpu, opcode->r1, opcode->immed, stream);
 
         break;
 
     case OP_LDBp:
         fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
                cpu->regs[opcode->r1]+opcode->immed);
-        cpu->regs[opcode->r2] = handle_read_byte( cpu, opcode->r1, opcode->immed);
+        cpu->regs[opcode->r2] = handle_read_byte( cpu, opcode->r1, opcode->immed, stream);
         cpu->regs[opcode->r1]++;
 
         break;
@@ -133,11 +149,11 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
     case OP_LDB:
         fprintf(stream," (r%d + %d), r%d; (0x%08x)", opcode->r1, opcode->immed, opcode->r2,
                cpu->regs[opcode->r1]+opcode->immed);
-        cpu->regs[opcode->r2] = handle_read_byte( cpu, opcode->r1, opcode->immed);
+        cpu->regs[opcode->r2] = handle_read_byte( cpu, opcode->r1, opcode->immed, stream);
         break;
 
     case OP_RET:
-        cpu->branchNext = cpu->br;
+        cpu->branchNext = cpu->spr.r.br;
         break;
     case OP_IMM:
         resetImmed=0;
@@ -146,7 +162,7 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
 
     case OP_CALLI:
         cpu->branchNext = npc + opcode->immed;
-        cpu->br = npc + 2;
+        cpu->spr.r.br = npc + 2;
         break;
 
     case OP_BRI:
@@ -269,12 +285,13 @@ static int execute_single_opcode(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *s
         cpu->imflag=1;
     }
 
-    cpu->pc=npc;
+    cpu->spr.r.pc=npc;
+    return 0;
 }
 
 static int execute_single_opcode_fjp(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    cpu->npc = cpu->pc+2;
+    cpu->npc = cpu->spr.r.pc+2;
 
     /*Delay slot*/
     if (cpu->branchNext!=-1) {
@@ -305,13 +322,15 @@ static int execute_single_opcode_fjp(xtc_cpu_t *cpu, const opcode_t *opcode, FIL
         cpu->imflag=1;
     }
 
-    cpu->pc=cpu->npc;
+    cpu->spr.r.pc=cpu->npc;
     return 0;
 }
 
 
 int execute(xtc_cpu_t *cpu)
 {
+    validateOpcodes();
+
     FILE *trace = fopen("trace.txt","w");
     if (NULL==trace) {
         perror("fopen");
@@ -319,12 +338,12 @@ int execute(xtc_cpu_t *cpu)
     }
     do {
         opcode_t opcode;
-        inst_t inst = (unsigned)(cpu->memory[cpu->pc]<<8) | cpu->memory[cpu->pc+1];
+        inst_t inst = (unsigned)(cpu->memory[cpu->spr.r.pc]<<8) | cpu->memory[cpu->spr.r.pc+1];
         decode_single_opcode(cpu,inst,&opcode);
-        fprintf(trace,"0x%08x ",cpu->pc);
+        fprintf(trace,"0x%08x ",cpu->spr.r.pc);
         fprintf(trace,"0x%04x ",inst);
         printOpcode(&opcode, trace);
-        execute_single_opcode(cpu, &opcode, trace);
+        execute_single_opcode_fjp(cpu, &opcode, trace);
         fprintf(trace,"\n");
 
     }while (1);

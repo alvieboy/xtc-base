@@ -40,11 +40,16 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
     opcode->r1 = op & 0xF;
     opcode->r2 = (op>>4) & 0xF;
     opcode->hasImmed=0;
+    opcode->alu_op_immed=0;
 
     switch (op>>12) {
     case 0x0:
         opcode->opv = OP_NOP;
         break;
+    case 0x5:
+        opcode->immed = cpu->imm;
+        opcode->alu_op_immed=1;
+        // Fall through
     case 0x1:
         /* ALU operations */
         switch ((op>>8) & 0xf) {
@@ -65,6 +70,9 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
             break;
         case 0xa:
             opcode->opv = OP_OR;
+            break;
+        case 0xb:
+            opcode->opv = OP_XOR;
             break;
         case 0xc:
             opcode->opv = OP_COPY;
@@ -157,8 +165,6 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         }
         
         break;
-    case 0x5:
-        UNKNOWN_OP(op);
     case 0x6:
         opcode->opv = OP_ADDI;
         opcode->immed = get_imm8(cpu,op);
@@ -191,11 +197,20 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0xa:
             opcode->opv = OP_BRIGT;
             break;
+        case 0xb:
+            opcode->opv = OP_BRIGE;
+            break;
         case 0xc:
             opcode->opv = OP_BRILT;
             break;
+        case 0xd:
+            opcode->opv = OP_BRILE;
+            break;
         case 0xe:
             opcode->opv = OP_BRIUGT;
+            break;
+        case 0x1:
+            opcode->opv = OP_BRIULT;
             break;
 
         default:
