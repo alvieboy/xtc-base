@@ -69,7 +69,7 @@ begin
       end if;
 
       case eui.r.macc is
-        when M_BYTE | M_BYTE_POSTINC | M_BYTE_PREINC | M_BYTE_IND =>
+        when M_BYTE | M_BYTE_POSTINC =>
 
           case eui.r.data_address(1 downto 0) is
             when "11" =>
@@ -92,7 +92,7 @@ begin
           end case;
 
 
-        when M_HWORD | M_HWORD_POSTINC | M_HWORD_PREINC | M_HWORD_IND =>
+        when M_HWORD | M_HWORD_POSTINC =>
           case eui.r.data_address(1) is
             when '1' =>
               wdata(15 downto 0) := eui.r.data_write(15 downto 0); wmask:="0011";

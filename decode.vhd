@@ -108,6 +108,8 @@ begin
       variable alu2_imreg: std_logic;
       variable no_reg_conflict: boolean;
       variable flags_source: flagssource_type;
+      variable pc: word_type;
+
     begin
       dw := dr;
       busy <= '0';
@@ -186,6 +188,8 @@ begin
         imm12 := dec1.imm12;
         imm8  := dec1.imm8;
         imm4  := dec1.imm4;
+        pc := fui.r.pc;
+
         sr := dec1.sr;
         jump := dec1.jump;
         jump_clause := dec1.jump_clause;
@@ -239,7 +243,7 @@ begin
 
         -- Issue two instructions at the time, one for each of the LU
 
-
+        pc := fui.r.pc + 2;
 
         sr := (others => 'X');
         dual <= '1';
@@ -408,9 +412,9 @@ begin
         dw.sra3 := ra3;
         dw.sra4 := ra4;
 
-        dw.fpc  := fui.r.pc + 4;
-        dw.pc   := fui.r.pc;
-        dw.npc  := fui.r.pc + 2;
+        dw.fpc  := pc + 4;
+        dw.pc   := pc;
+        dw.npc  := pc + 2;
 
         --dw.op := op;
         dw.imm12 := imm12;
@@ -451,7 +455,6 @@ begin
               dw.imreg(23 downto 0) := unsigned(imm24(23 downto 0));
             end if;
 
-            -- Not yet
           when LOAD12_8 =>
 
             if dr.imflag='0' then
@@ -461,9 +464,10 @@ begin
               dw.imreg(31 downto 20) := dr.imreg(31-20 downto 0);
               dw.imreg(19 downto 0) := unsigned(imm20(19 downto 0));
             end if;
-            -- Not yet
+            
           when LOAD0 =>
-            -- Keep....
+            -- Keep imm
+
           when others =>
             dw.imreg := (others => '0');
         end case;

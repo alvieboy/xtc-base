@@ -152,7 +152,7 @@ package xtccomppkg is
     busy: out std_logic;
     co: out std_logic;
     zero: out std_logic;
-    bo:   out std_logic;
+    ovf:   out std_logic;
     sign: out std_logic
 
   );

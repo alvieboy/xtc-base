@@ -19,7 +19,7 @@ entity alu_A is
     busy: out std_logic;
     co: out std_logic;
     zero: out std_logic;
-    bo:   out std_logic;
+    ovf:   out std_logic;
     sign: out std_logic
 
   );
@@ -38,10 +38,10 @@ begin
   alu_a <= '0'&a;
   alu_b <= '0'&b;
   carryext(32 downto 1) <= (others => '0');
-  carryext(0) <= ci when op=ALU_ADDC else '0';
+  carryext(0) <= ci when op=ALU_ADDC or op=ALU_SUBB else '0';
 
   alu_add_r <= alu_a + alu_b + carryext;
-  alu_sub_r <= alu_a - alu_b;
+  alu_sub_r <= alu_a - alu_b - carryext;
 
   process(alu_add_r, carryext, alu_a, alu_b, alu_sub_r, op)
   begin
@@ -49,10 +49,12 @@ begin
     case op is
       when ALU_ADD |
            ALU_ADDC => alu_r <= alu_add_r;
+      when ALU_SUB |
+           ALU_SUBB => alu_r <= alu_sub_r;
+
       when ALU_AND  => alu_r <= alu_a and alu_b;
       when ALU_OR   => alu_r <= alu_a or alu_b;
-      when ALU_SUB  => alu_r <= alu_sub_r;
-      when ALU_COPY => alu_r <= alu_b;
+      when ALU_NOR   => alu_r <= not(alu_a or alu_b);
       when ALU_XOR  => alu_r <= alu_a xor alu_b;
 
       when others => alu_r <= (others =>'X');
@@ -62,7 +64,7 @@ begin
 
   co    <= alu_add_r(32);
   sign  <= alu_r(31);
-  bo    <= alu_sub_r(32);
+  ovf   <= alu_sub_r(32);
   o     <= alu_r(31 downto 0);
   zero  <= '1' when alu_r(31 downto 0)=x"00000000" else '0';
 

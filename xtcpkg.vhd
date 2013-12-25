@@ -22,11 +22,11 @@ package xtcpkg is
     ALU_ADD,
     ALU_ADDC,
     ALU_SUB,
+    ALU_SUBB,
     ALU_AND,
     ALU_OR,
-    ALU_COPY,
-    ALU_XOR,
-    ALU_UNKNOWN
+    ALU_NOR,
+    ALU_XOR
   );
 
   --constant ALU_ADD:   alu1_op_type := "000";
@@ -37,15 +37,20 @@ package xtcpkg is
   --constant ALU_OR:    alu1_op_type := "101";
   --constant ALU_COPY:    alu1_op_type := "110";
   --constant ALU_CMPI:    alu1_op_type := "111";
---  constant ALU_UNKNOWN:  alu1_op_type := (others => 'X');
+  --constant ALU_UNKNOWN:  alu1_op_type := (others => 'X');
 
   
 
   --subtype alu2_op_type is std_logic_vector(2 downto 0);
   type alu2_op_type is (
-    ALU_ADD,
-    ALU_CMPI,
-    ALU_UNKNOWN
+    ALU2_ADD,
+    ALU2_CMPI,
+    ALU2_SRA,
+    ALU2_SRL,
+    ALU2_SHL,
+    ALU2_NOT,
+    ALU2_SEXTB,
+    ALU2_SEXTS
   );
 
   constant SR_PC: std_logic_vector(2 downto 0) := "000";
@@ -66,9 +71,11 @@ package xtcpkg is
     O_ADD,
     O_ADDC,
     O_SUB,
+    O_SUBB,
     O_AND,
     O_OR,
-    O_COPY,
+    O_NOR,
+    O_XOR,
 
     O_ST,
     O_LD,
@@ -93,20 +100,13 @@ package xtcpkg is
 
   type memory_access_type is (
     M_WORD,
-    M_WORD_PREINC,
-    M_WORD_PREDEC,
-    M_WORD_POSTINC,
-    M_WORD_POSTDEC,
-    M_HWORD,
-    M_HWORD_POSTINC,
-    M_HWORD_PREINC,
     M_BYTE,
+    M_HWORD,
+    M_SPR,
+    M_WORD_POSTINC,
     M_BYTE_POSTINC,
-    M_BYTE_PREINC,
-    M_WORD_IND,
-    M_HWORD_IND,
-    M_BYTE_IND
-    -- 3 left.
+    M_HWORD_POSTINC,
+    M_SPR_POSTINC
   );
 
   type loadimmtype is (
@@ -289,7 +289,7 @@ package xtcpkg is
     alur2:          unsigned(31 downto 0);
 
     flag_carry:     std_logic;
-    flag_borrow:    std_logic;
+    flag_overflow:  std_logic;
     flag_zero:      std_logic;
     flag_sign:      std_logic;
 

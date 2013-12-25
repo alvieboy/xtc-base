@@ -32,8 +32,8 @@ architecture behave of execute is
   signal alu_a_r: unsigned(31 downto 0);
   signal alu_b_a, alu_b_b: std_logic_vector(31 downto 0);
   signal alu_b_r: unsigned(31 downto 0);
-  signal alu1_ci, alu1_co, alu1_busy, alu1_bo, alu1_sign, alu1_zero: std_logic;
-  signal alu2_ci, alu2_co, alu2_busy, alu2_bo, alu2_sign, alu2_zero: std_logic;
+  signal alu1_ci, alu1_co, alu1_busy, alu1_ovf, alu1_sign, alu1_zero: std_logic;
+  signal alu2_ci, alu2_co, alu2_busy, alu2_ovf, alu2_sign, alu2_zero: std_logic;
   signal er: execute_regs_type;
 
 begin
@@ -57,7 +57,7 @@ begin
       busy  => alu1_busy,
       co    => alu1_co,
       zero  => alu1_zero,
-      bo    => alu1_bo,
+      ovf   => alu1_ovf,
       sign  => alu1_sign
     );
 
@@ -75,7 +75,7 @@ begin
     );
 
   process(clk,fdui,er,rst,alu_a_r,alu_b_r,
-          alu1_co, alu1_sign,alu1_zero,alu1_bo,
+          alu1_co, alu1_sign,alu1_zero,alu1_ovf,
           alu2_co, alu2_zero,
           mem_busy,wb_busy)
     variable ew: execute_regs_type;
@@ -83,6 +83,7 @@ begin
     constant reg_zero: unsigned(31 downto 0) := (others => '0');
     variable im8_fill: unsigned(31 downto 0);
     variable invalid_instr: boolean;
+    variable spr: unsigned(31 downto 0);
   begin
     ew := er;
 
@@ -128,7 +129,7 @@ begin
     if fdui.r.drq.valid='1' and busy_int='0' then
       -- synthesis translate_off
       if rising_edge(clk) then
-         --report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+         report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
       end if;
       -- synthesis translate_on
 
@@ -143,7 +144,7 @@ begin
           when FLAGS_ALU1 =>
             ew.flag_carry   := alu1_co;
             ew.flag_sign    := alu1_sign;
-            ew.flag_borrow  := alu1_bo;
+            ew.flag_overflow  := alu1_ovf;
             ew.flag_zero    := alu1_zero;
           when FLAGS_ALU2 =>
             ew.flag_carry   := alu2_co;
@@ -167,49 +168,42 @@ begin
 
       if mem_busy='0' or refetch='1' then
         ew.macc := fdui.r.drq.macc;
-        
-        ew.data_write := fdui.rr4; -- Memory always go through Alu2
+
+        case fdui.r.drq.macc is
+          when M_SPR | M_SPR_POSTINC =>
+            case fdui.r.drq.sra4(2 downto 0) is
+              when others =>
+                ew.data_write := std_logic_vector(er.br);
+            end case;
+
+          when others =>
+            ew.data_write := fdui.rr4; -- Memory always go through Alu2
+        end case;
 
         case fdui.r.drq.macc is
           when M_WORD  |
                M_HWORD |
-               M_BYTE =>
+               M_BYTE  |
+               M_SPR =>
             ew.data_address := std_logic_vector(alu_b_r);
           when M_WORD_POSTINC |
-               M_WORD_POSTDEC |
                M_HWORD_POSTINC |
-               M_BYTE_POSTINC =>
+               M_BYTE_POSTINC |
+               M_SPR_POSTINC =>
             --ew.data_address := std_logic_vector(alu_b_r);
             ew.data_address := fdui.rr3;
-
-          when M_WORD_PREINC  |
-               M_WORD_PREDEC  |
-               M_HWORD_PREINC |
-               M_BYTE_PREINC =>
-            ew.data_address := std_logic_vector(alu_b_r);
-
-          when M_WORD_IND |
-               M_HWORD_IND |
-               M_BYTE_IND =>
-            ew.data_address := std_logic_vector(alu_b_r);
 
           when others =>
             invalid_instr := true;
         end case;
         if fdui.r.drq.memory_access='1' then
           case fdui.r.drq.macc is
-            when M_WORD_PREINC | M_WORD_POSTINC =>
+            when M_WORD_POSTINC | M_SPR_POSTINC =>
               alu_b_b <= x"00000004";
-            when M_WORD_PREDEC | M_WORD_POSTDEC =>
-              alu_b_b <= x"FFFFFFFC";
-            when M_HWORD_POSTINC | M_HWORD_PREINC =>
+            when M_HWORD_POSTINC =>
               alu_b_b <= x"00000002";
-            when M_BYTE_POSTINC | M_BYTE_PREINC =>
+            when M_BYTE_POSTINC =>
               alu_b_b <= x"00000001";
-            when M_WORD_IND |
-                 M_HWORD_IND |
-                 M_BYTE_IND =>
-                alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
             when others =>
               alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
           end case;
