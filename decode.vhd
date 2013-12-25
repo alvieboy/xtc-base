@@ -103,7 +103,7 @@ begin
       variable modify_flags: boolean;
       variable compositeloadimm: compositeloadimmtype;
       variable jump: std_logic_vector(1 downto 0);
-      variable jump_clause: std_logic_vector(2 downto 0);
+      variable jump_clause: jumpcond_type;
       variable br_source: br_source_type;
       variable alu2_imreg: std_logic;
       variable no_reg_conflict: boolean;
@@ -125,7 +125,7 @@ begin
       can_issue_both := false;
       modify_flags:=false;
       jump := (others => 'X');
-      jump_clause := (others => 'X');
+      jump_clause := JUMP_NONE;
       br_source := br_source_none;
       no_reg_conflict := true;
 

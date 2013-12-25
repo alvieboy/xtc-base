@@ -87,6 +87,11 @@ package xtcpkg is
     O_BRIGE,
     O_BRIL,
     O_BRILE,
+    O_BRIUG,
+    O_BRIUGE,
+    O_BRIUL,
+    O_BRIULE,
+
     O_BRI,
     O_BRR,
 
@@ -140,11 +145,20 @@ package xtcpkg is
   constant JUMP_BR_ABS:   std_logic_vector(1 downto 0) := "10";
   constant JUMP_RI_ABS:   std_logic_vector(1 downto 0) := "11";
 
-  constant JUMP_NONE:           std_logic_vector(2 downto 0) := "000";
-  constant JUMP_INCONDITIONAL:  std_logic_vector(2 downto 0) := "001";
-  constant JUMP_NE:             std_logic_vector(2 downto 0) := "010";
-  constant JUMP_E:              std_logic_vector(2 downto 0) := "011";
-  constant JUMP_GE:             std_logic_vector(2 downto 0) := "100";
+  type jumpcond_type is (
+    JUMP_NONE,
+    JUMP_INCONDITIONAL,
+    JUMP_NE,
+    JUMP_E,
+    JUMP_G,
+    JUMP_GE,
+    JUMP_L,
+    JUMP_LE,
+    JUMP_UG,
+    JUMP_UGE,
+    JUMP_UL,
+    JUMP_ULE
+  );
 
   type br_source_type is (
     br_source_pc,
@@ -181,7 +195,7 @@ package xtcpkg is
     loadimm:        loadimmtype;
     op:             decoded_opcode_type;
     jump:           std_logic_vector(1 downto 0);
-    jump_clause:    std_logic_vector(2 downto 0);
+    jump_clause:    jumpcond_type;
     br_source:      br_source_type;
 -- synthesis translate_off
     strasm:     string(1 to 25);    -- Assembly string, for debugging purposes
@@ -249,7 +263,7 @@ package xtcpkg is
     imm4:           std_logic_vector(3 downto 0);
 
     jump:           std_logic_vector(1 downto 0);
-    jump_clause:    std_logic_vector(2 downto 0);
+    jump_clause:    jumpcond_type;
 
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;

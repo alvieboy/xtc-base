@@ -81,12 +81,16 @@ begin
 
       when "1010" =>
         case opcode(3 downto 0) is
-          when "0000" => op := O_BRIE;
-          when "0001" => op := O_BRINE;
-          when "0010" => op := O_BRIG;
-          when "0011" => op := O_BRIGE;
-          when "0100" => op := O_BRIL;
-          when "0101" => op := O_BRILE;
+          when "1000" => op := O_BRIE;
+          when "1001" => op := O_BRINE;
+          when "1010" => op := O_BRIG;
+          when "1011" => op := O_BRIGE;
+          when "1100" => op := O_BRIL;
+          when "1101" => op := O_BRILE;
+          when "1110" => op := O_BRIUG;
+          when "1111" => op := O_BRIUGE;
+          when "0001" => op := O_BRIUL;
+          when "0010" => op := O_BRIULE;
           when others => op := O_NOP;
         end case;
 
