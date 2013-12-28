@@ -56,7 +56,10 @@ entity generic_dp_ram_r is
     web:              in std_logic;
     addrb:            in std_logic_vector(address_bits-1 downto 0);
     dib:              in std_logic_vector(32-1 downto 0);
-    dob:              out std_logic_vector(32-1 downto 0)
+    dob:              out std_logic_vector(32-1 downto 0);
+    -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
   );
 
 end entity generic_dp_ram_r;
@@ -70,6 +73,11 @@ architecture behave of generic_dp_ram_r is
   shared variable RAM: RAM_TABLE;
 
 begin
+
+  -- synthesis translate_off
+    dbg_do <= RAM(conv_integer(dbg_addr));
+  -- synthesis translate_on
+
 
   process (clka)
   begin

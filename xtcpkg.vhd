@@ -49,6 +49,7 @@ package xtcpkg is
     ALU2_SRL,
     ALU2_SHL,
     ALU2_NOT,
+    ALU2_MUL,
     ALU2_SEXTB,
     ALU2_SEXTS
   );
@@ -66,6 +67,7 @@ package xtcpkg is
     O_LIMR,
 
     O_ADDI,
+    O_ADDRI,
     O_CMPI,
 
     O_ADD,
@@ -76,6 +78,14 @@ package xtcpkg is
     O_OR,
     O_NOR,
     O_XOR,
+    O_NOT,
+    O_SRL,
+    O_SRA,
+    O_SHL,
+    O_SEXTB,
+    O_SEXTS,
+    O_MUL,
+    O_CMP,
 
     O_ST,
     O_LD,
@@ -170,6 +180,7 @@ package xtcpkg is
     blocking:       boolean; -- OP is blocking.
     modify_gpr:     boolean; -- Modifies GPR
     modify_mem:     boolean; -- Modifies memory (write)
+    modify_spr:     boolean; -- Modifies (loads) SPR
     uses:           opuse_type; -- General resource usage, for ALU
     alu1_op:        alu1_op_type; -- ALU1 operation
     alu2_op:        alu2_op_type; -- ALU2 operation
@@ -186,6 +197,7 @@ package xtcpkg is
     rd2:            std_logic;      -- Read enable for GPR1
     reg_source:     reg_source_type;
     alu2_imreg:     std_logic;
+    alu2_samereg:   std_logic;
     -- IMMediate helpers
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
@@ -237,6 +249,7 @@ package xtcpkg is
     reg_source1:    reg_source_type;
     regwe1:         std_logic;
     dreg1:          regaddress_type;
+    sprwe:          std_logic;
 
     -- FLAGS and flags source
     modify_flags:   boolean;
@@ -247,6 +260,7 @@ package xtcpkg is
     alu2_op:        alu2_op_type;
     alu2_opcode:    opcode_type;
     alu2_imreg:     std_logic;
+    alu2_samereg:   std_logic;
 
     swap_target_reg:std_logic;
     memory_write:   std_logic;
@@ -320,7 +334,7 @@ package xtcpkg is
     regwe1:         std_logic; -- Write-enable for destination reg 1
     reg_source0:    reg_source_type; -- Source for destination reg 0
     reg_source1:    reg_source_type; -- Source for destination reg 1
-
+    sprwe:          std_logic; -- SPR write enable
     mwreg:          regaddress_type;    -- Memory writeback register
     macc:           memory_access_type;
     jump:           std_logic;
@@ -348,6 +362,7 @@ package xtcpkg is
     alur1: word_type;
     alur2: word_type;
     imreg: word_type;
+    sprwe:      std_logic;
   end record;
 
   type memory_regs_type is record
@@ -368,6 +383,7 @@ package xtcpkg is
     mdata:    std_logic_vector(31 downto 0);
     mreg:     regaddress_type;
     mregwe:   std_logic;
+    msprwe:   std_logic;
   end record;
   
   constant DontCareValue: std_logic := 'X';

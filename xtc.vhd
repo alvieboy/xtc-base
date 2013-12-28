@@ -250,7 +250,9 @@ begin
       -- Input from fetchdata unit
       fdui      => fduo,
       -- Outputs for next stages
-      euo       => euo
+      euo       => euo,
+      -- Input from memory unit (spr update)
+      mui       => muo
     );
 
   memory_unit: memory

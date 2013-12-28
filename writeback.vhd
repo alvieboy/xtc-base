@@ -111,6 +111,10 @@ begin
 
       r0_write <= std_logic_vector(wdata0);
       r1_write <= std_logic_vector(wdata1);
+
+      -- We must handle SPR register write. This is fed back to
+      -- execution unit (and other units if applicable).
+
     end process;
 
   end behave;

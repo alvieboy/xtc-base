@@ -5,7 +5,9 @@ use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
 use work.xtccomppkg.all;
-
+-- synthesis translate_off
+use work.txt_util.all;
+-- synthesis translate_on
 entity regbank_4r_2w is
   generic (
     ADDRESS_BITS: integer := 4
@@ -37,7 +39,11 @@ entity regbank_4r_2w is
     rbw2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rbw2_wr:   in std_logic_vector(31 downto 0);
     rbw2_we:   in std_logic;
-    rbw2_en:   in std_logic
+    rbw2_en:   in std_logic;
+    -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
 end entity regbank_4r_2w;
 
@@ -71,6 +77,8 @@ architecture behave of regbank_4r_2w is
 
   signal same_address: boolean;
 
+  signal dbg_do0, dbg_do1: std_logic_vector(31 downto 0);
+
 begin
 
   -- Write ports
@@ -83,7 +91,7 @@ begin
   m4: mux1_16 port map ( i => scoreboard, sel => rb4_addr_q, o => src4 );
 
 
-  same_address<=true when rbw1_addr=rb2_addr else false;
+  same_address<=true when rbw1_addr=rbw2_addr else false;
 
   process(clk)
   begin
@@ -157,7 +165,9 @@ begin
     rbw_addr  => rbw1_addr,
     rbw_wr    => rbw1_wr,
     rbw_we    => rbw1_we,
-    rbw_en    => rbw1_en
+    rbw_en    => rbw1_en,
+    dbg_addr  => dbg_addr,
+    dbg_do    => dbg_do0
   );
 
   rb2: regbank_5p
@@ -185,7 +195,9 @@ begin
     rbw_addr  => rbw2_addr,
     rbw_wr    => rbw2_wr,
     rbw_we    => rbw2_we,
-    rbw_en    => rbw2_en
+    rbw_en    => rbw2_en,
+    dbg_addr  => dbg_addr,
+    dbg_do    => dbg_do1
   );
 
 
@@ -193,11 +205,28 @@ begin
 
   -- Selectors
 
+  dbg_do <= dbg_do0 when src1='0' else dbg_do1;
+
+  
   rb1_rd <= b1_rd_1 when src1='0' else b2_rd_1;
   rb2_rd <= b1_rd_2 when src2='0' else b2_rd_2;
   rb3_rd <= b1_rd_3 when src3='0' else b2_rd_3;
   rb4_rd <= b1_rd_4 when src4='0' else b2_rd_4;
 
+  -- debugging
+  -- synthesis translate_off
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      if rbw1_we='1' and rbw1_en='1' then
+        --report " > (A)RegW r" & str(conv_integer(rbw1_addr)) & ", val 0x" & hstr(rbw1_wr);
+      end if;
+      if rbw2_we='1' and rbw2_en='1' then
+        --report " > (B)RegW r" & str(conv_integer(rbw2_addr)) & ", val 0x" & hstr(rbw2_wr);
+      end if;
+    end if;
+  end process;
+  -- synthesis translate_on
 
 
 end behave;

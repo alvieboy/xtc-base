@@ -49,7 +49,12 @@ package xtccomppkg is
     web:              in std_logic;
     addrb:            in std_logic_vector(address_bits-1 downto 0);
     dib:              in std_logic_vector(31 downto 0);
-    dob:              out std_logic_vector(31 downto 0)
+    dob:              out std_logic_vector(31 downto 0);
+
+    -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0);
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component;
 
@@ -248,7 +253,10 @@ package xtccomppkg is
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
     -- Output for next stages
-    euo:  out execute_output_type
+    euo:  out execute_output_type;
+    -- Input from memory unit, for SPR update
+    mui:  in memory_output_type
+
   );
   end component execute;
 
@@ -313,7 +321,11 @@ package xtccomppkg is
     rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
-    rb2_en:   in std_logic
+    rb2_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component;
 
@@ -335,7 +347,11 @@ package xtccomppkg is
     rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb3_wr:   in std_logic_vector(31 downto 0);
     rb3_we:   in std_logic;
-    rb3_en:   in std_logic
+    rb3_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component;
 
@@ -546,7 +562,11 @@ end component;
     rbw_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rbw_wr:   in std_logic_vector(31 downto 0);
     rbw_we:   in std_logic;
-    rbw_en:   in std_logic
+    rbw_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component regbank_5p;
 
@@ -582,7 +602,11 @@ end component;
     rbw2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rbw2_wr:   in std_logic_vector(31 downto 0);
     rbw2_we:   in std_logic;
-    rbw2_en:   in std_logic
+    rbw2_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component;
 

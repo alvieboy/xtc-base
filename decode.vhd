@@ -95,6 +95,7 @@ begin
       --variable is_pc_lsb: boolean;
       variable reg_source0, reg_source1: reg_source_type;
       variable regwe0, regwe1: std_logic;
+      variable sprwe: std_logic;
       variable prepost: std_logic;
       variable macc: memory_access_type;
       variable strasm: string(1 to 50);
@@ -106,9 +107,12 @@ begin
       variable jump_clause: jumpcond_type;
       variable br_source: br_source_type;
       variable alu2_imreg: std_logic;
+      variable alu2_samereg: std_logic;
       variable no_reg_conflict: boolean;
       variable flags_source: flagssource_type;
       variable pc: word_type;
+      variable imflag: std_logic;
+      variable invert_alu: boolean;
 
     begin
       dw := dr;
@@ -128,6 +132,7 @@ begin
       jump_clause := JUMP_NONE;
       br_source := br_source_none;
       no_reg_conflict := true;
+      imflag := '0';
 
       if dec1.modify_gpr then
         -- Check if we're writing something used by the second insn
@@ -139,8 +144,7 @@ begin
         end if;
       end if;
 
-      if not dec1.blocking then
-        -- We can issue both instructions if they do not share the same LU,
+      if not dec1.blocking then        -- We can issue both instructions if they do not share the same LU,
         -- nor they share the same output type.
 
         -- Also, some mix of IMM is not allowed.
@@ -207,6 +211,7 @@ begin
         alu2_op := dec1.alu2_op;
         alu2_opcode := dec1.opcode;
         alu2_imreg := dec1.alu2_imreg;
+        alu2_samereg := dec1.alu2_samereg;
 
         reg_source0 := dec1.reg_source;
         reg_source1 := dec1.reg_source;
@@ -239,9 +244,24 @@ begin
           regwe0:='0';
           regwe1:='0';
         end if;
+
+        if dec1.modify_spr then
+          sprwe :='1';
+        else
+          sprwe :='0';
+        end if;
+
+        if compositeloadimm=LOAD12 then
+          imflag := '1';
+        end if;
+
       else
 
         -- Issue two instructions at the time, one for each of the LU
+
+        -- Fix the PC. We will advance 2 instructions, and on this scenario,
+        -- an eventual branch instruction is the second one. PC needs to reflect
+        -- this offset.
 
         pc := fui.r.pc + 2;
 
@@ -252,9 +272,26 @@ begin
         memory_access := '0';
         memory_write := DontCareValue;
 
+        if dec1.modify_spr or dec2.modify_spr then
+          sprwe := '1';
+        else
+          sprwe := '0';
+        end if;
+
+
         -- RD1/RD2 are output to ALU1.
 
-        if dec1.uses/=uses_alu2 then
+        invert_alu := false;
+        if (dec1.uses=uses_alu2 or (dec1.uses=uses_nothing and dec2.uses=uses_alu1)) then
+          invert_alu := true;
+        end if;
+        -- Make sure we issue the instructions to the correct ALU.
+        --
+        --       A         B          Result
+        --
+        --
+        --
+        if invert_alu=false then
           ra1 := dec1.sreg1;
           ra2 := dec1.sreg2;
           ra3 := dec2.sreg1;
@@ -284,8 +321,18 @@ begin
           alu2_op := dec2.alu2_op;
           alu2_opcode := dec2.opcode;
           alu2_imreg  := dec2.alu2_imreg;
+          alu2_samereg := dec2.alu2_samereg;
 
+          -- Flags
+          if dec2.modify_flags then
+            modify_flags := true;
+            flags_source := FLAGS_ALU2;
+          else
+            modify_flags := dec1.modify_flags;
+            flags_source := FLAGS_ALU1;
+          end if;
         else
+          -- ALU are inverted.
 
           ra1 := dec2.sreg1;
           ra2 := dec2.sreg2;
@@ -317,14 +364,25 @@ begin
           alu2_op := dec1.alu2_op;
           alu2_opcode := dec1.opcode;
           alu2_imreg  := dec1.alu2_imreg;
+          alu2_samereg  := dec1.alu2_samereg;
+
+          -- Flags
+          if dec2.modify_flags then
+            modify_flags := true;
+            flags_source := FLAGS_ALU1;
+          else
+            modify_flags := dec1.modify_flags;
+            flags_source := FLAGS_ALU2;
+          end if;
+
 
         end if;
 
-        if dec1.uses=uses_alu1 then
-          flags_source := FLAGS_ALU1;
-        else
-          flags_source := FLAGS_ALU2;
-        end if;
+        --if dec1.uses=uses_alu1 then
+        --  flags_source := FLAGS_ALU1;
+        --else
+        --  flags_source := FLAGS_ALU2;
+        --end if;
 
         if dec2.br_source=BR_SOURCE_NONE then
           br_source := dec1.br_source;
@@ -361,6 +419,7 @@ begin
 
         end if;
 
+        imflag := '0';
 
         case dec1.loadimm is
           when LOAD12 =>
@@ -369,6 +428,7 @@ begin
                 imm8  := dec1.imm8;
               when LOAD12 => compositeloadimm := LOAD12_12;
                 imm12 := dec1.imm12;
+                imflag := '1';
               when others => compositeloadimm := LOAD12;
                 imm12 := dec1.imm12;
             end case;
@@ -378,12 +438,16 @@ begin
             imm12 := dec1.imm12;
             compositeloadimm := LOAD8; -- dec2 is not IMM, we ensured that.
 
+          when LOAD0 =>
+            compositeloadimm := LOAD0;
+
           when others =>
             case dec2.loadimm is
               when LOAD8 => compositeloadimm := LOAD8;
                 imm8  := dec2.imm8;
               when LOAD12 => compositeloadimm := LOAD12;
                 imm12 := dec2.imm12;
+                imflag := '1';
               when others => compositeloadimm := LOADNONE;
             end case;
 
@@ -411,6 +475,7 @@ begin
         dw.sra2 := ra2;
         dw.sra3 := ra3;
         dw.sra4 := ra4;
+        dw.sprwe := sprwe;
 
         dw.fpc  := pc + 4;
         dw.pc   := pc;
@@ -472,16 +537,27 @@ begin
             dw.imreg := (others => '0');
         end case;
 
-          if (compositeloadimm = LOAD12 and can_issue_both=false) or compositeloadimm = LOAD12_12 then
-            dw.imflag := '1';
-          else
-            dw.imflag := '0';
-          end if;
+        -- BUG BUG BUG.
+        -- When last op is IMM12, this fails. Why ?
+        -- We need to ensure that we reset the flag after a sequence like:
+        -- IMMX OP
+        -- but this breaks the inverse case, where we have
+        -- OP IMMX
+        --
+        -- So we need to know if IMM came from second op or not.
+
+        --if (compositeloadimm = LOAD12 and can_issue_both=false) or compositeloadimm = LOAD12_12 then
+        --  dw.imflag := '1';
+        --else
+        --  dw.imflag := '0';
+        --end if;
+        dw.imflag := imflag;
 
         dw.alu1_op := alu1_op;
         dw.alu2_op := alu2_op;
         dw.alu2_opcode := alu2_opcode;
         dw.alu2_imreg := alu2_imreg;
+        dw.alu2_samereg := alu2_samereg;
         --dw.pc_lsb      := is_pc_lsb;
         dw.wb_is_data_address := '0';
         dw.macc := macc;

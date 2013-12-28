@@ -47,9 +47,11 @@ begin
       variable mw: memory_regs_type;
       variable wmask: std_logic_vector(3 downto 0);
       variable wdata: std_logic_vector(31 downto 0);
+      variable mdata: std_logic_vector(31 downto 0);
     begin
 
       mw:=mr;
+      muo.msprwe<='0';
 
       wb_cyc_o  <=eui.r.data_access;
       wb_stb_o  <=eui.r.data_access and not mr.trans and not wb_ack_i_q;
@@ -57,7 +59,7 @@ begin
       wb_we_o   <=eui.r.data_writeenable;
       wdata     := (others => DontCareValue);
       wmask     := (others => DontCareValue);
-      muo.mdata <= (others => '0');
+      mdata     := (others => '0');
 
       mw.trans:='0';   -- Transaction delayed.
 
@@ -74,19 +76,19 @@ begin
           case eui.r.data_address(1 downto 0) is
             when "11" =>
               wdata(7 downto 0) := eui.r.data_write(7 downto 0); wmask:="0001";
-              muo.mdata(7 downto 0) <= wb_dat_i(7 downto 0);
+              mdata(7 downto 0) := wb_dat_i(7 downto 0);
 
             when "10" =>
               wdata(15 downto 8) := eui.r.data_write(7 downto 0); wmask:="0010";
-              muo.mdata(7 downto 0) <= wb_dat_i(15 downto 8);
+              mdata(7 downto 0) := wb_dat_i(15 downto 8);
 
             when "01" =>
               wdata(23 downto 16) := eui.r.data_write(7 downto 0); wmask:="0100";
-              muo.mdata(7 downto 0) <= wb_dat_i(23 downto 16);
+              mdata(7 downto 0) := wb_dat_i(23 downto 16);
 
             when "00" =>
               wdata(31 downto 24) := eui.r.data_write(7 downto 0); wmask:="1000";
-              muo.mdata(7 downto 0) <= wb_dat_i(31 downto 24);
+              mdata(7 downto 0) := wb_dat_i(31 downto 24);
 
             when others => null;
           end case;
@@ -96,10 +98,10 @@ begin
           case eui.r.data_address(1) is
             when '1' =>
               wdata(15 downto 0) := eui.r.data_write(15 downto 0); wmask:="0011";
-              muo.mdata(15 downto 0) <= wb_dat_i(15 downto 0);
+              mdata(15 downto 0) := wb_dat_i(15 downto 0);
             when '0' =>
               wdata(31 downto 16) := eui.r.data_write(15 downto 0); wmask:="1100";
-              muo.mdata(15 downto 0) <= wb_dat_i(31 downto 16);
+              mdata(15 downto 0) := wb_dat_i(31 downto 16);
 
             when others => null;
           end case;
@@ -107,7 +109,7 @@ begin
         when others =>
           wdata := eui.r.data_write;
           wmask:="1111";
-          muo.mdata <= wb_dat_i;
+          mdata := wb_dat_i;
 
       end case;
 
@@ -123,7 +125,13 @@ begin
         -- NOTE: if we just issued a store, and a load is queued, we also need to
         -- refetch the data. Maybe use freeze.... ????
         refetch <= wb_ack_i;
-        mregwe <= wb_ack_i;
+        if wb_ack_i='1' then
+          mregwe <= not eui.sprwe;--wb_ack_i;
+          muo.msprwe <= eui.sprwe;
+        else
+          mregwe <= '0';
+          muo.msprwe <= '0';
+        end if;
       end if;
 
       busy <= '0';
@@ -149,16 +157,18 @@ begin
         mw.trans := '0';
 
         --mw.mread:='0';
-      end if;                     
+      end if;
+
+      muo.mdata <= mdata;
 
       if rising_edge(clk) then
         wb_ack_i_q <= wb_ack_i;
         -- synthesis translate_off
-        if eui.r.data_access='1' then
+        if eui.r.data_access='1' and wb_ack_i='1' then
           if eui.r.data_writeenable='1' then
             --report ">> MEMORY WRITE, address " & hstr(eui.r.data_address) & ", data 0x" & hstr( wdata );
           else
-            --report ">> MEMORY READ, address " & hstr(eui.r.data_address);
+            --report ">> MEMORY READ, address " & hstr(eui.r.data_address) & " <= " & hstr(mdata);
           end if;
         end if;
         -- synthesis translate_on

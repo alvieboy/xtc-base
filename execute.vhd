@@ -22,7 +22,11 @@ entity execute is
     fdui:  in fetchdata_output_type;
 
     -- Output for next stages
-    euo:  out execute_output_type
+    euo:  out execute_output_type;
+
+    -- Input from memory unit, for SPR update
+    mui:  in memory_output_type
+
   );
 end entity execute;
 
@@ -41,7 +45,7 @@ begin
   euo.r <= er;
   alu_a_a <= fdui.rr1;
   alu_a_b <= fdui.rr2;
-  alu_b_a <= fdui.rr3;
+  alu_b_a <= fdui.rr3 when fdui.r.drq.alu2_samereg='1' else fdui.rr4;
 
 
   myaluA: alu_A
@@ -71,7 +75,8 @@ begin
       o     => alu_b_r,
       op    => fdui.r.drq.alu2_op,
       co    => alu2_co,
-      zero  => alu2_zero
+      zero  => alu2_zero,
+      sign  => alu2_sign
     );
 
   process(clk,fdui,er,rst,alu_a_r,alu_b_r,
@@ -93,11 +98,12 @@ begin
 
     ew.regwe0 := '0';
     ew.regwe1 := '0';
+    --ew.sprwe  := '0';
 
     invalid_instr := false;
 
     -- ALUB selector
-    alu_b_b <= (others => 'X');
+    alu_b_b <= fdui.rr4;--(others => 'X');
 
     if fdui.r.drq.alu2_imreg='1' then
       alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
@@ -129,13 +135,12 @@ begin
     if fdui.r.drq.valid='1' and busy_int='0' then
       -- synthesis translate_off
       if rising_edge(clk) then
-         report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+         --report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
       end if;
       -- synthesis translate_on
 
       ew.alur1 := alu_a_r(31 downto 0);
       ew.alur2 := alu_b_r(31 downto 0);
-
       
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
@@ -148,8 +153,7 @@ begin
             ew.flag_zero    := alu1_zero;
           when FLAGS_ALU2 =>
             ew.flag_carry   := alu2_co;
-            --ew.flag_sign    := alu2_sign;
-            --ew.flag_borrow  := alu2_bo;
+            ew.flag_sign    := alu2_sign;
             ew.flag_zero    := alu2_zero;
           when others =>
         end case;
@@ -163,6 +167,8 @@ begin
       ew.regwe1       := fdui.r.drq.regwe1;
       ew.dreg1        := fdui.r.drq.dreg1;
 
+      ew.sprwe        := fdui.r.drq.sprwe;
+
       ew.mwreg    := fdui.r.drq.sra4;
       ew.sr       := fdui.r.drq.sr;
 
@@ -175,7 +181,6 @@ begin
               when others =>
                 ew.data_write := std_logic_vector(er.br);
             end case;
-
           when others =>
             ew.data_write := fdui.rr4; -- Memory always go through Alu2
         end case;
@@ -224,8 +229,27 @@ begin
           ew.jump := not er.flag_zero;
         when JUMP_E =>
           ew.jump := er.flag_zero;
+
         when JUMP_GE =>
+          ew.jump := not er.flag_sign;
+        when JUMP_G =>
+          ew.jump := not er.flag_sign and not er.flag_zero;
+
+        when JUMP_LE =>
+          ew.jump := er.flag_sign or er.flag_zero;
+        when JUMP_L =>
           ew.jump := er.flag_sign;
+
+        when JUMP_UGE =>
+          ew.jump := not er.flag_carry;
+        when JUMP_UG =>
+          ew.jump := not er.flag_carry or er.flag_zero;
+
+        when JUMP_ULE =>
+          ew.jump := er.flag_carry or er.flag_zero;
+        when JUMP_UL =>
+          ew.jump := er.flag_carry;
+
         when others =>
           ew.jump := '0';
       end case;
@@ -255,8 +279,16 @@ begin
           ew.br := unsigned(fdui.rr1);
         when others =>
       end case;
-
     end if;
+
+    if mui.msprwe='1' then
+      case mui.mreg(2 downto 0) is
+        when "001" =>
+          ew.br := unsigned(mui.mdata);
+        when others =>
+      end case;
+    end if;
+
 
     busy <= busy_int;
 
@@ -271,6 +303,7 @@ begin
     euo.reg_source1  <= ew.reg_source1;
     euo.dreg1        <= ew.dreg1;
     euo.regwe1       <= ew.regwe1;
+    euo.sprwe       <= ew.sprwe;
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;

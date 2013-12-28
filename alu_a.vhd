@@ -35,8 +35,8 @@ architecture behave of alu_A is
 begin
 
   busy <= '0';
-  alu_a <= '0'&a;
-  alu_b <= '0'&b;
+  alu_a <= a(31) & a;
+  alu_b <= b(31) & b;
   carryext(32 downto 1) <= (others => '0');
   carryext(0) <= ci when op=ALU_ADDC or op=ALU_SUBB else '0';
 
@@ -62,9 +62,8 @@ begin
 
   end process;
 
-  co    <= alu_add_r(32);
+  co    <= alu_r(32);
   sign  <= alu_r(31);
-  ovf   <= alu_sub_r(32);
   o     <= alu_r(31 downto 0);
   zero  <= '1' when alu_r(31 downto 0)=x"00000000" else '0';
 
