@@ -17,5 +17,6 @@ void alu_sra(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void alu_srl(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void alu_shl(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void alu_cmp(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
+void alu_mul(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 
 #endif /* __ALU_OPS_H__ */

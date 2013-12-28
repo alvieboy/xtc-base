@@ -14,6 +14,7 @@ typedef enum {
     OP_SRA,
     OP_SRL,
     OP_SHL,
+    OP_MUL,
     OP_CMP,
     OP_ADDI,
     OP_IMM,
@@ -48,6 +49,8 @@ typedef enum {
     OP_BRIGE,
     OP_BRIUGT,
     OP_BRIULT,
+    OP_BRIUGE,
+    OP_BRIULE,
     OP_CMPI,
 
     MAX_OPCODES

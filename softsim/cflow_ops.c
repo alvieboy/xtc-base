@@ -32,12 +32,11 @@ void cflow_brine(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
     } else {
         fprintf(stream, " %d (not taken)", opcode->immed);
     }
-
 }
 
 void cflow_brilt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    if (!cpu->ovf && !cpu->zero) {
+    if (cpu->sign) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
     } else {
@@ -48,7 +47,7 @@ void cflow_brilt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 
 void cflow_brile(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    if ((!cpu->ovf) || cpu->zero) {
+    if (cpu->sign || cpu->zero) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
     } else {
@@ -60,18 +59,17 @@ void cflow_brile(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 void cflow_brigt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     // TODO: sign
-    if (cpu->ovf) {
+    if (!cpu->sign && !cpu->zero) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
     } else {
         fprintf(stream, " %d (not taken)", opcode->immed);
     }
-
 }
 
 void cflow_brige(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
-    if (cpu->ovf || cpu->zero) {
+    if (!cpu->sign) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
     } else {
@@ -83,6 +81,28 @@ void cflow_brige(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 void cflow_briugt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     // TODO: sign
+    if (!cpu->carry) {
+        cpu->branchNext = cpu->npc + opcode->immed;
+        fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
+    } else {
+        fprintf(stream, " %d (not taken)", opcode->immed);
+    }
+}
+
+void cflow_briuge(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+{
+    // TODO: sign
+    if (!cpu->carry || cpu->zero) {
+        cpu->branchNext = cpu->npc + opcode->immed;
+        fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
+    } else {
+        fprintf(stream, " %d (not taken)", opcode->immed);
+    }
+}
+
+void cflow_briult(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+{
+    // TODO: sign
     if (cpu->carry) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
@@ -90,10 +110,10 @@ void cflow_briugt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
         fprintf(stream, " %d (not taken)", opcode->immed);
     }
 }
-void cflow_briult(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
+void cflow_briule(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream)
 {
     // TODO: sign
-    if (!cpu->carry && !cpu->zero) {
+    if (cpu->carry || cpu->zero) {
         cpu->branchNext = cpu->npc + opcode->immed;
         fprintf(stream, " %d (0x%08x)", opcode->immed, cpu->branchNext);
     } else {

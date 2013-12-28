@@ -16,6 +16,8 @@ void cflow_brigt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void cflow_brige(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void cflow_briugt(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 void cflow_briult(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
+void cflow_briuge(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
+void cflow_briule(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream);
 
 #endif /* __CLFLOW_OPS_H__ */
 

@@ -25,7 +25,7 @@ typedef struct xtc_cpu {
     cpu_word_t regs[32];
     cpu_word_t npc;
     union xtc_spr spr;
-    unsigned zero, carry, sign, ovf;
+    unsigned zero, carry, sign;
     unsigned imm;
     int imflag;
     unsigned branchNext;

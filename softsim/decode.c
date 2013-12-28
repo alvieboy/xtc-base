@@ -56,32 +56,43 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0x0:
             opcode->opv = OP_ADD;
             break;
-        case 0x3:
-            opcode->opv = OP_SRA;
+        case 0x1:
+            opcode->opv = OP_ADDC;
             break;
-        case 0x4:
+        case 0x2:
             opcode->opv = OP_SUB;
             break;
-        case 0x8:
+        case 0x3:
+            opcode->opv = OP_SUBB;
+            break;
+        case 0x4:
             opcode->opv = OP_AND;
             break;
-        case 0x9:
-            opcode->opv = OP_SRL;
-            break;
-        case 0xa:
+        case 0x5:
             opcode->opv = OP_OR;
             break;
-        case 0xb:
+        case 0x6:
+            opcode->opv = OP_CMP;
+            break;
+        case 0x7:
             opcode->opv = OP_XOR;
             break;
-        case 0xc:
-            opcode->opv = OP_COPY;
-            break;
-        case 0xf:
+
+        case 0x8:
+        case 0xC:
             opcode->opv = OP_SHL;
             break;
-        case 0xd:
-            opcode->opv = OP_CMP;
+        case 0x9:
+        case 0xD:
+            opcode->opv = OP_SRL;
+            break;
+        case 0xA:
+        case 0xE:
+            opcode->opv = OP_SRA;
+            break;
+        case 0xB:
+        case 0xF:
+            opcode->opv = OP_MUL;
             break;
 
         default:
@@ -209,8 +220,14 @@ int decode_single_opcode(xtc_cpu_t*cpu,unsigned op, opcode_t *opcode)
         case 0xe:
             opcode->opv = OP_BRIUGT;
             break;
+        case 0xf:
+            opcode->opv = OP_BRIUGE;
+            break;
         case 0x1:
             opcode->opv = OP_BRIULT;
+            break;
+        case 0x2:
+            opcode->opv = OP_BRIULE;
             break;
 
         default:

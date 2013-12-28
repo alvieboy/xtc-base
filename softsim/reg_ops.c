@@ -21,15 +21,18 @@ void reg_cmpi(xtc_cpu_t *cpu, const opcode_t *opcode, FILE *stream) {
      The operation is similar to
 
      R = R - imm
-
-
-
      */
     fprintf(stream," =%08x (%d) ",cpu->regs[opcode->r1],(int)cpu->regs[opcode->r1]);
-    cpu->zero = (cpu->regs[opcode->r1]==opcode->immed);
-    cpu->ovf = ((int)cpu->regs[opcode->r1] > (int)opcode->immed);
-    cpu->carry = ((unsigned)cpu->regs[opcode->r1] > (unsigned)opcode->immed);
-    cpu->sign = !!((cpu->regs[opcode->r1] - (unsigned)opcode->immed) & 0x80000000);
-    fprintf(stream," (flags Z=%d C=%d S=%d O=%d)", cpu->zero, cpu->carry, cpu->sign, cpu->ovf);
+
+    unsigned long long subr = (unsigned long long)cpu->regs[opcode->r1] -
+        (unsigned long long)opcode->immed;
+
+    /* Set flags */
+
+    cpu->zero = (subr == 0);
+    cpu->carry = !!(subr & 0x100000000);
+    cpu->sign = !!(subr &   0x80000000);
+
+    fprintf(stream," (flags Z=%d C=%d S=%d)", cpu->zero, cpu->carry, cpu->sign);
 }
 

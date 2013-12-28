@@ -44,6 +44,7 @@ const inst_handling_t opc_handling[MAX_OPCODES] = {
     /* OP_SRA    */ {OP_SRA,    "sra",    alu_sra},
     /* OP_SRL    */ {OP_SRL,    "srl",    alu_srl},
     /* OP_SHL    */ {OP_SHL,    "shl",    alu_shl},
+    /* OP_MUL    */ {OP_MUL,    "mul",    alu_mul},
     /* OP_CMP    */ {OP_CMP,    "cmp",    alu_cmp},
     /* OP_ADDI   */ {OP_ADDI,   "addi",   reg_addi},
     /* OP_IMM    */ {OP_IMM,    "imm",    reg_imm},
@@ -78,6 +79,8 @@ const inst_handling_t opc_handling[MAX_OPCODES] = {
     /* OP_BRIGE  */ {OP_BRIGE,  "brige",  cflow_brige},
     /* OP_BRIUGT */ {OP_BRIUGT, "briugt", cflow_briugt},
     /* OP_BRIULT */ {OP_BRIULT, "briult", cflow_briult},
+    /* OP_BRIUGE */ {OP_BRIUGE, "briuge", cflow_briuge},
+    /* OP_BRIULE */ {OP_BRIULE, "briule", cflow_briule},
     /* OP_CMPI   */ {OP_CMPI,   "cmpi",   reg_cmpi}
 };
 
