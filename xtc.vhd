@@ -80,7 +80,8 @@ architecture behave of xtc is
   signal cache_strobe:         std_logic;
   signal cache_enable:         std_logic;
   signal cache_stall:          std_logic;
-
+  signal cache_nseq:           std_logic;
+  
   signal decode_freeze:       std_logic;
 
   signal w_en:                std_logic;
@@ -161,13 +162,40 @@ begin
     -- when no pipelined transaction exists
 
     -- For now, the romram is hacked to do it.
+    nopipe: if not EXTRA_PIPELINE generate
+      cache_valid       <= rom_wb_ack_i;
+      cache_data        <= rom_wb_dat_i;
+      rom_wb_adr_o      <= cache_address;
+      rom_wb_stb_o      <= cache_strobe;
+      rom_wb_cyc_o      <= cache_enable;
+      cache_stall       <= rom_wb_stall_i;
+    end generate;
+  
+    pipe: if EXTRA_PIPELINE generate
+      pipeb: block
+      begin
+        process(wb_clk_i)
+        begin
+          if rising_edge(wb_clk_i) then
+            if cache_nseq='1' then
+              cache_valid<='0';
+            else
+              cache_valid <= rom_wb_ack_i;
+            end if;
+            if cache_strobe='1' and cache_enable='1' then
+              cache_data <= rom_wb_dat_i;
+            end if;
+          end if;
+        end process;
+        --cache_valid       <= rom_wb_ack_i;
+       -- cache_data        <= rom_wb_dat_i;
+        rom_wb_adr_o      <= cache_address;
+        rom_wb_stb_o      <= cache_strobe;
+        rom_wb_cyc_o      <= cache_enable;
+        cache_stall       <= rom_wb_stall_i;
+      end block;
 
-    cache_valid       <= rom_wb_ack_i;
-    cache_data        <= rom_wb_dat_i;
-    rom_wb_adr_o      <= cache_address;
-    rom_wb_stb_o      <= cache_strobe;
-    rom_wb_cyc_o      <= cache_enable;
-    cache_stall       <= rom_wb_stall_i;
+    end generate;
 
   end generate;
 
@@ -185,6 +213,7 @@ begin
       read      => cache_data,
       enable    => cache_enable,
       strobe    => cache_strobe,
+      nseq      => cache_nseq,
 
       freeze    => decode_freeze,
       jump      => euo.r.jump,

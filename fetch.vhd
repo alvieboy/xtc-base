@@ -18,6 +18,7 @@ entity fetch is
     read:     in std_logic_vector(31 downto 0);
     enable:   out std_logic;
     strobe:   out std_logic;
+    nseq:     out std_logic;
     -- Control
     freeze:    in std_logic;
     jump:     in std_logic;
@@ -41,6 +42,8 @@ begin
   fuo.opcode <= opcode0 & opcode1;
 
   address <= std_logic_vector(fr.fpc);
+
+  nseq <= '1' when fr.state=jumping else '0';
 
   process(fr, rst, clk, stall, valid, freeze, dual, jump, jumpaddr,read)
     variable fw: fetch_regs_type;

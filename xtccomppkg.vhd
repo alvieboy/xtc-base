@@ -176,6 +176,7 @@ package xtccomppkg is
     read: in     std_logic_vector(31 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
+    nseq: out std_logic;
 
     -- Control
     freeze:   in std_logic;

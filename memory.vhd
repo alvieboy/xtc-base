@@ -164,12 +164,14 @@ begin
       if rising_edge(clk) then
         wb_ack_i_q <= wb_ack_i;
         -- synthesis translate_off
+        if DEBUG_MEMORY then
         if eui.r.data_access='1' and wb_ack_i='1' then
           if eui.r.data_writeenable='1' then
-            --report ">> MEMORY WRITE, address " & hstr(eui.r.data_address) & ", data 0x" & hstr( wdata );
+            report ">> MEMORY WRITE, address " & hstr(eui.r.data_address) & ", data 0x" & hstr( wdata );
           else
-            --report ">> MEMORY READ, address " & hstr(eui.r.data_address) & " <= " & hstr(mdata);
+            report ">> MEMORY READ, address " & hstr(eui.r.data_address) & " <= " & hstr(mdata);
           end if;
+        end if;
         end if;
         -- synthesis translate_on
         mr<=mw;
