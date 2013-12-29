@@ -546,6 +546,8 @@ static int xtc_count_bits(unsigned int immed)
 {
     int count=31;
     int bsign;
+    if (immed==0)
+        return 0;
     int sign = !!(immed & 0x80000000);
     do {
         immed<<=1;
@@ -755,13 +757,12 @@ static void xtc_emit_var_imm(expressionS *exp,
         } else {
             mask = 0;
         }
-        
 
         immed = exp->X_add_number;
         int sbits = bits - steal;
 
         /* Does the instruction include an imm ? */
-        int fsize = steal ? 1 : 2;
+        int fsize = 1;//steal ? 1 : 2;
 
         /* Compute how many IMM we need to inject */
         while (sbits > 0) {
@@ -771,6 +772,8 @@ static void xtc_emit_var_imm(expressionS *exp,
         /* Allocate space for frag */
         output = frag_more (INST_WORD_SIZE * fsize);
 
+        fprintf(stderr,"Emit var %d number %ld steal %d, fsize %d, opcode %04x\n", bits, exp->X_add_number, steal,
+               fsize, inst);
         /* Emit the real instruction */
         inst |= ((immed & ((1<<steal)-1)) & mask)<<shift;
         *iptr++ = INST_BYTE0(inst);
@@ -790,6 +793,7 @@ static void xtc_emit_var_imm(expressionS *exp,
         /* Write them */
         while (iptr != &instbuf[0]) {
             iptr-=2;
+            fprintf(stderr,"Emit instr\n");
             *output++=*iptr;
             *output++=*(iptr+1);
         }
