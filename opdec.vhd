@@ -118,7 +118,11 @@ begin
 
       when "1111" =>
         -- TODO: change this
-        op := O_RET;
+        if opcode(11)='1' then
+          op := O_RETX;
+        else
+          op := O_RET;
+        end if;
 
       when others =>
         op := O_NOP;
@@ -168,6 +172,7 @@ begin
     d.memory_write := 'X';
     d.rd1 := '0';
     d.rd2 := '0';
+    d.except_return := false;
 
     -- synthesis translate_off
     dec.strasm <= opcode_txt_pad("UNKNOWN");
@@ -177,8 +182,6 @@ begin
     d.blocking    := true;
     d.modify_gpr  := false;
     d.uses        := uses_alu1;
-    --d.alu2_op     := ALU_UNKNOWN;
-    --d.alu1_op     := ALU_UNKNOWN;
     d.imm8        := opcode(11 downto 4);
     d.imm12       := opcode(11 downto 0);
     d.imm4        := opcode(11 downto 8);
@@ -608,6 +611,15 @@ begin
         d.jump_clause := JUMP_INCONDITIONAL;
         d.jump := JUMP_BR_ABS;
         d.blocking := true;
+      when O_RETX =>
+        -- synthesis translate_off
+        d.strasm := opcode_txt_pad("RETX ");
+        -- synthesis translate_on
+        d.jump_clause := JUMP_INCONDITIONAL;
+        d.jump := JUMP_BR_ABS;
+        d.except_return := true;
+        d.blocking := true;
+
 
       when O_CALLI =>
         d.rd1:='1'; d.rd2:='0';
@@ -630,6 +642,7 @@ begin
 
       when O_SSR =>
         d.rd1:='1';
+        d.modify_spr := true;
         if d.sreg1="001" then
           d.br_source := br_source_reg;
         end if;

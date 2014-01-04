@@ -84,7 +84,7 @@ begin
             when reg_source_imm =>
               wdata0 := eui.imreg;
             when reg_source_spr =>
-              wdata0 := eui.r.br;
+              wdata0 := eui.sprval;
             when others =>
           end case;
 
@@ -94,7 +94,7 @@ begin
             when reg_source_imm =>
               wdata1 := eui.imreg;
             when reg_source_spr =>
-              wdata1 := eui.r.br;
+              wdata1 := eui.sprval;
             when others =>
           end case;
     

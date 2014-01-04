@@ -41,6 +41,7 @@ architecture behave of alu_B is
   signal shift_o: unsigned(31 downto 0);
   signal shift_left: std_logic;
   signal shift_arith: std_logic;
+  signal ar: unsigned(32 downto 0);
 
 begin
 
@@ -64,13 +65,15 @@ shft: shifter
   begin
     shift_left <= 'X';
     shift_arith <= 'X';
+    ar <= (others => 'X');
 
     case op is
       when ALU2_ADD =>
         r <= (a(31)&a) + (b(31)&b);
 
       when ALU2_CMPI =>
-        r <= (a(31)&a) - (b(31)&b);
+        ar <= (a(31)&a) - (b(31)&b);
+        r <= (others => 'X');
 
       when ALU2_SRA =>
         r(31 downto 0) <= shift_o;
@@ -107,9 +110,9 @@ shft: shifter
 
   end process;
 
-  co    <= r(32);
-  sign  <= r(31);
-  bo    <= r(32);
-  zero  <= '1' when r(31 downto 0)=x"00000000" else '0';
+  co    <= ar(32);
+  sign  <= ar(31);
+  bo    <= ar(32);
+  zero  <= '1' when ar(31 downto 0)=x"00000000" else '0';
 
 end behave;

@@ -94,8 +94,8 @@ architecture behave of xtc_top_ppro is
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic
-
+    wb_we_o:        out std_logic;
+    wb_inta_i:      in std_logic
   );
   end component;
 
@@ -107,6 +107,7 @@ architecture behave of xtc_top_ppro is
   signal wb_sel:     std_logic_vector(3 downto 0);
   signal wb_we:      std_logic;
   signal wb_ack:     std_logic;
+  signal wb_int:     std_logic;
   signal wb_stall:     std_logic;
   signal wb_clk_i_2x: std_ulogic;
 
@@ -127,7 +128,8 @@ begin
     wb_cyc_o        => wb_cyc,
     wb_stb_o        => wb_stb,
     wb_sel_o        => wb_sel,
-    wb_we_o         => wb_we
+    wb_we_o         => wb_we,
+    wb_inta_i       => wb_int
   );
 
   myuart: uart
@@ -141,7 +143,7 @@ begin
       wb_cyc_i    => wb_cyc,
       wb_stb_i    => wb_stb,
       wb_ack_o    => wb_ack,
-      wb_inta_o   => open,
+      wb_inta_o   => wb_int,
   
       tx          => txd,
       rx          => rxd

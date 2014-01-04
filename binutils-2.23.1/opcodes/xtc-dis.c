@@ -58,9 +58,17 @@ get_field_spr (long instr)
     case 0:
         sprintf(tmpstr,"pc"); break;
     case 1:
-        sprintf(tmpstr,"y"); break;
-    case 2:
         sprintf(tmpstr,"br"); break;
+    case 2:
+        sprintf(tmpstr,"y"); break;
+    case 3:
+        sprintf(tmpstr,"psr"); break;
+    case 4:
+        sprintf(tmpstr,"spsr"); break;
+    case 5:
+        sprintf(tmpstr,"sbr"); break;
+    case 6:
+        sprintf(tmpstr,"ttr"); break;
     default:
         sprintf(tmpstr,"<error>"); break;
     }

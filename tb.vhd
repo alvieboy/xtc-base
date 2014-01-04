@@ -26,6 +26,7 @@ architecture sim of tb is
   signal wb_we:      std_logic;
   signal wb_ack:     std_logic;
   signal wb_stall:     std_logic;
+  signal wb_int: std_logic := '0';
 
   signal rom_wb_ack:       std_logic;
   signal rom_wb_read:      std_logic_vector(31 downto 0);
@@ -214,7 +215,8 @@ begin
     wb_cyc_o        => wb_cyc,
     wb_stb_o        => wb_stb,
     wb_sel_o        => wb_sel,
-    wb_we_o         => wb_we
+    wb_we_o         => wb_we,
+    wb_inta_i       => wb_int
   );
 
   myuart: uart
@@ -243,6 +245,16 @@ begin
     w_rst<='1';
     wait for period;
     w_rst<='0';
+    wait;
+  end process;
+
+  -- Interrupt test
+  process
+  begin
+    wait for 310 ns;
+    wb_int <= '1';
+    wait for 50 ns;
+    wb_int <= '0';
     wait;
   end process;
 

@@ -40,7 +40,7 @@ architecture behave of memory is
 begin
 
     muo.r <= mr;
-    muo.mreg <= mr.dreg;
+    muo.mreg <= eui.r.mwreg;--mr.dreg;
     muo.mregwe <= mregwe;
 
     process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i)
@@ -125,13 +125,13 @@ begin
         -- NOTE: if we just issued a store, and a load is queued, we also need to
         -- refetch the data. Maybe use freeze.... ????
         refetch <= wb_ack_i;
-        if wb_ack_i='1' then
-          mregwe <= not eui.sprwe;--wb_ack_i;
-          muo.msprwe <= eui.sprwe;
-        else
-          mregwe <= '0';
-          muo.msprwe <= '0';
-        end if;
+        --if wb_ack_i='1' then
+          mregwe <= not eui.r.sprwe;
+          muo.msprwe <= eui.r.sprwe;
+        --else
+          --mregwe <= '0';
+          --muo.msprwe <= '0';
+        --end if;
       end if;
 
       busy <= '0';
@@ -155,8 +155,6 @@ begin
         wb_dat_o <= (others => DontCareValue);
         wb_sel_o <= (others => DontCareValue);
         mw.trans := '0';
-
-        --mw.mread:='0';
       end if;
 
       muo.mdata <= mdata;

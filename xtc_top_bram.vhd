@@ -21,8 +21,8 @@ entity xtc_top_bram is
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic
-
+    wb_we_o:        out std_logic;
+    wb_inta_i:      in std_logic
   );
 end entity;
 
@@ -182,7 +182,7 @@ begin
     rom_wb_stb_o    => rom_wb_stb,
     rom_wb_stall_i  => rom_wb_stall,
 
-    wb_inta_i       => '0',
+    wb_inta_i       => wb_inta_i,
     isnmi           => '0'
   );
 

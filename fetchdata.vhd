@@ -52,7 +52,7 @@ begin
   fduo.rr3 <= r3_read;
   fduo.rr4 <= r4_read;
 
-  syncfetch: if false generate
+  syncfetch: if FETCHDATA_STAGE generate
 
     process(dui,clk,rst,fdr,flush,freeze, refetch)
       variable fdw: fetchdata_regs_type;
@@ -60,32 +60,62 @@ begin
       fdw := fdr;
       if freeze='0' then
         fdw.drq := dui.r;
-        if flush='1' or rst='1' then
+        if flush='1' then
           fdw.drq.valid:='0';
+          -- Test to 'remove' valid.
+          --fdw.drq.memory_access:='0';
+          --fdw.drq.modify_flags := false;
+          --fdw.drq.regwe0:='0';
+          --fdw.drq.regwe1:='0';
+          --fdw.drq.sprwe:='0';
+          --fdw.drq.jump_clause:=JUMP_NONE;
+          --fdw.drq.br_source:=br_source_none;
+          --fdw.drq.except_return := false;
+
         end if;
       end if;
-      -- This is only to check for conflicts
---      w_addr <= dui.r.dreg;
---      w_en   <= dui.r.regwe;
-      --
-      r1_en   <= dui.r.rd1;
-      r2_en   <= dui.r.rd2;
-      r3_en   <= dui.r.rd3;
-      r4_en   <= dui.r.rd4;
 
-      r1_addr <= dui.r.sra1;
-      r2_addr <= dui.r.sra2;
-      r3_addr <= dui.r.sra3;
-      r4_addr <= dui.r.sra4;
+      if rst='1' then
+        --fdw.drq.memory_access:='0';
+        --fdw.drq.modify_flags := false;
+        --fdw.drq.regwe0:='0';
+        --fdw.drq.regwe1:='0';
+        --fdw.drq.sprwe:='0';
+        --fdw.drq.jump_clause:=JUMP_NONE;
+        --fdw.drq.br_source:=br_source_none;
+        --fdw.drq.except_return := false;
+        fdw.drq.valid := '0';
+      end if;
+
+      if refetch='1' then
+        r1_en <= '1';
+        r2_en <= '1';
+        r3_en <= '1';
+        r4_en <= '1';
+        r1_addr <= fdr.drq.sra1;
+        r2_addr <= fdr.drq.sra2;
+        r3_addr <= fdr.drq.sra3;
+        r4_addr <= fdr.drq.sra4;
+      else
+        r1_en   <= dui.r.rd1;
+        r2_en   <= dui.r.rd2;
+        r3_en   <= dui.r.rd3;
+        r4_en   <= dui.r.rd4;
   
+        r1_addr <= dui.r.sra1;
+        r2_addr <= dui.r.sra2;
+        r3_addr <= dui.r.sra3;
+        r4_addr <= dui.r.sra4;
+      end if;
       if rising_edge(clk) then
         fdr <= fdw;
       end if;
+
     end process;
 
   end generate;
 
-  asyncfetch: if true generate
+  asyncfetch: if not FETCHDATA_STAGE generate
 
     fdr.drq <= dui.r;
     process(fdr,refetch, dui)

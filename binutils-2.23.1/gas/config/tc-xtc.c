@@ -360,6 +360,26 @@ parse_reg (char * s, unsigned * reg)
       *reg = REG_BR;
       return s + 2;
     }
+  else if (strncasecmp (s, "psr", 2) == 0)
+    {
+      *reg = REG_PSR;
+      return s + 3;
+    }
+  else if (strncasecmp (s, "spsr", 2) == 0)
+    {
+      *reg = REG_SPSR;
+      return s + 4;
+    }
+  else if (strncasecmp (s, "sbr", 2) == 0)
+    {
+      *reg = REG_SBR;
+      return s + 3;
+    }
+  else if (strncasecmp (s, "ttr", 2) == 0)
+    {
+      *reg = REG_TTR;
+      return s + 3;
+    }
   else
     {
       if (TOLOWER (s[0]) == 'r')

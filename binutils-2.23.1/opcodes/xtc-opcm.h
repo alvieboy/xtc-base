@@ -98,6 +98,7 @@ enum xtc_instr
     lsr,
     ssr,
     ret,
+    retx,
 
     invalid_inst
 };
@@ -117,7 +118,10 @@ enum xtc_instr_type
 #define REG_PC  16 /* PC.  */
 #define REG_BR  17 /* BR  */
 #define REG_Y   18 /* Y  */
-
+#define REG_PSR   19
+#define REG_SPSR   20
+#define REG_SBR   21
+#define REG_TTR   22
 /* Alternate names for gen purpose regs.  */
 #define REG_SP  15 /* stack pointer.  */
 

@@ -251,6 +251,8 @@ package xtccomppkg is
     busy: out std_logic;
     refetch: in std_logic;
     wb_busy: in std_logic;
+    int:  in std_logic;
+    intline: in std_logic_vector(7 downto 0);
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
     -- Output for next stages
@@ -532,7 +534,8 @@ end component;
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic
+    wb_we_o:        out std_logic;
+    wb_inta_i:      in std_logic
 
   );
   end component;

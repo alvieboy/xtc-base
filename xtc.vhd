@@ -258,7 +258,7 @@ begin
 
 
       freeze     => execute_busy,
-      flush      => '0',-- euo.jump, -- DELAY SLOT
+      flush      => euo.r.jump,-- euo.jump, -- DELAY SLOT
       refetch    => execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
@@ -276,6 +276,8 @@ begin
       mem_busy  => memory_busy,
       wb_busy   => wb_busy,
       refetch   => refetch,
+      int       => wb_inta_i,
+      intline   => x"00",
       -- Input from fetchdata unit
       fdui      => fduo,
       -- Outputs for next stages

@@ -9,7 +9,8 @@ package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := false;
-  constant EXTRA_PIPELINE: boolean := false;
+  constant EXTRA_PIPELINE: boolean := true;
+  constant FETCHDATA_STAGE: boolean := true;
 
   constant DEBUG_OPCODES: boolean := false;
   constant DEBUG_MEMORY: boolean := false;
@@ -114,7 +115,8 @@ package xtcpkg is
     O_SSR,
     O_LSR,
 
-    O_RET
+    O_RET,
+    O_RETX
   );
 
   type memory_access_type is (
@@ -177,6 +179,7 @@ package xtcpkg is
   type br_source_type is (
     br_source_pc,
     br_source_reg,
+    br_source_brs,
     br_source_none
   );
 
@@ -213,6 +216,7 @@ package xtcpkg is
     jump:           std_logic_vector(1 downto 0);
     jump_clause:    jumpcond_type;
     br_source:      br_source_type;
+    except_return:  boolean;
 -- synthesis translate_off
     strasm:     string(1 to 25);    -- Assembly string, for debugging purposes
 -- synthesis translate_on
@@ -282,6 +286,8 @@ package xtcpkg is
 
     jump:           std_logic_vector(1 downto 0);
     jump_clause:    jumpcond_type;
+    except_return:  boolean;
+    delay_slot:     boolean;
 
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;
@@ -317,19 +323,16 @@ package xtcpkg is
     wb_is_data_address: std_logic;
     -- Own
     br:             unsigned(31 downto 0); -- BRanch register
+    brs:            unsigned(31 downto 0); -- Saved BRanch register
+    psr:            unsigned(31 downto 0); -- Processor Status register
+    spsr:           unsigned(31 downto 0); -- Saved Processor Status register
     alur1:          unsigned(31 downto 0);
     alur2:          unsigned(31 downto 0);
-
-    flag_carry:     std_logic;
-    flag_overflow:  std_logic;
-    flag_zero:      std_logic;
-    flag_sign:      std_logic;
 
     data_write:     std_logic_vector(31 downto 0);
     data_address:   std_logic_vector(31 downto 0);
     data_access:    std_logic;
     data_writeenable: std_logic;
-
     sr:             std_logic_vector(2 downto 0);
 
     dreg0:          regaddress_type; -- Destination reg 0
@@ -343,7 +346,9 @@ package xtcpkg is
     macc:           memory_access_type;
     jump:           std_logic;
     jumpaddr:       word_type;
-
+    trapvector:     word_type;
+    y:              word_type;
+    intjmp:         boolean;
   end record;
 
   type execute_output_type is record
@@ -366,6 +371,7 @@ package xtcpkg is
     alur1: word_type;
     alur2: word_type;
     imreg: word_type;
+    sprval: word_type;
     sprwe:      std_logic;
   end record;
 

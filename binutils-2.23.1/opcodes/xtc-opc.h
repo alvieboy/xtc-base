@@ -64,7 +64,7 @@
 #define DELAY_SLOT 1
 #define NO_DELAY_SLOT 0
 
-#define MAX_OPCODES 70
+#define MAX_OPCODES 71
 
 
 struct op_code_struct
@@ -144,7 +144,7 @@ struct op_code_struct
     {"call", INST_TYPE_IMM8_R,  INST_PC_OFFSET, DELAY_SLOT, IMMVAL_MASK_8, 0xD000, OPCODE_MASK_H, callr, branch_inst },
 
     {"lsr", INST_TYPE_SR,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0100, OPCODE_MASK_EXT, lsr, arithmetic_inst },
-    {"ssr", INST_TYPE_SR,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0200, OPCODE_MASK_EXT, lsr, arithmetic_inst },
+    {"ssr", INST_TYPE_SR,  INST_NO_OFFSET, DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0200, OPCODE_MASK_EXT, ssr, arithmetic_inst },
 
 
     {"imm",   INST_TYPE_IMM,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_12, 0x8000, OPCODE_MASK_H, imm, immediate_inst },
@@ -153,7 +153,8 @@ struct op_code_struct
     {"addri",  INST_TYPE_R1_R2_IMM, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_8, 0x5000, OPCODE_MASK_H, addri, immediate_inst },
     {"cmpi",  INST_TYPE_IMM8_R, INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_8, 0x7000, OPCODE_MASK_H, cmpi, immediate_inst },
 
-    {"ret",   INST_TYPE_NOARGS,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0xF000, OPCODE_MASK_H, ret, branch_inst },
+    {"ret",   INST_TYPE_NOARGS,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0xF000, OPCODE_MASK_EXT, ret, branch_inst },
+    {"retx",  INST_TYPE_NOARGS,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0xF800, OPCODE_MASK_EXT, retx, branch_inst },
 
     {"nop",   INST_TYPE_NOARGS,   INST_NO_OFFSET, NO_DELAY_SLOT, IMMVAL_MASK_NON_SPECIAL, 0x0000, OPCODE_MASK_EXT, nop, logical_inst },
     {"", 0, 0, 0, 0, 0, 0, 0, 0},

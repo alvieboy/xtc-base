@@ -113,6 +113,7 @@ begin
       variable pc: word_type;
       variable imflag: std_logic;
       variable invert_alu: boolean;
+      variable except_return: boolean;
 
     begin
       dw := dr;
@@ -144,10 +145,9 @@ begin
         end if;
       end if;
 
-      if not dec1.blocking then        -- We can issue both instructions if they do not share the same LU,
+      if not dec1.blocking then
+        -- We can issue both instructions if they do not share the same ALU,
         -- nor they share the same output type.
-
-        -- Also, some mix of IMM is not allowed.
 
         if dec1.uses /= dec2.uses or (dec1.uses=uses_nothing or dec2.uses=uses_nothing) then
            if no_reg_conflict then
@@ -173,8 +173,11 @@ begin
         can_issue_both := false;
       end if;
 
-      --is_pc_lsb:=dr.pc_lsb;
+      if dr.delay_slot then
+        can_issue_both := false;
+      end if;
 
+      --can_issue_both := false;
 
       if not can_issue_both then
 
@@ -198,6 +201,8 @@ begin
         jump := dec1.jump;
         jump_clause := dec1.jump_clause;
         br_source := dec1.br_source;
+        except_return:=dec1.except_return;
+
 
         case dec1.loadimm is
           when LOAD8 =>  compositeloadimm := LOAD8;
@@ -257,7 +262,7 @@ begin
 
       else
 
-        -- Issue two instructions at the time, one for each of the LU
+        -- Issue two instructions at the time, one for each of the ALU
 
         -- Fix the PC. We will advance 2 instructions, and on this scenario,
         -- an eventual branch instruction is the second one. PC needs to reflect
@@ -281,16 +286,13 @@ begin
 
         -- RD1/RD2 are output to ALU1.
 
+        -- Make sure we issue the instructions to the correct ALU.
+
         invert_alu := false;
         if (dec1.uses=uses_alu2 or (dec1.uses=uses_nothing and dec2.uses=uses_alu1)) then
           invert_alu := true;
         end if;
-        -- Make sure we issue the instructions to the correct ALU.
-        --
-        --       A         B          Result
-        --
-        --
-        --
+
         if invert_alu=false then
           ra1 := dec1.sreg1;
           ra2 := dec1.sreg2;
@@ -378,24 +380,21 @@ begin
 
         end if;
 
-        --if dec1.uses=uses_alu1 then
-        --  flags_source := FLAGS_ALU1;
-        --else
-        --  flags_source := FLAGS_ALU2;
-        --end if;
-
         if dec2.br_source=BR_SOURCE_NONE then
           br_source := dec1.br_source;
         else
           br_source := dec2.br_source;
         end if;
+
         -- Jump
         if dec1.jump_clause=JUMP_NONE then
           jump_clause := dec2.jump_clause;
           jump := dec2.jump;
+          except_return:=dec2.except_return;
         else
           jump_clause := dec1.jump_clause;
           jump := dec1.jump;
+          except_return:=dec1.except_return;
         end if;
         -- synthesis translate_off
         strasm := dec1.strasm & dec2.strasm;
@@ -448,6 +447,7 @@ begin
               when LOAD12 => compositeloadimm := LOAD12;
                 imm12 := dec2.imm12;
                 imflag := '1';
+              when LOAD0 => compositeloadimm:=LOAD0;
               when others => compositeloadimm := LOADNONE;
             end case;
 
@@ -457,16 +457,14 @@ begin
       opc1 := dec1.opcode;
       opc2 := dec2.opcode;
 
-      dw.swap_target_reg:=DontCareValue;
-      --dw.memory_access:='0';
-      --dw.memory_write:='0';
+      --dw.swap_target_reg:=DontCareValue;
   
       if freeze='0' then
         dw.valid := fui.valid;
       end if;
 
       if fui.valid='1' and freeze='0' then
-        --dw.decoded := op;
+
         dw.rd1 := rd1;
         dw.rd2 := rd2;
         dw.rd3 := rd3;
@@ -489,6 +487,10 @@ begin
           dw.imreg := (others => '0');
         end if;
 
+        dw.delay_slot := false;
+        if (jump_clause /= JUMP_NONE) then
+          dw.delay_slot := true;
+        end if;
 
         case compositeloadimm is
 
@@ -537,20 +539,6 @@ begin
             dw.imreg := (others => '0');
         end case;
 
-        -- BUG BUG BUG.
-        -- When last op is IMM12, this fails. Why ?
-        -- We need to ensure that we reset the flag after a sequence like:
-        -- IMMX OP
-        -- but this breaks the inverse case, where we have
-        -- OP IMMX
-        --
-        -- So we need to know if IMM came from second op or not.
-
-        --if (compositeloadimm = LOAD12 and can_issue_both=false) or compositeloadimm = LOAD12_12 then
-        --  dw.imflag := '1';
-        --else
-        --  dw.imflag := '0';
-        --end if;
         dw.imflag := imflag;
 
         dw.alu1_op := alu1_op;
@@ -558,7 +546,6 @@ begin
         dw.alu2_opcode := alu2_opcode;
         dw.alu2_imreg := alu2_imreg;
         dw.alu2_samereg := alu2_samereg;
-        --dw.pc_lsb      := is_pc_lsb;
         dw.wb_is_data_address := '0';
         dw.macc := macc;
         dw.sr := sr;
@@ -576,20 +563,30 @@ begin
 
         dw.jump         := jump;
         dw.jump_clause  := jump_clause;
+        dw.except_return:= except_return;
         dw.br_source    := br_source;
         -- synthesis translate_off
         dw.strasm := strasm;
         -- synthesis translate_on
       else
-        --dw.rd1 := '0';
-        --dw.rd2 := '0';
-        --dw.regwe := '0';
         busy <= freeze;
       end if;
 
       if rst='1' or flush='1' then
         dw.valid := '0';
+        dw.delay_slot := false;
         dw.imflag := '0';
+
+        --dw.memory_access:='0';
+        --dw.modify_flags := false;
+        --dw.regwe0:='0';
+        --dw.regwe1:='0';
+        --dw.sprwe:='0';
+        --dw.jump_clause:=JUMP_NONE;
+        --dw.br_source:=br_source_none;
+        --dw.except_return := false;
+
+
       end if;
 
       -- fast-forward register access
@@ -602,8 +599,6 @@ begin
       duo.sra2 <= ra2;
       duo.sra3 <= ra3;
       duo.sra4 <= ra4;
-
-      --pc_lsb <= is_pc_lsb;
 
       if rising_edge(clk) then
         dr <= dw;
