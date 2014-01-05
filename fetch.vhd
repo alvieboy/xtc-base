@@ -133,7 +133,7 @@ begin
           fw.fpc := npc;
           strobe <= '1';
           enable <= '1';
-          fw.unaligned := fr.unaligned_jump;
+          --fw.unaligned := fr.unaligned_jump;
           fw.invert_readout := '0';
           fw.state := running;
         end if;

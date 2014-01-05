@@ -184,13 +184,9 @@ begin
         -- TODO: save power, only enable RB that need..
         rd1 := dec1.rd1;
         rd2 := dec1.rd2;
-        rd3 := dec1.rd1;
-        rd4 := dec1.rd2;
 
         ra1 := dec1.sreg1;
         ra2 := dec1.sreg2; -- Preload DREG for some insns
-        ra3 := dec1.sreg1;
-        ra4 := dec1.sreg2;
 
         imm12 := dec1.imm12;
         imm8  := dec1.imm8;
@@ -217,6 +213,17 @@ begin
         alu2_opcode := dec1.opcode;
         alu2_imreg := dec1.alu2_imreg;
         alu2_samereg := dec1.alu2_samereg;
+        if dec1.alu2_samereg='1' then
+          ra3 := dec1.sreg1;
+          ra4 := dec1.sreg2;
+          rd3 := dec1.rd1;
+          rd4 := dec1.rd2;
+        else
+          ra3 := dec1.sreg2;
+          ra4 := dec1.sreg1;
+          rd3 := dec1.rd2;
+          rd4 := dec1.rd1;
+        end if;
 
         reg_source0 := dec1.reg_source;
         reg_source1 := dec1.reg_source;
@@ -296,8 +303,6 @@ begin
         if invert_alu=false then
           ra1 := dec1.sreg1;
           ra2 := dec1.sreg2;
-          ra3 := dec2.sreg1;
-          ra4 := dec2.sreg2;
 
           rd1 := dec1.rd1;
           rd2 := dec1.rd2;
@@ -316,8 +321,17 @@ begin
             regwe1 := '0';
           end if;
 
-          rd3 := dec2.rd1;
-          rd4 := dec2.rd2;
+          if dec2.alu2_samereg='1' then
+            ra3 := dec2.sreg1;
+            ra4 := dec2.sreg2;
+            rd3 := dec2.rd1;
+            rd4 := dec2.rd2;
+          else
+            ra3 := dec2.sreg2;
+            ra4 := dec2.sreg1;
+            rd3 := dec2.rd2;
+            rd4 := dec2.rd1;
+          end if;
 
           alu1_op := dec1.alu1_op;
           alu2_op := dec2.alu2_op;
@@ -367,6 +381,19 @@ begin
           alu2_opcode := dec1.opcode;
           alu2_imreg  := dec1.alu2_imreg;
           alu2_samereg  := dec1.alu2_samereg;
+
+          if dec1.alu2_samereg='1' then
+            ra3 := dec1.sreg1;
+            ra4 := dec1.sreg2;
+            rd3 := dec1.rd1;
+            rd4 := dec1.rd2;
+          else
+            ra3 := dec1.sreg2;
+            ra4 := dec1.sreg1;
+            rd3 := dec1.rd2;
+            rd4 := dec1.rd1;
+          end if;
+
 
           -- Flags
           if dec2.modify_flags then

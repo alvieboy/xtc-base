@@ -252,10 +252,9 @@ begin
   process
   begin
     wait for 310 ns;
-    wb_int <= '1';
+    --wb_int <= '1';
     wait for 50 ns;
-    wb_int <= '0';
-    wait;
+    --wb_int <= '0';
   end process;
 
 end sim;

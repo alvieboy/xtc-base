@@ -9,11 +9,12 @@ package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := false;
-  constant EXTRA_PIPELINE: boolean := true;
+  constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
   constant DEBUG_OPCODES: boolean := false;
   constant DEBUG_MEMORY: boolean := false;
+  constant ENABLE_SHIFTER: boolean := true;
 
 
   subtype opcode_type is std_logic_vector(15 downto 0);

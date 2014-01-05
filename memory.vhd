@@ -63,7 +63,7 @@ begin
 
       mw.trans:='0';   -- Transaction delayed.
 
-      if eui.r.data_access='1' and mr.trans='0' then
+      if eui.r.data_access='1' and mr.trans='0' and wb_ack_i_q='0'then
         -- requested memory access.
         if wb_stall_i='0' then
           mw.trans:='1';

@@ -66,6 +66,7 @@ shft: shifter
     shift_left <= 'X';
     shift_arith <= 'X';
     ar <= (others => 'X');
+    r <= (others =>'X');
 
     case op is
       when ALU2_ADD =>
@@ -76,22 +77,26 @@ shft: shifter
         r <= (others => 'X');
 
       when ALU2_SRA =>
-        r(31 downto 0) <= shift_o;
-        r(32) <= '0';
-        shift_left<='0';
-        shift_arith<='1';
+        if ENABLE_SHIFTER then
+          r(31 downto 0) <= shift_o;
+          r(32) <= '0';
+          shift_left<='0';
+          shift_arith<='1';
+        end if;
 
       when ALU2_SRL =>
+        if ENABLE_SHIFTER then
         r(31 downto 0) <= shift_o;
         r(32) <= '0';
         shift_left<='0';
         shift_arith<='0';
-
+        end if;
       when ALU2_SHL =>
+        if ENABLE_SHIFTER then
         r(31 downto 0) <= shift_o;
         r(32) <= '0';
         shift_left<='1';
-
+        end if;
       when ALU2_SEXTB =>
         r(7 downto 0) <= a(7 downto 0);
         r(32 downto 8) <= (others => a(7));
@@ -105,7 +110,7 @@ shft: shifter
         r(32) <= '0';
 
 
-      when others => r <= (others =>'X');
+      when others => null;
     end case;
 
   end process;

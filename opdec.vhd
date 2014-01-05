@@ -19,7 +19,7 @@ architecture behave of opdec is
 
   signal decoded_op: decoded_opcode_type;
   signal mtype: memory_access_type;
-
+  signal blocking: boolean;
 begin
 
   -- Top level instruction decoder.
@@ -28,17 +28,19 @@ begin
   begin
     case opcode(15 downto 12) is
       when "0000" =>
+        blocking <= false;
         case opcode(11 downto 8) is
           when "0001" =>
             op := O_LSR;
           when "0010" =>
             op := O_SSR;
           when others =>
-            op := O_NOP;
+            op := O_SSR;
         end case;
 
       when "0001" =>
         -- ALU operations
+        blocking <= false;
         case opcode(11 downto 8) is
           when "0000" => op := O_ADD;
           when "0001" => op := O_ADDC;
@@ -63,34 +65,43 @@ begin
         end case;
 
       when "0010" =>
+        blocking <= false;
         op := O_ST;
 
       when "0011" =>
+        blocking <= false;
         -- NOT USED
         op := O_NOP;
 
       when "0100" =>
+        blocking <= true; -- Not sure why....
         op := O_LD;
 
       when "0101" =>
+        blocking <= false;
         -- NOT USED
         op := O_ADDRI;
 
       when "0110" =>
+        blocking <= false;
         op := O_ADDI;
 
       when "0111" =>
+        blocking <= true;
         -- NOT USED
         op := O_CMPI;
 
       when "1000" =>
+        blocking <= false;
         op := O_IM;
 
       when "1001" =>
+        blocking <= true;
         -- NOT USED
         op := O_BRI;
 
       when "1010" =>
+        blocking <= true;
         case opcode(3 downto 0) is
           when "1000" => op := O_BRIE;
           when "1001" => op := O_BRINE;
@@ -102,21 +113,27 @@ begin
           when "1111" => op := O_BRIUGE;
           when "0001" => op := O_BRIUL;
           when "0010" => op := O_BRIULE;
-          when others => op := O_NOP;
+          when others => op := O_BRIE;
         end case;
 
       when "1011" =>
+        blocking <= true;
         op := O_BRR;
 
       when "1100" =>
+        blocking <= true;
         op := O_CALLR;
+
       when "1101" =>
+        blocking <= true;
         op := O_CALLI;
 
       when "1110" =>
+        blocking <= false;
         op := O_LIMR;
 
       when "1111" =>
+        blocking <= true;
         -- TODO: change this
         if opcode(11)='1' then
           op := O_RETX;
@@ -125,6 +142,7 @@ begin
         end if;
 
       when others =>
+        blocking <= true;
         op := O_NOP;
 
     end case;
@@ -400,10 +418,12 @@ begin
         d.strasm := opcode_txt_pad("CMPI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
         -- synthesis translate_on
         d.uses := uses_alu2;
+        d.blocking := true;
 
       when O_BRR =>
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.alu2_imreg:='1';
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
         -- synthesis translate_on
@@ -414,6 +434,7 @@ begin
         d.br_source := br_source_pc;
         d.jump_clause := JUMP_INCONDITIONAL;
         d.jump := JUMP_RI_PCREL;
+        d.blocking := true;
 
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
@@ -481,6 +502,7 @@ begin
         d.alu2_imreg :='1';
         d.uses := uses_alu2;
         d.loadimm := LOAD0;
+        d.blocking := true;
 
         case mtype is
 
@@ -529,7 +551,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_INCONDITIONAL;
         d.jump := JUMP_I_PCREL;
-
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRI 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -537,6 +559,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_E;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -544,6 +567,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_NE;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRINE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -551,6 +575,7 @@ begin
         d.jump_clause := JUMP_G;
         d.jump := JUMP_I_PCREL;
         d.loadimm := LOAD8;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIG 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -558,6 +583,7 @@ begin
         d.jump_clause := JUMP_GE;
         d.jump := JUMP_I_PCREL;
         d.loadimm := LOAD8;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIGE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -565,6 +591,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_L;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIL 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -572,6 +599,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_LE;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRILE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -579,6 +607,7 @@ begin
         d.jump_clause := JUMP_UG;
         d.jump := JUMP_I_PCREL;
         d.loadimm := LOAD8;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIUG 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -586,6 +615,7 @@ begin
         d.jump_clause := JUMP_UGE;
         d.jump := JUMP_I_PCREL;
         d.loadimm := LOAD8;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIUGE 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -593,6 +623,7 @@ begin
         d.loadimm := LOAD8;
         d.jump_clause := JUMP_UL;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIUL 0x" & hstr(d.imm8));
         -- synthesis translate_on
@@ -603,6 +634,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("BRIULE 0x" & hstr(d.imm8));
         -- synthesis translate_on
+        d.blocking := true;
 
       when O_RET =>
         -- synthesis translate_off
@@ -629,6 +661,7 @@ begin
         d.br_source := br_source_pc;
         d.jump_clause := JUMP_INCONDITIONAL;
         d.jump := JUMP_I_PCREL;
+        d.blocking := true;
 
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
@@ -639,6 +672,7 @@ begin
         -- synthesis translate_off
         d.strasm := opcode_txt_pad("LSR ");
         -- synthesis translate_on
+        d.blocking := false;
 
       when O_SSR =>
         d.rd1:='1';
@@ -651,11 +685,15 @@ begin
         -- synthesis translate_on
 
       when others =>
+        d.blocking := true;
+
         -- synthesis translate_off
         d.strasm      := opcode_txt_pad("U " & hstr(opcode));
         -- synthesis translate_on
     end case;
 
+    -- Attempt.
+    d.blocking := blocking;
     dec <= d;
 
   end process;

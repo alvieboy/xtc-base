@@ -135,6 +135,7 @@ architecture behave of uart is
   signal do_interrupt: std_logic;
   signal int_enabled: std_logic;
   signal ack: std_logic;
+  signal tsc: unsigned(31 downto 0);
 
 begin
 
@@ -239,6 +240,8 @@ begin
       when "00" =>
         wb_dat_o <= (others => '0');
         wb_dat_o(7 downto 0) <= fifo_data;
+      when "11" =>
+        wb_dat_o <= std_logic_vector(tsc);
       when others =>
         wb_dat_o <= (others => 'X');
     end case;
@@ -252,7 +255,9 @@ begin
         int_enabled <= '0';
         do_interrupt<='0';
         ack<='0';
+        tsc <= (others => '0');
       else
+        tsc <= tsc + 1;
         ack <='0';
         uart_write<='0';
 

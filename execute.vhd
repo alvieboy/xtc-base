@@ -49,7 +49,7 @@ begin
   euo.r <= er;
   alu_a_a <= fdui.rr1;
   alu_a_b <= fdui.rr2;
-  alu_b_a <= fdui.rr3 when fdui.r.drq.alu2_samereg='1' else fdui.rr4;
+  alu_b_a <= fdui.rr3;
 
 
   myaluA: alu_A
@@ -86,7 +86,7 @@ begin
   process(clk,fdui,er,rst,alu_a_r,alu_b_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
           alu2_co, alu2_zero,
-          mem_busy,wb_busy)
+          mem_busy,wb_busy,int)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
     constant reg_zero: unsigned(31 downto 0) := (others => '0');
