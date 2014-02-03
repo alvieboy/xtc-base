@@ -114,6 +114,8 @@ begin
       variable imflag: std_logic;
       variable invert_alu: boolean;
       variable except_return: boolean;
+      variable blocks1: std_logic;
+      variable blocks2: std_logic;
 
     begin
       dw := dr;
@@ -177,7 +179,7 @@ begin
         can_issue_both := false;
       end if;
 
-      --can_issue_both := false;
+      can_issue_both := false;
 
       if not can_issue_both then
 
@@ -229,6 +231,9 @@ begin
         reg_source1 := dec1.reg_source;
         dreg0 := dec1.dreg;
         dreg1 := dec1.dreg;
+        blocks1 := dec1.blocks;
+        blocks2 := dec1.blocks;
+
 
         macc := dec1.macc;
         memory_access := dec1.memory_access;
@@ -307,9 +312,13 @@ begin
           rd1 := dec1.rd1;
           rd2 := dec1.rd2;
           dreg0 := dec1.dreg;
+          blocks1:= dec1.blocks;
           dreg1 := dec2.dreg;
+          blocks2:= dec2.blocks;
+
           reg_source0 := dec1.reg_source;
           reg_source1 := dec2.reg_source;
+
           if dec1.modify_gpr then
             regwe0 := '1';
           else
@@ -362,7 +371,10 @@ begin
           rd4 := dec1.rd2;
 
           dreg0 := dec2.dreg;
+          blocks1:=dec2.blocks;
           dreg1 := dec1.dreg;
+          blocks2:= dec1.blocks;
+
           reg_source0 := dec2.reg_source;
           reg_source1 := dec1.reg_source;
           if dec2.modify_gpr then
@@ -505,7 +517,6 @@ begin
         dw.fpc  := pc + 4;
         dw.pc   := pc;
         dw.npc  := pc + 2;
-
         --dw.op := op;
         dw.imm12 := imm12;
         dw.imm8  := imm8;
@@ -580,6 +591,9 @@ begin
         dw.memory_write := memory_write;
         dw.modify_flags := modify_flags;
         dw.flags_source := flags_source;
+
+        dw.blocks := blocks1 or blocks2;
+        --dw.blocks2 := blocks2;
 
         dw.dreg0       := dreg0;
         dw.dreg1       := dreg1;

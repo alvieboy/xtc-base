@@ -56,6 +56,30 @@ begin
         -- While this happens, we must stall the pipeline if it is trying to wb also.
         -- We can use the second port if we are not writing back two registers
         -- at this point.
+          case eui.reg_source0 is
+            when reg_source_alu =>
+              wdata0 := eui.alur1;
+            when reg_source_imm =>
+              wdata0 := eui.imreg;
+            when reg_source_spr =>
+              wdata0 := eui.sprval;
+            when others =>
+          end case;
+
+          case eui.reg_source1 is
+            when reg_source_alu =>
+              wdata1 := eui.alur2;
+            when reg_source_imm =>
+              wdata1 := eui.imreg;
+            when reg_source_spr =>
+              wdata1 := eui.sprval;
+            when others =>
+          end case;
+          r0_we <=  eui.regwe0;
+          r0_addr <= eui.dreg0;
+
+          r1_we <=  eui.regwe1;
+          r1_addr <= eui.dreg1;
 
         wec := eui.r.regwe0 & eui.r.regwe1;
         case wec is

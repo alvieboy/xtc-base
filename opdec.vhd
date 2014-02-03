@@ -35,7 +35,7 @@ begin
           when "0010" =>
             op := O_SSR;
           when others =>
-            op := O_SSR;
+            op := O_NOP;
         end case;
 
       when "0001" =>
@@ -169,7 +169,7 @@ begin
   end process;
 
 
-  process(opcode, decoded_op, mtype)
+  process(opcode, decoded_op, mtype,blocking)
     -- synthesis translate_off
     variable targetstr: string(1 to 2);
     variable sourcestr: string(1 to 5);
@@ -214,6 +214,7 @@ begin
     d.alu2_samereg:= '1';
     d.br_source   := br_source_none;
     d.modify_spr  := false;
+    d.blocks      := '0';
 
     -- ALU operations are directly extracted from
     -- the opcode.
@@ -498,11 +499,12 @@ begin
         d.alu2_op := ALU2_ADD;
         d.memory_access := '1';
         d.memory_write := '0';
-        d.rd1:='1'; d.rd2:='1';
+        d.rd1:='1'; d.rd2:='0';
         d.alu2_imreg :='1';
         d.uses := uses_alu2;
         d.loadimm := LOAD0;
         d.blocking := true;
+        d.blocks := '1';
 
         case mtype is
 
@@ -535,11 +537,14 @@ begin
             -- synthesis translate_on
           when M_SPR =>
             d.modify_spr := true;
+            d.blocks := '0'; -- Withtout this it taints invalid registers.
+
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LDSPR " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
             -- synthesis translate_on
           when M_SPR_POSTINC =>
             d.modify_spr := true;
+            d.blocks := '0'; -- Withtout this it taints invalid registers.
             d.modify_gpr:=true; d.reg_source:=reg_source_alu;
             -- synthesis translate_off
             d.strasm := opcode_txt_pad("LDSPR+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
@@ -677,7 +682,7 @@ begin
       when O_SSR =>
         d.rd1:='1';
         d.modify_spr := true;
-        if d.sreg1="001" then
+        if d.sreg1(2 downto 0)="001" then
           d.br_source := br_source_reg;
         end if;
         -- synthesis translate_off

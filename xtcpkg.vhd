@@ -12,8 +12,8 @@ package xtcpkg is
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
-  constant DEBUG_OPCODES: boolean := false;
-  constant DEBUG_MEMORY: boolean := false;
+  constant DEBUG_OPCODES: boolean := true ;
+  constant DEBUG_MEMORY: boolean := true;
   constant ENABLE_SHIFTER: boolean := true;
 
 
@@ -206,6 +206,7 @@ package xtcpkg is
     reg_source:     reg_source_type;
     alu2_imreg:     std_logic;
     alu2_samereg:   std_logic;
+    blocks:         std_logic;
     -- IMMediate helpers
     imm12:          std_logic_vector(11 downto 0);
     imm8:           std_logic_vector(7 downto 0);
@@ -259,6 +260,8 @@ package xtcpkg is
     regwe1:         std_logic;
     dreg1:          regaddress_type;
     sprwe:          std_logic;
+    blocks:         std_logic;
+    --blocks2:        std_logic;
 
     -- FLAGS and flags source
     modify_flags:   boolean;
@@ -312,11 +315,13 @@ package xtcpkg is
 
   type fetchdata_regs_type is record
     drq:            decode_regs_type;
+    rd1q,rd2q,rd3q,rd4q: std_logic;
   end record;
 
   type fetchdata_output_type is record
     r:                    fetchdata_regs_type;
     rr1,rr2,rr3,rr4:      word_type_std; -- Register data
+    valid:                std_logic;
   end record;
 
   type execute_regs_type is record
@@ -330,10 +335,6 @@ package xtcpkg is
     alur1:          unsigned(31 downto 0);
     alur2:          unsigned(31 downto 0);
 
-    data_write:     std_logic_vector(31 downto 0);
-    data_address:   std_logic_vector(31 downto 0);
-    data_access:    std_logic;
-    data_writeenable: std_logic;
     sr:             std_logic_vector(2 downto 0);
 
     dreg0:          regaddress_type; -- Destination reg 0
@@ -342,9 +343,7 @@ package xtcpkg is
     regwe1:         std_logic; -- Write-enable for destination reg 1
     reg_source0:    reg_source_type; -- Source for destination reg 0
     reg_source1:    reg_source_type; -- Source for destination reg 1
-    sprwe:          std_logic; -- SPR write enable
-    mwreg:          regaddress_type;    -- Memory writeback register
-    macc:           memory_access_type;
+
     jump:           std_logic;
     jumpaddr:       word_type;
     trapvector:     word_type;
@@ -354,9 +353,6 @@ package xtcpkg is
 
   type execute_output_type is record
     r: execute_regs_type;
-    --jump: std_logic;
-    --jumpaddr: word_type;
-
 
     -- Async stuff for writeback
     reg_source0:  reg_source_type;
@@ -374,19 +370,35 @@ package xtcpkg is
     imreg: word_type;
     sprval: word_type;
     sprwe:      std_logic;
+
+    mwreg:          regaddress_type;    -- Memory writeback register
+    macc:           memory_access_type;
+    data_write:     std_logic_vector(31 downto 0);
+    data_address:   std_logic_vector(31 downto 0);
+    data_access:    std_logic;
+    data_writeenable: std_logic;
+
+
+
   end record;
 
+  type memory_state_type is (
+    midle,
+    mbusy
+  );
+
   type memory_regs_type is record
-    -- Q-Pass from previous stage
-    --wb_is_data_address: std_logic;
-    --alur1:              word_type;
-    --alur2:              word_type;
-    --data_address:       word_type_std;
-    --regwe:              std_logic;
-    dreg:               regaddress_type;
-    trans:                std_logic;
-    -- Own registers
-    --mread:              std_logic;
+    dreg:                 regaddress_type;
+    state:                memory_state_type;
+    regwe:            std_logic;
+    sprwe:            std_logic;
+    macc:           memory_access_type;
+    wb_dat:     std_logic_vector(31 downto 0);
+    wb_adr:     std_logic_vector(31 downto 0);
+    wb_we:      std_logic;
+    wb_cyc:     std_logic;
+    wb_stb:     std_logic;
+    wb_sel:     std_logic_vector(3 downto 0);
   end record;
 
   type memory_output_type is record

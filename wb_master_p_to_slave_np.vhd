@@ -59,6 +59,6 @@ swbo.cyc <= mwbi.cyc;
 mwbo.dat <= swbi.dat;
 mwbo.ack <= swbi.ack;
 
---mwbo.stall <= '0';
+mwbo.stall <= '0';
 
 end behave;

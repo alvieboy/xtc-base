@@ -94,6 +94,11 @@ architecture behave of xtc is
   signal refetch:             std_logic;
   signal dual:                std_logic;
 
+  signal allvalid:            std_logic;
+  signal retryfetch:          std_logic;
+  signal e_busy:  std_logic;
+  signal refetch_registers:   std_logic;
+
 begin
 
   -- Register bank.
@@ -259,7 +264,7 @@ begin
 
       freeze     => execute_busy,
       flush      => euo.r.jump,-- euo.jump, -- DELAY SLOT
-      refetch    => execute_busy,-- TEST TEST: was refetch,
+      refetch    => refetch_registers,--execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
       -- Input from decode unit
@@ -268,11 +273,86 @@ begin
       fduo       => fduo
     );
 
+  busycheck: block
+
+    constant COUNT: integer :=16;
+    signal tq: std_logic_vector(COUNT-1 downto 0);
+  
+    signal i1,i2,i3,i4: integer range 0 to COUNT-1;
+    signal s1:          integer range 0 to COUNT-1;
+    signal c1:          integer range 0 to COUNT-1;
+    signal v1,v2,v3,v4: std_logic;
+  begin
+  
+    i1 <= to_integer(unsigned(rb1_addr));
+    i2 <= to_integer(unsigned(rb2_addr));
+    i3 <= to_integer(unsigned(rb3_addr));
+    i4 <= to_integer(unsigned(rb4_addr));
+  
+    s1 <= to_integer(unsigned(muo.mreg));
+    c1 <= to_integer(unsigned(duo.r.sra4));
+  
+  
+    v1<='1' when rb1_en='0' else tq(i1);
+    v2<='1' when rb2_en='0' else tq(i2);
+    v3<='1' when rb3_en='0' else tq(i3);
+    v4<='1' when rb4_en='0' else tq(i4);
+
+
+    process(wb_clk_i)
+    begin
+    if rising_edge(wb_clk_i) then
+      if wb_rst_i='1' then
+        tq <= (others => '1');
+      else
+        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' then
+          tq(c1) <= '0';
+        end if;
+        --if set1_en='1' then
+        --  t(s1) <= '1';
+        --end if;
+        if muo.mregwe='1' then
+          tq(s1) <= '1';
+        end if;
+  
+        --if clr1_en='1' then
+        --  t(c1) <= '1';
+        --end if;
+        
+      end if;
+
+      retryfetch <= not (v1 and v2 and v3 and v4);
+
+    end if;
+  end process;
+
+    allvalid <= v1 and v2 and v3 and v4;
+
+  end block;
+
+
+  process(e_busy,retryfetch)
+  begin
+    refetch_registers<='0';
+    --if allvalid='1' then
+      execute_busy<=e_busy;
+    --else
+      if e_busy='1' or retryfetch='1' then
+        execute_busy<='1';
+        refetch_registers<=retryfetch;
+      else
+        execute_busy<='0';
+      end if;
+   -- end if;
+  end process;
+  --execute_busy <= retryfetch or e_busy;-- or (not allvalid);
+
+
   execute_unit: execute
     port map (
       clk       => wb_clk_i,
       rst       => wb_rst_i,
-      busy      => execute_busy,
+      busy      => e_busy,
       mem_busy  => memory_busy,
       wb_busy   => wb_busy,
       refetch   => refetch,

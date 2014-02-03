@@ -85,7 +85,7 @@ begin
 
   process(clk,fdui,er,rst,alu_a_r,alu_b_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
-          alu2_co, alu2_zero,
+          alu2_co, alu2_zero,alu2_sign,mui,
           mem_busy,wb_busy,int)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
@@ -99,7 +99,7 @@ begin
   begin
     ew := er;
 
-    ew.valid := fdui.r.drq.valid;
+    ew.valid := fdui.valid;
     ew.jump := '0';
     ew.jumpaddr := (others => 'X');
     can_interrupt := true;
@@ -120,26 +120,19 @@ begin
       can_interrupt := true;
     end if;
 
-    if can_interrupt and int='1' and er.psr(4)='1' and fdui.r.drq.valid='1' and fdui.r.drq.jump_clause=JUMP_NONE
+    if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and fdui.r.drq.jump_clause=JUMP_NONE
         and er.jump='0' then
       do_interrupt := true;
     end if;
 
-    if ( mem_busy='1' and fdui.r.drq.memory_access='1' ) or
-      -- Load must stall pipeline for now
-      ( mem_busy='1' and er.data_access='1' and er.data_writeenable='0' )
-      then
+    if mem_busy='1' then
       busy_int := '1';
     else
       busy_int := wb_busy;
     end if;
 
-    if mem_busy='0' then
-      ew.data_access := '0';
-    end if;
+    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
 
-    if fdui.r.drq.valid='1' and
-      busy_int='0' and er.intjmp=false then
       -- synthesis translate_off
       if DEBUG_OPCODES then
         if rising_edge(clk) then
@@ -177,47 +170,6 @@ begin
       ew.regwe1       := fdui.r.drq.regwe1;
       ew.dreg1        := fdui.r.drq.dreg1;
 
-      ew.sprwe        := fdui.r.drq.sprwe;
-
-      ew.mwreg    := fdui.r.drq.sra4;
-      ew.sr       := fdui.r.drq.sr;
-
-      if mem_busy='0' or refetch='1' then
-        ew.macc := fdui.r.drq.macc;
-
-        case fdui.r.drq.macc is
-          when M_SPR | M_SPR_POSTINC =>
-            -- TODO: add missing SPRs
-            case fdui.r.drq.sra4(2 downto 0) is
-              when others =>
-                ew.data_write := std_logic_vector(er.br);
-            end case;
-          when others =>
-            ew.data_write := fdui.rr4; -- Memory always go through Alu2
-        end case;
-
-        case fdui.r.drq.macc is
-          when M_WORD  |
-               M_HWORD |
-               M_BYTE  |
-               M_SPR =>
-            ew.data_address := std_logic_vector(alu_b_r);
-          when M_WORD_POSTINC |
-               M_HWORD_POSTINC |
-               M_BYTE_POSTINC |
-               M_SPR_POSTINC =>
-            --ew.data_address := std_logic_vector(alu_b_r);
-            ew.data_address := fdui.rr3;
-
-          when others =>
-            invalid_instr := true;
-        end case;
-
-        ew.data_access := fdui.r.drq.memory_access;
-        ew.data_writeenable := fdui.r.drq.memory_write;
-      else
-        --alu_b_b <= (others => 'X');
-      end if;
         if fdui.r.drq.memory_access='1' then
           case fdui.r.drq.macc is
             when M_WORD_POSTINC | M_SPR_POSTINC =>
@@ -340,7 +292,6 @@ begin
     euo.dreg1        <= ew.dreg1;
     euo.regwe1       <= ew.regwe1;
 
-    euo.sprwe        <= er.sprwe;
     -- SPRVAL...
 
     case fdui.r.drq.sra2(2 downto 0) is
@@ -356,6 +307,50 @@ begin
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;
+
+
+    -- Memory lines
+
+    euo.sprwe     <= fdui.r.drq.sprwe;
+    euo.mwreg     <= fdui.r.drq.sra4;
+    euo.sr        <= fdui.r.drq.sr;
+    euo.macc      <= fdui.r.drq.macc;
+
+    euo.data_write <= (others => 'X');
+
+    case fdui.r.drq.macc is
+      when M_SPR | M_SPR_POSTINC =>
+        -- TODO: add missing SPRs
+        case fdui.r.drq.sra4(2 downto 0) is
+          when others =>
+            euo.data_write <= std_logic_vector(er.br);
+        end case;
+
+      when others =>
+        euo.data_write <= fdui.rr4; -- Memory always go through Alu2
+    end case;
+
+    euo.data_address <= (others => 'X');
+
+    case fdui.r.drq.macc is
+      when M_WORD  |
+           M_HWORD |
+           M_BYTE  |
+           M_SPR =>
+        euo.data_address <= std_logic_vector(alu_b_r);
+      when M_WORD_POSTINC |
+           M_HWORD_POSTINC |
+           M_BYTE_POSTINC |
+           M_SPR_POSTINC =>
+        euo.data_address <= fdui.rr3;
+    end case;
+
+    euo.data_access      <= fdui.r.drq.memory_access;
+    euo.data_writeenable <= fdui.r.drq.memory_write;
+
+    if fdui.valid='0' then
+      euo.data_access <= '0';
+    end if;
 
     if rst='1' then
       ew.psr(0) := '1'; -- Supervisor
