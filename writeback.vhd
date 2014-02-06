@@ -3,6 +3,7 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
+use work.txt_util.all;
 
 entity writeback is
   port (
@@ -32,7 +33,20 @@ architecture behave of writeback is
   constant FAST_WRITEBACK: boolean := true;
 
 begin
-    process(mui,eui)
+    process(mui.mregwe,
+      eui.reg_source0,
+      eui.reg_source1,
+      eui.regwe0,
+      eui.regwe1,
+      eui.dreg0,
+      eui.dreg1,
+      mui.mdata,
+      mui.mreg,
+      eui.alur1,
+      eui.alur2,
+      eui.imreg,
+      eui.sprval
+      )
       variable wdata0: unsigned(31 downto 0);
       variable wdata1: unsigned(31 downto 0);
       variable wec: std_logic_vector(1 downto 0);
@@ -83,6 +97,11 @@ begin
           r1_addr <= eui.dreg1;
 
         wec := eui.regwe0 & eui.regwe1;
+
+        if eui.regwe0'EVENT then
+          report "Event on regwe0: " & str(eui.regwe0);
+        end if;
+
         case wec is
           when "00" | "01" =>
             wdata0 := unsigned(mui.mdata);
