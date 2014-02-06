@@ -75,13 +75,14 @@ begin
               wdata1 := eui.sprval;
             when others =>
           end case;
+
           r0_we <=  eui.regwe0;
           r0_addr <= eui.dreg0;
 
           r1_we <=  eui.regwe1;
           r1_addr <= eui.dreg1;
 
-        wec := eui.r.regwe0 & eui.r.regwe1;
+        wec := eui.regwe0 & eui.regwe1;
         case wec is
           when "00" | "01" =>
             wdata0 := unsigned(mui.mdata);

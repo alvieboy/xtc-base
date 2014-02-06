@@ -131,15 +131,24 @@ begin
       busy_int := wb_busy;
     end if;
 
-    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
-
-      -- synthesis translate_off
-      if DEBUG_OPCODES then
-        if rising_edge(clk) then
-           report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+    -- synthesis translate_off
+    if DEBUG_OPCODES then
+      if rising_edge(clk) then
+        if fdui.valid='1' and busy_int='0' and er.intjmp=false then
+          report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+        elsif fdui.valid='0' then
+          report hstr(std_logic_vector(fdui.r.drq.pc)) & " <NOT VALID>" ;
+        elsif busy_int='1' then
+          report hstr(std_logic_vector(fdui.r.drq.pc)) & " <BUSY>" ;
+        elsif er.intjmp then
+          report hstr(std_logic_vector(fdui.r.drq.pc)) & " <JUMP>" ;
         end if;
       end if;
-      -- synthesis translate_on
+    end if;
+    -- synthesis translate_on
+
+
+    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
 
       ew.alur1 := alu_a_r(31 downto 0);
       ew.alur2 := alu_b_r(31 downto 0);

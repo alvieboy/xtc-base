@@ -12,8 +12,8 @@ package xtcpkg is
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
-  constant DEBUG_OPCODES: boolean := true ;
-  constant DEBUG_MEMORY: boolean := true;
+  constant DEBUG_OPCODES: boolean := false ;
+  constant DEBUG_MEMORY: boolean := false;
   constant ENABLE_SHIFTER: boolean := true;
 
 

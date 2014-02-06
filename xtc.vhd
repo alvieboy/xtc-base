@@ -95,9 +95,11 @@ architecture behave of xtc is
   signal dual:                std_logic;
 
   signal allvalid:            std_logic;
+  signal notallvalid:         std_logic;
   signal retryfetch:          std_logic;
   signal e_busy:  std_logic;
   signal refetch_registers:   std_logic;
+  signal freeze_decoder:      std_logic;
 
 begin
 
@@ -237,12 +239,14 @@ begin
       -- Outputs for next stages
       duo       => duo,
       busy    => decode_freeze,
-      freeze  => execute_busy,
+      freeze  => freeze_decoder,
       dual    => dual,
       flush   => euo.r.jump, -- DELAY SLOT when fetchdata is passthrough
       jump    => euo.r.jump,
       jumpmsb => euo.r.jumpaddr(1)
     );
+
+  freeze_decoder <= execute_busy or notallvalid;
 
   fetchdata_unit: fetchdata
     port map (
@@ -264,7 +268,7 @@ begin
 
       freeze     => execute_busy,
       flush      => euo.r.jump,-- euo.jump, -- DELAY SLOT
-      refetch    => refetch_registers,--execute_busy,-- TEST TEST: was refetch,
+      refetch    => notallvalid, --refetch_registers,--execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
       -- Input from decode unit
@@ -305,7 +309,7 @@ begin
       if wb_rst_i='1' then
         tq <= (others => '1');
       else
-        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' then
+        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' and allvalid='1' then
           tq(c1) <= '0';
         end if;
         --if set1_en='1' then
@@ -327,22 +331,23 @@ begin
   end process;
 
     allvalid <= v1 and v2 and v3 and v4;
+    notallvalid <= not allvalid;
 
   end block;
 
 
   process(e_busy,retryfetch)
   begin
-    refetch_registers<='0';
+    ----refetch_registers<='0';
     --if allvalid='1' then
       execute_busy<=e_busy;
     --else
-      if e_busy='1' or retryfetch='1' then
-        execute_busy<='1';
-        refetch_registers<=retryfetch;
-      else
-        execute_busy<='0';
-      end if;
+      --if e_busy='1' or retryfetch='1' then
+      --  execute_busy<='1';
+      --  refetch_registers<=retryfetch;
+      --else
+      --  execute_busy<='0';
+      --end if;
    -- end if;
   end process;
   --execute_busy <= retryfetch or e_busy;-- or (not allvalid);

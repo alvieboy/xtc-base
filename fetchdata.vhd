@@ -80,28 +80,38 @@ begin
       end if;
 
       if refetch='1' then
-        fduo.valid <= '0';
-        r1_en <= fdr.rd1q;
-        r2_en <= fdr.rd2q;
-        r3_en <= fdr.rd3q;
-        r4_en <= fdr.rd4q;
+        --fduo.valid <= '0';
+        if freeze='0' then
+        fdw.drq.valid := '0';
+        end if;
 
-        r1_addr <= fdr.drq.sra1;
-        r2_addr <= fdr.drq.sra2;
-        r3_addr <= fdr.drq.sra3;
-        r4_addr <= fdr.drq.sra4;
+        --r1_en <= fdr.rd1q;
+        --r2_en <= fdr.rd2q;
+        --r3_en <= fdr.rd3q;
+        --r4_en <= fdr.rd4q;
 
+        --r1_addr <= fdr.drq.sra1;
+        --r2_addr <= fdr.drq.sra2;
+        --r3_addr <= fdr.drq.sra3;
+        --r4_addr <= fdr.drq.sra4;
+      end if;
+      --else
+      if freeze='1' then
+        r1_en   <= '0';
+        r2_en   <= '0';
+        r3_en   <= '0';
+        r4_en   <= '0';
       else
         r1_en   <= dui.r.rd1;
         r2_en   <= dui.r.rd2;
         r3_en   <= dui.r.rd3;
         r4_en   <= dui.r.rd4;
-
+      end if;
         r1_addr <= dui.r.sra1;
         r2_addr <= dui.r.sra2;
         r3_addr <= dui.r.sra3;
         r4_addr <= dui.r.sra4;
-      end if;
+      --end if;
 
       if rising_edge(clk) then
         fdr <= fdw;

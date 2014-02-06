@@ -179,7 +179,7 @@ begin
         can_issue_both := false;
       end if;
 
-      can_issue_both := false;
+      --can_issue_both := false;
 
       if not can_issue_both then
 
