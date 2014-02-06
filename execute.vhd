@@ -116,6 +116,21 @@ begin
       alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
     end if;
 
+    if fdui.r.drq.memory_access='1' then
+     case fdui.r.drq.macc is
+       when M_WORD_POSTINC | M_SPR_POSTINC =>
+         alu_b_b <= x"00000004";
+       when M_HWORD_POSTINC =>
+         alu_b_b <= x"00000002";
+       when M_BYTE_POSTINC =>
+         alu_b_b <= x"00000001";
+       when others =>
+         alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
+     end case;
+    else
+    --  alu_b_b <= (others => 'X');
+    end if;
+
     if fdui.r.drq.imflag='0' then
       can_interrupt := true;
     end if;
@@ -146,6 +161,20 @@ begin
       end if;
     end if;
     -- synthesis translate_on
+
+    euo.reg_source0  <= fdui.r.drq.reg_source0;
+    euo.dreg0        <= fdui.r.drq.dreg0;
+
+    euo.reg_source1  <= fdui.r.drq.reg_source1;
+    euo.dreg1        <= fdui.r.drq.dreg1;
+
+    if fdui.valid='1' and er.intjmp=false then
+      euo.regwe0       <= fdui.r.drq.regwe0;
+      euo.regwe1       <= fdui.r.drq.regwe1;
+    else
+      euo.regwe0       <= '0';
+      euo.regwe1       <= '0';
+    end if;
 
 
     if fdui.valid='1' and busy_int='0' and er.intjmp=false then
@@ -179,18 +208,7 @@ begin
       ew.regwe1       := fdui.r.drq.regwe1;
       ew.dreg1        := fdui.r.drq.dreg1;
 
-        if fdui.r.drq.memory_access='1' then
-          case fdui.r.drq.macc is
-            when M_WORD_POSTINC | M_SPR_POSTINC =>
-              alu_b_b <= x"00000004";
-            when M_HWORD_POSTINC =>
-              alu_b_b <= x"00000002";
-            when M_BYTE_POSTINC =>
-              alu_b_b <= x"00000001";
-            when others =>
-              alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
-          end case;
-        end if;
+
 
       -- Branching
       case fdui.r.drq.jump_clause is
@@ -259,7 +277,7 @@ begin
       -- Make sure all combinatory circuits do not present
       -- overhead.
 
-      alu_b_b <= (others => 'X');
+      --alu_b_b <= (others => 'X');
     end if;
 
     if mui.msprwe='1' then
@@ -294,12 +312,12 @@ begin
     euo.alur2 <= alu_b_r(31 downto 0);
 
     -- REG sources are also per ALU
-    euo.reg_source0  <= ew.reg_source0;
-    euo.dreg0        <= ew.dreg0;
-    euo.regwe0       <= ew.regwe0;
-    euo.reg_source1  <= ew.reg_source1;
-    euo.dreg1        <= ew.dreg1;
-    euo.regwe1       <= ew.regwe1;
+    --euo.reg_source0  <= ew.reg_source0;
+    --euo.dreg0        <= ew.dreg0;
+    --euo.regwe0       <= ew.regwe0;
+    --euo.reg_source1  <= ew.reg_source1;
+    --euo.dreg1        <= ew.dreg1;
+    --euo.regwe1       <= ew.regwe1;
 
     -- SPRVAL...
 

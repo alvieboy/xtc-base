@@ -98,10 +98,6 @@ begin
 
         wec := eui.regwe0 & eui.regwe1;
 
-        if eui.regwe0'EVENT then
-          report "Event on regwe0: " & str(eui.regwe0);
-        end if;
-
         case wec is
           when "00" | "01" =>
             wdata0 := unsigned(mui.mdata);
@@ -115,6 +111,7 @@ begin
             busy <= '1';
             wdata1 := unsigned(mui.mdata);
             r1_we <= '1';
+            r0_we <= '0'; -- Do not process the write from the other channel.
             r1_addr <= mui.mreg;
           when others =>
         end case;
