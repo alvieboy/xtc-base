@@ -31,15 +31,20 @@ START_RELOC_NUMBERS (elf_xtc_reloc_type)
     RELOC_NUMBER (R_XTC_NONE, 0)
     RELOC_NUMBER (R_XTC_32, 1)             /* 32-bit normal reloc, memory */
     RELOC_NUMBER (R_XTC_32_PCREL, 2)       /* 32-bit normal reloc, PCREL */
-    RELOC_NUMBER (R_XTC_32_IMM_12_12_8, 3) /* 32-bit IMM reloc */
-    RELOC_NUMBER (R_XTC_32_IMM_12_8, 4)    /* 20-bit IMM reloc */
-    RELOC_NUMBER (R_XTC_32_IMM_8, 5)       /* 8-bit IMM reloc */
-    RELOC_NUMBER (R_XTC_32_IMM_12_12_8_PCREL, 6) /* 32-bit IMM reloc, PC-relative */
-    RELOC_NUMBER (R_XTC_32_IMM_12_8_PCREL, 7)    /* 20-bit IMM reloc */
-    RELOC_NUMBER (R_XTC_32_IMM_8_PCREL, 8)       /* 8-bit IMM reloc */
-    RELOC_NUMBER (R_XTC_32_IMM_12_12_12, 9)
-    RELOC_NUMBER (R_XTC_32_IMM_12_12, 10)
-    RELOC_NUMBER (R_XTC_32_IMM_12, 11)
+
+    RELOC_NUMBER (R_XTC_32_I8, 3)        /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E8, 4)        /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E8_I8, 5)     /* 16-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24, 6)       /* 24-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24_I8, 7)    /* 32-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24_E8, 8)    /* 32-bit IMM reloc */
+
+    RELOC_NUMBER (R_XTC_32_I8_R, 9)        /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E8_R, 10)        /* 8-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E8_I8_R, 11)     /* 16-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24_R, 12)       /* 24-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24_I8_R, 13)    /* 32-bit IMM reloc */
+    RELOC_NUMBER (R_XTC_32_E24_E8_R, 14)    /* 32-bit IMM reloc */
 END_RELOC_NUMBERS (R_XTC_max)
 
 #endif /* _ELF_XTC_H */

@@ -42,20 +42,13 @@ enum xtc_instr
     mul,
 
     not,
+    cadd,
+    csub,
     sextb,
     sexts,
 
     bri,
-    brie,
-    brine,
-    brig,
-    brige,
-    bril,
-    brile,
-    briugt,
-    briuge,
-    briult,
-    briule,
+
     imm,
     limr,
 
@@ -97,17 +90,10 @@ enum xtc_instr
     brr,
     lsr,
     ssr,
-    ret,
-    retx,
+    jmp,
+    jmpe,
 
     invalid_inst
-};
-
-enum xtc_instr_type
-{
-  arithmetic_inst, logical_inst, mult_inst, div_inst, branch_inst,
-  return_inst, immediate_inst, special_inst, memory_load_inst,
-  memory_store_inst, barrel_shift_inst, anyware_inst
 };
 
 #define INST_WORD_SIZE 2

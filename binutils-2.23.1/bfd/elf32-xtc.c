@@ -8,6 +8,9 @@
 
 #define INST_WORD_SIZE 2
 
+static void xtc_emit_relocation(int rel, long value, bfd_byte *dest);
+static int xtc_reloc_pcrel_offset(int rel);
+
 
 #if 0
 static bfd_reloc_status_type
@@ -205,35 +208,7 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12_8,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		        /* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_12_8,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          20,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		        /* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_8,/* Type.  */
+   HOWTO (R_XTC_32_I8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           8,			/* Bitsize.  */
@@ -241,27 +216,41 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		/* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_12_12_12,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_12",   	/* Name.  */
+          "R_XTC_32_I8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12,/* Type.  */
+   HOWTO (R_XTC_32_E8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          8,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E8_I8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          16,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_I8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		/* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           24,			/* Bitsize.  */
@@ -269,62 +258,142 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12",   	/* Name.  */
+          "R_XTC_32_E24",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12,/* Type.  */
+   HOWTO (R_XTC_32_E24_I8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          12,			/* Bitsize.  */
+          32,			/* Bitsize.  */
           FALSE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12",   	/* Name.  */
+          "R_XTC_32_E24_I8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24_E8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		/* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12_8_PCREL,/* Type.  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   HOWTO (R_XTC_32_I8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
+          8,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_8_PCREL",   	/* Name.  */
+          "R_XTC_32_I8_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_E8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          20,			/* Bitsize.  */
+          8,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_PCREL",   	/* Name.  */
+          "R_XTC_32_E8_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE), /* PC relative offset?  */
-   HOWTO (R_XTC_32_IMM_8_PCREL,/* Type.  */
+
+   HOWTO (R_XTC_32_E8_I8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          8,			/* Bitsize.  */
+          16,			/* Bitsize.  */
           TRUE,		        /* PC_relative.  */
           4,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_8_PCREL",   	/* Name.  */
+          "R_XTC_32_E8_I8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          24,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24_I8_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_I8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0x0,		/* Dest Mask.  */
@@ -386,35 +455,44 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
         xtc_reloc = R_XTC_32_PCREL;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_12_12_8_PCREL;
+    case BFD_RELOC_XTC_I8:
+        xtc_reloc = R_XTC_32_I8;
         break;
-    case BFD_RELOC_XTC_IMM_12_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_12_8_PCREL;
+    case BFD_RELOC_XTC_E8:
+        xtc_reloc = R_XTC_32_E8;
         break;
-    case BFD_RELOC_XTC_IMM_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_8_PCREL;
+    case BFD_RELOC_XTC_E8_I8:
+        xtc_reloc = R_XTC_32_E8_I8;
+        break;
+    case BFD_RELOC_XTC_E24:
+        xtc_reloc = R_XTC_32_E24;
+        break;
+    case BFD_RELOC_XTC_E24_I8:
+        xtc_reloc = R_XTC_32_E24_I8;
+        break;
+    case BFD_RELOC_XTC_E24_E8:
+        xtc_reloc = R_XTC_32_E24_E8;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_8:
-        xtc_reloc = R_XTC_32_IMM_12_12_8;
+    case BFD_RELOC_XTC_I8_PCREL:
+        xtc_reloc = R_XTC_32_I8_R;
         break;
-    case BFD_RELOC_XTC_IMM_12_8:
-        xtc_reloc = R_XTC_32_IMM_12_8;
+    case BFD_RELOC_XTC_E8_PCREL:
+        xtc_reloc = R_XTC_32_E8_R;
         break;
-    case BFD_RELOC_XTC_IMM_8:
-        xtc_reloc = R_XTC_32_IMM_8;
+    case BFD_RELOC_XTC_E8_I8_PCREL:
+        xtc_reloc = R_XTC_32_E8_I8_R;
+        break;
+    case BFD_RELOC_XTC_E24_PCREL:
+        xtc_reloc = R_XTC_32_E24_R;
+        break;
+    case BFD_RELOC_XTC_E24_I8_PCREL:
+        xtc_reloc = R_XTC_32_E24_I8_R;
+        break;
+    case BFD_RELOC_XTC_E24_E8_PCREL:
+        xtc_reloc = R_XTC_32_E24_E8_R;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_12:
-        xtc_reloc = R_XTC_32_IMM_12_12_12;
-        break;
-    case BFD_RELOC_XTC_IMM_12_12:
-        xtc_reloc = R_XTC_32_IMM_12_12;
-        break;
-    case BFD_RELOC_XTC_IMM_12:
-        xtc_reloc = R_XTC_32_IMM_12;
-        break;
 
     default:
         abort();
@@ -1001,6 +1079,7 @@ xtc_elf_relocate_section (bfd *output_bfd,
 
 
 #endif
+#if 0
 
 static int xtc_bytes_12_12_8(bfd_vma value)
 {
@@ -1142,7 +1221,7 @@ static void xtc_emit_imm_12128(bfd *abfd, bfd_byte *address, bfd_vma value, int 
         abort();
     }
 }
-
+#endif
 
 static bfd_boolean
 xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
@@ -1174,12 +1253,12 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
       //arelent arel;
       reloc_howto_type *howto;
       unsigned long r_symndx;
-      bfd_vma phys_addr;
+      bfd_vma phys_addr, reserved;
       Elf_Internal_Sym *sym;
       asection *sec;
       bfd_vma relocation=0;
       bfd_reloc_status_type r = bfd_reloc_undefined;
-      int pcrel, fullim;
+      int pcrel;
 
       r_symndx = ELF32_R_SYM (rel->r_info);
       r_type = ELF32_R_TYPE (rel->r_info);
@@ -1213,76 +1292,45 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                                    local_sections, local_syms,
                                    rel, &name, &relocation);
       pcrel=0;
-      fullim=0;
+      //fullim=0;
       switch (r_type)
       {
-      case R_XTC_32_IMM_12_12_8_PCREL:
-      case R_XTC_32_IMM_12_8_PCREL:
-      case R_XTC_32_IMM_8_PCREL:
+      case R_XTC_32_I8_R:
+      case R_XTC_32_E8_R:
+      case R_XTC_32_E8_I8_R:
+      case R_XTC_32_E24_R:
+      case R_XTC_32_E24_I8_R:
+      case R_XTC_32_E24_E8_R:
           pcrel=1;
-      case R_XTC_32_IMM_12_12_12:
-      case R_XTC_32_IMM_12_12:
-      case R_XTC_32_IMM_12:
-      case R_XTC_32_IMM_12_12_8:
-      case R_XTC_32_IMM_12_8:
-      case R_XTC_32_IMM_8:
 
-          {
-              switch (r_type) {
-              case R_XTC_32_IMM_12_12_12:
-              case R_XTC_32_IMM_12_12:
-              case R_XTC_32_IMM_12:
-                  fullim=1;
-              default:
-                  break;
-              }
+      case R_XTC_32_I8:
+      case R_XTC_32_E8:
+      case R_XTC_32_E8_I8:
+      case R_XTC_32_E24:
+      case R_XTC_32_E24_I8:
+      case R_XTC_32_E24_E8:
 
-              int len;
-              int i;
-              int reserved;
-              if (pcrel)
-              {
-                  reserved = R_XTC_32_IMM_8_PCREL - r_type + 1 ;
-                  phys_addr = relocation + rel->r_addend;
-                  phys_addr -= (input_section->output_section->vma
-                                + input_section->output_offset);
-                         
-                  phys_addr -= rel->r_offset;
-                  phys_addr += rel->r_addend;
-                  phys_addr -= (reserved*2);
-              } else
-              {
-                  if (fullim)
-                      reserved = R_XTC_32_IMM_12 - r_type + 1;
-                  else
-                      reserved = R_XTC_32_IMM_8 - r_type + 1;
-                  phys_addr = relocation + rel->r_addend;
-              }
-              if (fullim)
-                  len = xtc_bytes_12_12_12(phys_addr);
-              else
-                  len = xtc_bytes_12_12_8(phys_addr);
+          if (pcrel) {
+              reserved = xtc_reloc_pcrel_offset(r_type);
+              phys_addr = relocation + rel->r_addend;
+              phys_addr -= (input_section->output_section->vma
+                            + input_section->output_offset);
 
-              
-              for (i=0; i<reserved-len; i++)
-              {
-                  /* if we write 0, then execution will crash if we get this wrong
-                   */
-                  bfd_put_16 (input_bfd, 0x0000,
-                             (bfd_byte*) contents + rel->r_offset+i);
-              }
-              if (fullim) {
-                  xtc_emit_imm_121212(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
-                                      len);
-              }
-              else {
-                  xtc_emit_imm_12128(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
-                                     len);
-              }
-              r_type = R_XTC_NONE;
-              r = bfd_reloc_ok;
-        }
-          break;
+              phys_addr -= rel->r_offset;
+              phys_addr += rel->r_addend;
+          } else {
+              reserved = 0;
+              phys_addr = relocation + rel->r_addend;
+          }
+
+          printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+          xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset);
+
+
+          r_type = R_XTC_NONE;
+          r = bfd_reloc_ok;
+
+      break;
 
         case R_XTC_NONE:
           r = bfd_reloc_ok;
@@ -1740,6 +1788,305 @@ xtc_elf_relax_delete_bytes (bfd *abfd, asection *sec,
     }
 }
 
+static bfd_boolean xtc_reloc_pcrel(int rel)
+{
+    return (rel == (int) R_XTC_32_E8_R)
+        || (rel == (int) R_XTC_32_I8_R)
+        || (rel == (int) R_XTC_32_E8_I8_R)
+        || (rel == (int) R_XTC_32_E24_R)
+        || (rel == (int) R_XTC_32_E24_I8_R)
+        || (rel == (int) R_XTC_32_E24_E8_R);
+}
+
+static int xtc_reloc_pcrel_offset(int rel)
+{
+    int offset=0;
+    switch (rel) {
+    case R_XTC_32_E8_R:
+        offset = 2; break;
+    case R_XTC_32_I8_R:
+        offset = 2; break;
+    case R_XTC_32_E8_I8_R:
+        offset = 4; break;
+    case R_XTC_32_E24_R:
+        offset = 4; break;
+    case R_XTC_32_E24_I8_R:
+        offset = 6; break;
+    case R_XTC_32_E24_E8_R:
+        offset = 6; break;
+    default:
+        abort();
+    }
+    return offset;
+}
+
+static bfd_boolean xtc_fits_imm(long imm, int bitsize)
+{
+    if (bitsize==0) {
+        return imm==0;
+    }
+    long max = 1<<(bitsize-1);
+    if (imm<0) {
+        imm=-1 - imm;
+    }
+    return imm<max;
+}
+
+static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
+{
+    // Move I8 backwards. It's a 4-5, move to 2-3. The
+    // upper 2 bytes will be removed later on.
+    printf("E24I8->E8I8: %02x%02x %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3],
+           location[4],
+           location[5]);
+    unsigned char savecond = location[2];
+
+    location[2] = location[4] |0x80; // Signal extended
+    location[3] = location[5];
+
+    // Move extension forward. modify for IMM
+    location[4] = (savecond&0xf) | 0x40;
+    location[5] = 0;
+
+    printf("%02x%02x %02x%02x\n",
+           location[2],
+           location[3],
+           location[4],
+           location[5]);
+
+    if (value) {
+        *value -= 4;
+    }
+
+}
+
+static void xtc_relax_e24_to_e8( unsigned char *location ATTRIBUTE_UNUSED , long *value ATTRIBUTE_UNUSED)
+{
+    // xtc_relax_e24_i8_to_e8_i8(location);
+    abort();
+}
+
+static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
+{
+    // Move i8 forward
+    printf("E8I8->I8: %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3]);
+
+    location[2] = location[0] & 0x7f; // Remove extension
+    location[3] = location[1];
+
+    printf("%02x%02x\n",
+           location[2],
+           location[3]);
+
+    if (value) {
+        *value -= 2;
+    }
+}
+static void xtc_relax_e8_to_none(unsigned  char *location, long *value ATTRIBUTE_UNUSED)
+{
+    printf("E8-> -- %02x%02x \n",
+           location[0],
+           location[1]);
+ 
+    *location++=0xde;
+    *location++=0xad;
+}
+
+static unsigned long xtc_get16(const bfd_byte*src)
+{
+    return src[1] + (((unsigned long)src[0])<<8);
+}
+
+static unsigned long xtc_get32(const bfd_byte*src)
+{
+    unsigned long v = xtc_get16(src)<<16;
+    v |= xtc_get16(src+2);
+    return v;
+}
+
+static void xtc_put16(unsigned long value, bfd_byte*dest)
+{
+    dest[0] = value >> 8;
+    dest[1] = value;
+}
+
+static bfd_byte *xtc_emit_e24(bfd_byte *dest, long value)
+{
+    //unsigned long inst = 0x80006000;
+    unsigned long inst = xtc_get32(dest);
+    printf("Emit E24, val %08lx\n", value);
+    // Lower 15-bits of value go into the opcode itself.
+    inst |= (value & 0x7fff)<<16;
+    value>>=15;
+
+    // Next 8-bits are placed in the other
+    inst |= (value&0xff);
+    value>>=8;
+    inst |= ((value&1)<<12);
+
+    *dest++=inst>>24;
+    *dest++=inst>>16;
+    *dest++=inst>>8;
+    *dest++=inst;
+    return dest;
+}
+
+static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
+{
+
+    switch (rel) {
+    case R_XTC_32_E24_E8_R:
+    case R_XTC_32_E24_E8:
+
+        dest = xtc_emit_e24(dest,value>>8);
+
+        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+
+        break;
+
+    case R_XTC_32_E24_I8_R:
+    case R_XTC_32_E24_I8:
+        // First, emit E24
+        dest = xtc_emit_e24(dest,value>>8);
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        break;
+
+    case R_XTC_32_E24_R:
+    case R_XTC_32_E24:
+        //        abort();
+        /* Assert that it fits */
+
+        BFD_ASSERT(xtc_fits_imm(value,24));
+        dest = xtc_emit_e24(dest,value);
+
+        break;
+
+    case R_XTC_32_E8_R:
+    case R_XTC_32_E8:
+        dest+=2;
+        // Apply extension
+        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+
+        //abort();
+        break;
+
+    case R_XTC_32_E8_I8_R:
+    case R_XTC_32_E8_I8:
+        printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        printf("%04lx\n", xtc_get16(dest));
+        value>>=8;
+        dest+=2;
+        // Apply extension
+        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+        //abort();
+        break;
+
+    case R_XTC_32_I8_R:
+    case R_XTC_32_I8:
+        //printf("Insn: %04lx ", xtc_get16(dest));
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        //printf("Emit for instruction 0x%04lx, immed is %ld\n",xtc_get16(dest),value);
+        break;
+    }
+}
+
+static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
+{
+    long insn = xtc_get16(loc+2);
+    return (insn & 0x2f00)==0; // Either CC or DREG
+}
+
+static void xtc_relax_e24_e8_to_e8(unsigned char *location, long *value)
+{
+    printf("E24E8->E8: %02x%02x %02x%02x %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3],
+           location[4],
+           location[5],
+           location[6],
+           location[7]
+          );
+    printf("%02x%02x%02x%02x\n",
+           location[4],
+           location[5],
+           location[6],
+           location[7]);
+    if (value) {
+        *value -= 4;
+    }
+
+}
+
+static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
+{
+#define NEW_RELOC_IF(bits,newrel,removedbytes, algo) \
+    if (xtc_fits_imm(value,bits)) { (*rel)=(newrel); retry=TRUE; algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); bytes+=removedbytes; break; } \
+    else { printf("Imm %ld does not fit %d bits\n", value,bits); }
+    int bytes = 0;
+    bfd_boolean retry;
+
+    do {
+        retry = FALSE;
+        printf("Loop\n");
+        switch (*rel)
+        {
+        case R_XTC_32_E24_E8_R:
+        case R_XTC_32_E24_E8:
+            /* This reloc uses an extra extension because it has some condition code.
+             We can only remove the extension immed. */
+            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 4,xtc_relax_e24_e8_to_e8);
+            //abort();
+            break;
+
+        case R_XTC_32_E24_I8_R:
+        case R_XTC_32_E24_I8:
+            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 2, xtc_relax_e24_i8_to_e8_i8);
+            break;
+
+        case R_XTC_32_E24_R:
+        case R_XTC_32_E24:
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 2, xtc_relax_e24_to_e8);
+            break;
+
+        case R_XTC_32_E8_R:
+        case R_XTC_32_E8:
+            if (!xtc_can_remove_extension(location+bytes)) {
+                break;
+            }
+            NEW_RELOC_IF(0, R_XTC_NONE, 2, xtc_relax_e8_to_none);
+            break;
+
+        case R_XTC_32_E8_I8_R:
+        case R_XTC_32_E8_I8:
+            if (!xtc_can_remove_extension(location+bytes)) {
+                printf("Cannot remove extension\n");
+                break;
+            }
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2,xtc_relax_e8_i8_to_i8);
+            break;
+
+            /* We cannot relax this any further */
+            return -1;
+        }
+    } while (retry);
+
+    /* Apply relocation value */
+    xtc_emit_relocation(*rel,value, location+bytes);
+    return bytes;
+}
+
+
 
 static bfd_boolean
 xtc_elf_relax_section (bfd *abfd,
@@ -1805,20 +2152,23 @@ xtc_elf_relax_section (bfd *abfd,
 
     irelend = internal_relocs + sec->reloc_count;
     rel_count = 0;
+
+    printf("Doing relaxation pass....\n");
+
     for (irel = internal_relocs; irel < irelend; irel++, rel_count++)
     {
         bfd_vma symval;
 
-
-        if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8_PCREL)
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8_PCREL )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_12 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12 )
+#if 0
+        if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E8_I8)
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_E8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_I8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E8_I8_R )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_I8_R )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_E8_R )
            )
             continue; /* Can't delete this reloc.  */
-
+#endif
         /* Get the section contents.  */
         if (contents == NULL)
         {
@@ -1876,15 +2226,15 @@ xtc_elf_relax_section (bfd *abfd,
                       + h->root.u.def.section->output_section->vma
                       + h->root.u.def.section->output_offset);
         }
-        int isPcrel = 0;
+        //int isPcrel = 0;
 
-        if ( (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_12_8_PCREL)
-            || (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_8_PCREL)
-           )
+        if (xtc_reloc_pcrel( ELF32_R_TYPE( irel->r_info )))
         {
-            isPcrel = 1;
+            //isPcrel = 1;
+            int offset = xtc_reloc_pcrel_offset(ELF32_R_TYPE( irel->r_info ));
+            printf("Offset for reloc: %d\n",offset);
             symval = symval + irel->r_addend
-                - (irel->r_offset
+                - (irel->r_offset + offset +
                    + sec->output_section->vma
                    + sec->output_offset);
         }
@@ -1895,105 +2245,13 @@ xtc_elf_relax_section (bfd *abfd,
         bfd_vma value = symval;
 
 
-        int bytesNeeded;
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
-
-        switch (ELF32_R_TYPE (irel->r_info))
-        {
-
-        case R_XTC_32_IMM_12_12_8_PCREL:
-        case R_XTC_32_IMM_12_12_8:
-            bytesNeeded = xtc_bytes_12_12_8(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                break;
-            case 2:
-                newReloc = isPcrel ? R_XTC_32_IMM_12_8_PCREL : R_XTC_32_IMM_12_8;
-                //xtc_emit_imm_12_8(abfd, contents + INST_WORD_SIZE, value);
-                deleteBytes = 1;
-                break;
-            case 1:
-                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
-                //xtc_emit_imm_8(abfd, contents + INST_WORD_SIZE*2, value);
-                deleteBytes = 2;
-            }
-            //newsize = bytesNeeded;
-
-            break;
-
-        case R_XTC_32_IMM_12_12_12:
-            bytesNeeded = xtc_bytes_12_12_12(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                break;
-            case 2:
-                newReloc = R_XTC_32_IMM_12_12;
-                deleteBytes = 1;
-                break;
-            case 1:
-                newReloc = R_XTC_32_IMM_12;
-                deleteBytes = 2;
-            }
-
-
-            break;
-
-        case R_XTC_32_IMM_12_12:
-            bytesNeeded = xtc_bytes_12_12_12(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                abort();
-                break;
-            case 2:
-                break;
-            case 1:
-                newReloc = R_XTC_32_IMM_12;
-                deleteBytes = 1;
-            }
-
-
-            break;
-
-        case R_XTC_32_IMM_12_8_PCREL:
-        case R_XTC_32_IMM_12_8:
-
-            bytesNeeded = xtc_bytes_12_12_8(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                abort();
-                break;
-            case 2:
-                break;
-            case 1:
-                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
-                deleteBytes = 1;
-            }
-            break;
-
-        case R_XTC_32_IMM_8_PCREL:
-        case R_XTC_32_IMM_8:
-            // Cannot relax any further
-            break;
-
-        default:
-            {
-#if 0
-                char *name=NULL;
-                reloc_howto_type *howto = bfd_reloc_type_lookup(abfd, ELF32_R_TYPE(irel->r_info));
-                if (howto) {
-                    name = howto->name;
-                }
-#endif
-            }
-            abort();
-        }
+        printf("Reloc at 0x%lx (value: %ld)\n",irel->r_offset,value);
+        deleteBytes = xtc_relax_relocation(&newReloc, value, elf_section_data (sec)->this_hdr.contents + irel->r_offset);
 
         if (deleteBytes) {
+
             elf_section_data (sec)->relocs = internal_relocs;
             free_relocs = NULL;
 
@@ -2005,7 +2263,13 @@ xtc_elf_relax_section (bfd *abfd,
 
             irel->r_info = ELF32_R_INFO (ELF32_R_SYM (irel->r_info), newReloc );
             
-            xtc_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes * 2);
+            xtc_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes);
+
+            // Emit relocation
+            /*
+            xtc_emit_relocation(newReloc, value,
+                                elf_section_data (sec)->this_hdr.contents + irel->r_offset);
+            */
             *again = TRUE;
 
         }

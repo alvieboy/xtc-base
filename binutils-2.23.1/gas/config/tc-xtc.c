@@ -83,7 +83,7 @@ static struct hash_control * opcode_hash_control;	/* Opcode mnemonics.  */
 void
 md_begin (void)
 {
-  struct op_code_struct * opcode;
+  const struct op_code_struct * opcode;
 
   opcode_hash_control = hash_new ();
 
@@ -560,8 +560,6 @@ parse_memory (char * s, unsigned * ptr_reg, int *hasimm, expressionS *imval)
   as_fatal (_("Memory address expected, but saw '%s'"), s);
   return s;
 }
-
-
 static int xtc_count_bits(unsigned int immed)
 {
     int count=31;
@@ -577,6 +575,7 @@ static int xtc_count_bits(unsigned int immed)
     } while (--count);
     return count+1;
 }
+
 static inline int xtc_can_represent_as_imm8(int immed)
 {
     return immed <= 127 && immed >= -128;
@@ -599,7 +598,7 @@ static int xtc_bytes_12_12_8(long int value)
     }
 }
 #endif
-
+#if 0
 static int xtc_words_12_12_12(long int value)
 {
     if ((value & 0xff800000)==0 /* unsigned */
@@ -616,6 +615,7 @@ static int xtc_words_12_12_12(long int value)
         return 3;
     }
 }
+#endif
 #if 0
 static char *xtc_frag_fixed_immed(long int value)
 {
@@ -631,7 +631,7 @@ static char *xtc_frag_fixed_immed(long int value)
     return o;
 }
 #endif
-
+#if 0
 static void xtc_emit_imm_12(char *output, int value, unsigned op)
 {
     op &= ~0x0FFF;
@@ -639,6 +639,7 @@ static void xtc_emit_imm_12(char *output, int value, unsigned op)
     output[0] = op>>8;
     output[1] = op;
 }
+#endif
 #if 0
 static void xtc_emit_imm_8(long int value, unsigned op)
 {
@@ -648,7 +649,7 @@ static void xtc_emit_imm_8(long int value, unsigned op)
     output[1] = op;
 }
 #endif
-
+#if 0
 static void xtc_emit_imm_12_12(char *output, long int value, unsigned op)
 {
     xtc_emit_imm_12(&output[0],value>>12, INST_IMM);
@@ -661,6 +662,8 @@ static void xtc_emit_imm_12_12_12(char *output, long int value, unsigned op)
     xtc_emit_imm_12(&output[2],value>>12, INST_IMM);
     xtc_emit_imm_12(&output[4],value, op);
 }
+#endif
+
 #if 0
 static void xtc_emit_imm_12_8(long int value, unsigned op)
 {
@@ -675,7 +678,7 @@ static void xtc_emit_imm_12_12_8(long int value, unsigned op)
     xtc_emit_imm_8(value, op);
 }
 #endif
-
+#if 0
 static void xtc_emit_imm_121212(char *output,long int value, unsigned op, int size)
 {
     switch(size) {
@@ -692,6 +695,7 @@ static void xtc_emit_imm_121212(char *output,long int value, unsigned op, int si
         abort();
     }
 }
+#endif
 #if 0
 static void xtc_emit_imm_12128(long int value, unsigned op, int size)
 {
@@ -711,6 +715,7 @@ static void xtc_emit_imm_12128(long int value, unsigned op, int size)
 }
 #endif
 
+#if 0
 enum imm_size {
     IMM_8,
     IMM_0
@@ -720,6 +725,8 @@ static unsigned int xtc_get_imm_steal(enum imm_size imms)
 {
     return imms==IMM_8 ? 8 : 0;
 }
+#endif
+
 #if 0
 static unsigned int xtc_get_imm_size_at_offset(enum imm_size imms, int offset)
 {
@@ -730,6 +737,7 @@ static unsigned int xtc_get_imm_size_at_offset(enum imm_size imms, int offset)
 }
 #endif
 
+#if 0
 static void xtc_emit_var_imm(expressionS *exp,
                              struct op_code_struct *opcode,
                              unsigned inst,
@@ -791,9 +799,10 @@ static void xtc_emit_var_imm(expressionS *exp,
         }
         /* Allocate space for frag */
         output = frag_more (INST_WORD_SIZE * fsize);
-
+#if 0
         fprintf(stderr,"Emit var %d number %ld steal %d, fsize %d, opcode %04x\n", bits, exp->X_add_number, steal,
-               fsize, inst);
+                fsize, inst);
+#endif
         /* Emit the real instruction */
         inst |= ((immed & ((1<<steal)-1)) & mask)<<shift;
         *iptr++ = INST_BYTE0(inst);
@@ -813,14 +822,236 @@ static void xtc_emit_var_imm(expressionS *exp,
         /* Write them */
         while (iptr != &instbuf[0]) {
             iptr-=2;
-            fprintf(stderr,"Emit instr\n");
+            //fprintf(stderr,"Emit instr\n");
             *output++=*iptr;
             *output++=*(iptr+1);
         }
     }
 }
+#endif
+
+typedef enum {
+    EXT_FLAG_NONE,
+    EXT_FLAG_IMMED,
+    EXT_FLAG_DREG,
+    EXT_FLAG_IMM24
+} ext_flags;
+
+struct ext_struct {
+    unsigned long condition;
+    ext_flags flags;
+    int val;
+};
 
 
+static int parse_condition(const char *condstr, unsigned long *condition)
+{
+    struct condition_codes_struct *cond;
+    for (cond=&condition_codes[0]; cond->name; cond++) {
+        const char *s = condstr;
+        const char *n = cond->name;
+        int mismatch = 0;
+
+        while (*s && *n) {
+            if (*s != *n) {
+                mismatch=1;
+                break;
+            }
+            s++,n++;
+        }
+        if (mismatch)
+            continue;
+
+        /* Check if we have anything else */
+        if (*n) {
+            continue;
+        }
+        /* Found it */
+        *condition = cond->encoding;
+        return s - condstr ;
+    }
+    return 0;
+}
+
+static int parse_extension(struct ext_struct *e, const char *extstr)
+{
+    e->condition = 0;
+    e->flags = EXT_FLAG_NONE;
+    int r;
+    do {
+        switch (*extstr) {
+        case 'i':
+            if (e->flags != EXT_FLAG_NONE) {
+                as_bad(_("Invalid 'i' extension"));
+                return -1;
+            }
+            e->flags = EXT_FLAG_IMMED;
+            extstr++;
+            break;
+        case 'd':
+            if (e->flags != EXT_FLAG_NONE ) {
+                as_bad(_("Invalid'd' extension"));
+                return -1;
+            }
+            e->flags = EXT_FLAG_DREG;
+            extstr++;
+            break;
+        case 'c':
+            if (e->flags == EXT_FLAG_IMMED || e->flags == EXT_FLAG_DREG ) {
+                as_bad(_("Conditional extension must be before 'i' or 'd' extensions"));
+                return -1;
+            }
+            extstr++;
+            /* Attempt to parse the condition extension */
+            r  = parse_condition(extstr, &e->condition);
+            if (r<0) {
+                as_bad(_("Invalid condition \"%s\""), extstr);
+                return r;
+            }
+            extstr+=r;
+            break;
+        default:
+            as_bad(_("Invalid extension \"%c\""), *extstr);
+            return -1;
+        }
+    } while (*extstr);
+#if 0
+
+    if (e->dreg && e->immed) {
+        as_bad(_("Cannot extend opcode with immed and dreg at same time"));
+        return -1;
+    }
+#endif
+
+    return 0;
+}
+
+static char *xtc_emit_e24(char *dest, long value, unsigned long cc)
+{
+    unsigned long inst = 0x80006000;
+    // Lower 15-bits of value go into the opcode itself.
+    inst |= (value & 0x7fff)<<16;
+    value>>=15;
+    inst|=(cc<<8);
+
+    // Next 8-bits are placed in the other
+    inst |= (value&0xff);
+    value>>=8;
+    // This bit ends up in location 12
+    inst |= ((value&1)<<12);
+    // And we have CC also...
+
+    *dest++=inst>>24;
+    *dest++=inst>>16;
+    *dest++=inst>>8;
+    *dest++=inst;
+    return dest;
+}
+
+static int make_extended(unsigned long *inst, struct ext_struct *extension,
+                  long immed_dreg)
+{
+    unsigned long i = *inst;
+    i<<=16;
+    /* Force higher bit */
+    i|=0x80000000;
+    /* Place condition code */
+    i |= ((extension->condition) & 0xf) << 12;
+    /* Place type */
+    if ( extension->flags == EXT_FLAG_IMMED ) {
+        i|=(immed_dreg & 0xff);
+        i|=0x4000;
+    } else if (extension->flags == EXT_FLAG_DREG) {
+        i|=(immed_dreg & 0xff);
+        i|=0x2000;
+    }
+    *inst=i;
+    return 2;
+}
+
+static void xtc_apply_imm8(unsigned long *inst, long immed)
+{
+    *inst = ((*inst)&~IMMVAL_MASK_8) |((immed<<8)&IMMVAL_MASK_8);
+}
+
+//#define EXT_IMMED 0x40
+
+static unsigned char xtc_build_extension(const struct ext_struct *ext)
+{
+    unsigned char r;
+    switch(ext->flags) {
+    case EXT_FLAG_IMM24:
+        r = 0x60;
+        break;
+    case EXT_FLAG_IMMED:
+        r = 0x40 + (ext->condition);
+        break;
+    case EXT_FLAG_DREG:
+        r = 0x20 + (ext->condition);
+        break;
+    default:
+        r = ext->condition;
+        break;
+    }
+    return r;
+}
+
+#define CONDITION_NONE 0
+static char *xtc_emit_immed_and_frag(const struct op_code_struct *opcode,
+                                     struct ext_struct *extension,
+                                     unsigned long *inst,
+                                     long immed)
+{
+    char *output;
+    int bits = xtc_count_bits(immed);
+    bfd_boolean force_extension = FALSE;
+
+    if (extension->condition || extension->flags!=EXT_FLAG_NONE) {
+        force_extension=TRUE;
+    }
+
+    if (opcode->imm == IMM8) {
+        // Either E24_I8, E8_I8 or just I8
+        xtc_apply_imm8(inst,immed);
+
+        immed>>=8;
+
+        if (bits<=8 && (force_extension==FALSE)) {
+            /* Modify inst */
+            output = frag_more(INST_WORD_SIZE);
+        } else if ((bits<=16) || force_extension) {
+            // Assert...
+            extension->flags = EXT_FLAG_IMMED;
+
+            output = frag_more(INST_WORD_SIZE*2);
+            /* Add E8 */
+            *inst|=0x8000; // Make extended
+            output[2] = xtc_build_extension(extension);
+            output[3] = immed & 0xff;
+        } else {
+            // Add E24.
+            output = frag_more(INST_WORD_SIZE*3);
+            output = xtc_emit_e24(output, immed, CONDITION_NONE);
+        }
+    } else {
+        // Either E24 or E8
+        if (bits<=8) {
+            output = frag_more(INST_WORD_SIZE*2);
+            *inst|=0x8000;
+            // Assert...
+            extension->flags = EXT_FLAG_IMMED;
+
+            output[2] = xtc_build_extension(extension);
+            output[3] = immed & 0xff;
+        } else {
+            output = frag_more(INST_WORD_SIZE*3);
+            output = xtc_emit_e24(output, immed, CONDITION_NONE);
+        }
+
+    }
+    //output=frag_more(INST_WORD_SIZE);
+    return output;
+}
 
 
 void
@@ -829,18 +1060,24 @@ md_assemble (char * str)
     char * op_start;
     char * op_end;
     struct op_code_struct * opcode, *opcode1;
+    struct ext_struct extension;
     char * output = NULL;
     int nlen = 0;
     //int i;
     unsigned long inst, inst1;
     unsigned reg1;
     unsigned reg2;
-    //unsigned reg3;
+    unsigned reg3;
+
     int hasimm;
     unsigned isize;
     unsigned int immed, temp;
     expressionS exp;
     char name[20];
+    char *extstr;
+    int is_extended=0;
+    extension.condition=0;
+    extension.flags=EXT_FLAG_NONE;
 
     /* Drop leading whitespace.  */
     while (ISSPACE (* str))
@@ -865,19 +1102,60 @@ md_assemble (char * str)
         return;
     }
 
+    /* See if we have some sort of extension on this opcode. */
+    extstr = strchr(name,'.');
+    if (extstr!=NULL) {
+        *extstr++='\0'; // Yes, we have. Terminate on the dot.
+    }
+
     opcode = (struct op_code_struct *) hash_find (opcode_hash_control, name);
+
     if (opcode == NULL)
     {
         as_bad (_("unknown opcode \"%s\""), name);
         return;
     }
 
+    if (extstr) {
+        int validext = parse_extension( &extension, extstr);
+        if (validext<0) {
+            as_bad (_("Invalid extension \"%s\" for opcode \"%s\""),extstr,name);
+            return;
+        }
+        is_extended=1;
+    }
+    if (is_extended) {
+        //as_warn("Found extension %ld %d %d", extension.condition, extension.immed, extension.dreg);
+        switch (opcode->ext) {
+        case IS_EXT:
+            as_bad(_("Opcode \"%s\" is an extended opcode itself, cannot append extension \"%s\""),
+                   name, extstr);
+            return;
+            break;
+        case NO_EXT:
+            as_bad(_("Opcode \"%s\" cannot be extended with \"%s\""),
+                   name, extstr);
+            break;
+        case CAN_EXT_DREG:
+            if (extension.flags == EXT_FLAG_IMMED)
+                as_bad(_("Opcode \"%s\" cannot be extended with immed. Requested extension is \"%s\""),
+                       name, extstr);
+            break;
+        case CAN_EXT_IMMED:
+            if (extension.flags == EXT_FLAG_DREG)
+                as_bad(_("Opcode \"%s\" cannot be extended with dreg. Requested extension is \"%s\""),
+                       name, extstr);
+            break;
+        default:
+            break;
+        }
+    }
+
     inst = opcode->bit_sequence;
     isize = 2;
 
-    //int ismem = 0;
-
     int isSpecialReg=0;
+    int isLoad=0;
 
     switch (opcode->inst_type)
     {
@@ -928,41 +1206,51 @@ md_assemble (char * str)
 
         output = frag_more (isize);
         break;
-    case INST_TYPE_MEM_S:
+
+    case INST_TYPE_MEM_LOAD_S:
+    case INST_TYPE_MEM_STORE_S:
         isSpecialReg=1;
 
-    case INST_TYPE_MEM:
+    case INST_TYPE_MEM_LOAD:
+    case INST_TYPE_MEM_STORE:
+        /* Two or three arguments, depending on extended status */
+        isLoad=0;
+        if (opcode->inst_type == INST_TYPE_MEM_LOAD ||
+            opcode->inst_type == INST_TYPE_MEM_LOAD_S) {
+            isLoad=1;
+        }
 
-        switch (opcode->instr_type) {
-        case memory_store_inst:
-
+        if (isLoad==0) {
             if (strcmp (op_end, ""))
                 op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
             else
             {
-                as_fatal (_("Error in statement syntax"));
+                as_fatal (_("Error in statement syntax - expecting store register, got '%s'"), op_end+1);
                 reg2 = 0;
             }
             /* Memory instructions include a displacement */
             op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
 
-            break;
-        case memory_load_inst:
-
+        } else {
             op_end = parse_memory(op_end+1, &reg1, &hasimm, &exp);
 
             if (strcmp (op_end, ""))
                 op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
             else
             {
-                as_fatal (_("Error in statement syntax"));
+                as_fatal (_("Error in statement syntax - expecting load register, got '%s'"), op_end+1);
                 reg2 = 0;
             }
-            break;
-        default:
-            as_fatal("Internal bug");
-            break;
         }
+
+        /* If we have imm, it needs to be extended */
+        if (hasimm) {
+            if (!is_extended || extension.flags!=EXT_FLAG_IMMED) {
+                as_bad("Cannot specify immediate without extension suffix.");
+                return;
+            }
+        }
+
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= (reg2 << RB_LOW) & RB_MASK;
 
@@ -978,31 +1266,31 @@ md_assemble (char * str)
         if (hasimm==1) {
             if (exp.X_op != O_constant) {
 
+                int newReloc = BFD_RELOC_XTC_E24; /* Memory insns do not have imm8 */
 
-                int newReloc = BFD_RELOC_XTC_IMM_12_12_12;
-
-                output = frag_more(INST_WORD_SIZE*4);
+                output = frag_more(INST_WORD_SIZE*3);
 
                 int where = output - frag_now->fr_literal;
+
                 fix_new_exp (frag_now, where, 6, &exp, 0, newReloc);
 
-                xtc_emit_imm_12_12_12(&output[0], 0, INST_IMM);
-                output[6] = INST_BYTE0(inst);
-                output[7] = INST_BYTE1(inst);
+                output = xtc_emit_e24(output,0, CONDITION_NONE);
+
+                output[0] = INST_BYTE0(inst);
+                output[1] = INST_BYTE1(inst);
 
                 return;
                 //as_bad("Cannot yet handle offsets in memory access");
             } else {
+
                 if (exp.X_add_number!=0) {
-                    int size = xtc_words_12_12_12(exp.X_add_number);
-                    output = frag_more(INST_WORD_SIZE*(size+1));
-                    xtc_emit_imm_121212( output, exp.X_add_number, INST_IMM, size);
-                    output+=(size*2);
+                    output = xtc_emit_immed_and_frag(opcode, &extension, &inst, exp.X_add_number);
                 } else {
                     output = frag_more(INST_WORD_SIZE);
                 }
                 output[0] = INST_BYTE0(inst);
                 output[1] = INST_BYTE1(inst);
+
                 return;
                 //as_bad("Missing constants for memory");
             }
@@ -1020,7 +1308,7 @@ md_assemble (char * str)
             op_end = parse_reg (op_end + 1, &reg2);  /* Get r2.  */
         else
         {
-            as_fatal (_("Error in statement syntax"));
+            as_fatal (_("Error in statement syntax - expecting register, got '%s'"),op_end+1);
             reg2 = 0;
         }
         if (strcmp (op_end, ""))
@@ -1037,10 +1325,48 @@ md_assemble (char * str)
         if (!check_gpr_reg (& reg2))
             as_fatal (_("Cannot use special register with this instruction"));
 
+        /* If extended dreg, we need to read another register */
+        if (is_extended && extension.flags==EXT_FLAG_DREG) {
+
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg3);  /* Get r3  */
+            else
+            {
+                as_fatal (_("Error in statement syntax: extended DREG found, but no register"));
+                reg3 = 0;
+            }
+        }
+
+        /* If extended immed, we need to load immed */
+        if (is_extended && extension.flags==EXT_FLAG_IMMED) {
+
+            if (strcmp (op_end, ""))
+                op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
+            else
+                as_fatal (_("Error in statement syntax"));
+
+            /* For immeds larger than 8-bit, we may need to add an E24 */
+            if (exp.X_add_number!=0) {
+                reg3 = exp.X_add_number;
+            }
+        }
+
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= (reg2 << RB_LOW) & RB_MASK;
 
-        output = frag_more (isize);
+        /* BUG! */
+
+        if (is_extended && extension.flags==EXT_FLAG_IMMED) {
+            output = xtc_emit_immed_and_frag(opcode, &extension, &inst, exp.X_add_number);
+        } else {
+            if (is_extended &&  extension.flags==EXT_FLAG_DREG )
+                isize += make_extended(&inst, &extension, reg3);
+
+            output = frag_more (isize);
+        }
+        output[0] = INST_BYTE0(inst);
+        output[1] = INST_BYTE1(inst);
+
         break;
 
     case INST_TYPE_R1_R2_IMM:
@@ -1075,10 +1401,16 @@ md_assemble (char * str)
         inst |= (reg1 << RA_LOW) & RA_MASK;
         inst |= (reg2 << RB_LOW) & RB_MASK;
 
-        xtc_emit_var_imm(&exp, opcode, inst, IMM_0);
+        if (exp.X_add_number!=0) {
+            // Need to convert into extended.
 
-        //output = frag_more (isize);
-        return;
+            as_fatal(_("Unimplemented"));
+        }
+        //xtc_emit_var_imm(&exp, opcode, inst, IMM_0);
+
+        output = frag_more (isize);
+
+        //return;
         break;
 
 
@@ -1086,18 +1418,18 @@ md_assemble (char * str)
         if (strcmp (op_end, ""))
             op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
         else
-            as_fatal (_("Error in statement syntax"));
+            as_fatal (_("Error in statement syntax - expected immediate, got '%s'"), op_end+1);
 
         if (exp.X_op != O_constant)
         {
-            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-                            BFD_RELOC_XTC_IMM_12_12_8 );
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_E24_I8_PCREL:
+                            BFD_RELOC_XTC_E24_I8 );
 
             output = frag_more(3 * INST_WORD_SIZE);
 
             output[0] = 0x80;
             output[1] = 0x00;
-            output[2] = 0x80;
+            output[2] = xtc_build_extension(&extension);
             output[3] = 0x00;
             output[4] = INST_BYTE0(inst);
             output[5] = INST_BYTE1(inst);
@@ -1183,13 +1515,13 @@ md_assemble (char * str)
         if (strcmp (op_end, ""))
             op_end = parse_imm (op_end + 1, & exp, MIN_IMM, MAX_IMM);
         else
-            as_fatal (_("Error in statement syntax"));
+            as_fatal (_("Error in statement syntax - expecting immediate, got '%s'"),op_end+1);
 
         if (strcmp (op_end, ""))
             op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
         else
         {
-            as_fatal (_("Error in statement syntax"));
+            as_fatal (_("Error in statement syntax - expecting register, got '%s'"), op_end+1);
             reg1 = 0;
         }
         /* Check for spl registers.  */
@@ -1198,8 +1530,47 @@ md_assemble (char * str)
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
 
-        xtc_emit_var_imm(&exp, opcode, inst, IMM_8);
+        /* Although this is an I8, we might need to add the condition clause.
+         Since relaxation will not remove the extension, we have to check here. */
 
+        if (extension.condition) {
+
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_E24_I8_PCREL:
+                            BFD_RELOC_XTC_E24_I8 );
+
+
+            output = frag_more(3 * INST_WORD_SIZE);
+            int where = output - frag_now->fr_literal;
+
+            output = xtc_emit_e24(output,0,extension.condition);
+            /*
+             output[0] = 0x80;
+             output[1] = 0x00;
+
+             output[2] = xtc_build_extension(&extension);
+             output[3] = 0x00;
+             */
+            output[0] = INST_BYTE0(inst);
+            output[1] = INST_BYTE1(inst);
+            fix_new_exp (frag_now, where, 6, &exp, 1, newReloc);
+
+        } else {
+            /* No condition code on extension */
+            int newReloc = (opcode->inst_offset_type == INST_PC_OFFSET ? BFD_RELOC_XTC_E24_I8_PCREL:
+                            BFD_RELOC_XTC_E24_I8 );
+
+            output = frag_more(3 * INST_WORD_SIZE);
+            int where = output - frag_now->fr_literal;
+
+            output = xtc_emit_e24(output,0,CONDITION_NONE);
+            output[0] = INST_BYTE0(inst);
+            output[1] = INST_BYTE1(inst);
+            fix_new_exp (frag_now, where, 6, &exp, 1, newReloc);
+
+        }
+        
+
+        
         return;
         break;
 
@@ -1216,14 +1587,23 @@ md_assemble (char * str)
         op_end ++;
 
     /* Give warning message if the insn has more operands than required.  */
-    if (strcmp (op_end, opcode->name) && strcmp (op_end, ""))
-        as_warn (_("ignoring operands: %s "), op_end);
+    if (strcmp (op_end, opcode->name) && strcmp (op_end, "")) {
+        as_bad (_("Invalid extra operands: %s "), op_end);
+        return;
+    }
 
-    output[0] = INST_BYTE0 (inst);
-    output[1] = INST_BYTE1 (inst);
+    int oindex = 0;
+
+    if (isize>2) {
+        unsigned long inst2 = inst>>16;
+        output[oindex++] = INST_BYTE0 (inst2);
+        output[oindex++] = INST_BYTE1 (inst2);
+    }
+    output[oindex++] = INST_BYTE0 (inst);
+    output[oindex++] = INST_BYTE1 (inst);
 
 #ifdef OBJ_ELF
-    dwarf2_emit_insn (2);
+    dwarf2_emit_insn (isize);
 #endif
 }
 
@@ -1242,7 +1622,7 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
     case UNDEFINED_PC_OFFSET:
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE * 3, fragP->fr_symbol,
-                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8);
+                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_E24_E8);
         fragP->fr_fix += INST_WORD_SIZE * 2;
         fragP->fr_var = 0;
         break;
@@ -1254,7 +1634,7 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
         //}
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE, fragP->fr_symbol,
-                 fragP->fr_offset, FALSE, BFD_RELOC_XTC_IMM_12_12_8);
+                 fragP->fr_offset, FALSE, BFD_RELOC_XTC_E24_E8);
         fragP->fr_fix += INST_WORD_SIZE * 2;
         fragP->fr_var = 0;
         break;
@@ -1267,9 +1647,9 @@ md_convert_frag (bfd * abfd ATTRIBUTE_UNUSED,
         //fragP->fr_fix -= 4;
 
         fix_new (fragP, fragP->fr_fix, INST_WORD_SIZE*3, fragP->fr_symbol,
-                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_IMM_12_12_8_PCREL);
+                 fragP->fr_offset, TRUE, BFD_RELOC_XTC_E24_E8_PCREL);
                           abort();
-        fragP->fr_fix += INST_WORD_SIZE * 2;
+        fragP->fr_fix += INST_WORD_SIZE;
 
         fragP->fr_var = 0;
         break;
@@ -1429,15 +1809,21 @@ tc_gen_reloc (asection * section ATTRIBUTE_UNUSED, fixS * fixp)
     case BFD_RELOC_64_PCREL:
     case BFD_RELOC_XTC_32:
     case BFD_RELOC_XTC_32_PCREL:
-    case BFD_RELOC_XTC_IMM_12_12_8:
-    case BFD_RELOC_XTC_IMM_12_8:
-    case BFD_RELOC_XTC_IMM_8:
-    case BFD_RELOC_XTC_IMM_12_12_12:
-    case BFD_RELOC_XTC_IMM_12_12:
-    case BFD_RELOC_XTC_IMM_12:
-    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-    case BFD_RELOC_XTC_IMM_12_8_PCREL:
-    case BFD_RELOC_XTC_IMM_8_PCREL:
+
+    case BFD_RELOC_XTC_E8:
+    case BFD_RELOC_XTC_I8:
+    case BFD_RELOC_XTC_E8_I8:
+    case BFD_RELOC_XTC_E24:
+    case BFD_RELOC_XTC_E24_E8:
+    case BFD_RELOC_XTC_E24_I8:
+
+    case BFD_RELOC_XTC_E8_PCREL:
+    case BFD_RELOC_XTC_I8_PCREL:
+    case BFD_RELOC_XTC_E8_I8_PCREL:
+    case BFD_RELOC_XTC_E24_PCREL:
+    case BFD_RELOC_XTC_E24_E8_PCREL:
+    case BFD_RELOC_XTC_E24_I8_PCREL:
+
         code = fixp->fx_r_type;
         break;
 
@@ -1621,6 +2007,17 @@ md_apply_fix (fixS *   fixP,
           buf[3] |= (val & 0xff);
       }
       break;
+
+    case BFD_RELOC_16:
+    case BFD_RELOC_16_PCREL:
+      /* Don't do anything if the symbol is not defined.  */
+      if (fixP->fx_addsy == NULL || S_IS_DEFINED (fixP->fx_addsy))
+      {
+          buf[0] |= ((val >> 8) & 0xff);
+          buf[1] |= (val & 0xff);
+      }
+      break;
+
     case BFD_RELOC_64_PCREL:
     case BFD_RELOC_64:
       /* Add an imm instruction.  First save the current instruction.  */
@@ -1686,12 +2083,30 @@ md_apply_fix (fixS *   fixP,
       buf[3] = INST_BYTE3 (inst1);
       return;
 #endif
+    case BFD_RELOC_XTC_E8:
+    case BFD_RELOC_XTC_I8:
+    case BFD_RELOC_XTC_E8_I8:
+    case BFD_RELOC_XTC_E24:
+    case BFD_RELOC_XTC_E24_E8:
+    case BFD_RELOC_XTC_E24_I8:
+        break;
+
+    case BFD_RELOC_XTC_E8_PCREL:
+    case BFD_RELOC_XTC_I8_PCREL:
+    case BFD_RELOC_XTC_E8_I8_PCREL:
+    case BFD_RELOC_XTC_E24_PCREL:
+    case BFD_RELOC_XTC_E24_E8_PCREL:
+    case BFD_RELOC_XTC_E24_I8_PCREL:
+
+        break;
+
+
     default:
-             /*
+
         as_bad(_("Don't know how to handle reloc type %d: %s"),fixP->fx_r_type,
-              bfd_get_reloc_code_name (fixP->fx_r_type));
+               bfd_get_reloc_code_name (fixP->fx_r_type));
               abort();
-              */
+
       break;
     }
   if (fixP->fx_addsy == NULL)
@@ -1863,15 +2278,18 @@ tc_xtc_force_relocation (fixS *fixP)
 {
 	switch (fixP->fx_r_type)
 	{
-        case BFD_RELOC_XTC_IMM_12_12_8:
-        case BFD_RELOC_XTC_IMM_12_8:
-        case BFD_RELOC_XTC_IMM_8:
-        case BFD_RELOC_XTC_IMM_12_12_12:
-        case BFD_RELOC_XTC_IMM_12_12:
-        case BFD_RELOC_XTC_IMM_12:
-        case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-        case BFD_RELOC_XTC_IMM_12_8_PCREL:
-        case BFD_RELOC_XTC_IMM_8_PCREL:
+        case BFD_RELOC_XTC_E8:
+        case BFD_RELOC_XTC_I8:
+        case BFD_RELOC_XTC_E8_I8:
+        case BFD_RELOC_XTC_E24:
+        case BFD_RELOC_XTC_E24_E8:
+        case BFD_RELOC_XTC_E24_I8:
+        case BFD_RELOC_XTC_E8_PCREL:
+        case BFD_RELOC_XTC_I8_PCREL:
+        case BFD_RELOC_XTC_E8_I8_PCREL:
+        case BFD_RELOC_XTC_E24_PCREL:
+        case BFD_RELOC_XTC_E24_E8_PCREL:
+        case BFD_RELOC_XTC_E24_I8_PCREL:
             return 1;
 		 default:
 		 break;
@@ -1891,17 +2309,18 @@ tc_xtc_fix_adjustable (fixS *fixP)
     case BFD_RELOC_32:
 
 	/* plus these */
-    case BFD_RELOC_XTC_IMM_12_12_8:
-    case BFD_RELOC_XTC_IMM_12_8:
-    case BFD_RELOC_XTC_IMM_8:
-
-    case BFD_RELOC_XTC_IMM_12_12_12:
-    case BFD_RELOC_XTC_IMM_12_12:
-    case BFD_RELOC_XTC_IMM_12:
-
-    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-    case BFD_RELOC_XTC_IMM_12_8_PCREL:
-    case BFD_RELOC_XTC_IMM_8_PCREL:
+    case BFD_RELOC_XTC_E8:
+    case BFD_RELOC_XTC_I8:
+    case BFD_RELOC_XTC_E8_I8:
+    case BFD_RELOC_XTC_E24:
+    case BFD_RELOC_XTC_E24_E8:
+    case BFD_RELOC_XTC_E24_I8:
+    case BFD_RELOC_XTC_E8_PCREL:
+    case BFD_RELOC_XTC_I8_PCREL:
+    case BFD_RELOC_XTC_E8_I8_PCREL:
+    case BFD_RELOC_XTC_E24_PCREL:
+    case BFD_RELOC_XTC_E24_E8_PCREL:
+    case BFD_RELOC_XTC_E24_I8_PCREL:
 
         return 0;
 
