@@ -1264,20 +1264,22 @@ md_assemble (char * str)
 
         /* Now, check if we need to add a displacement */
         if (hasimm==1) {
-            if (exp.X_op != O_constant) {
+            if (1) {//exp.X_op != O_constant) {
 
-                int newReloc = BFD_RELOC_XTC_E24; /* Memory insns do not have imm8 */
+                int newReloc = BFD_RELOC_XTC_E24_E8; /* Memory insns do not have imm8 */
 
-                output = frag_more(INST_WORD_SIZE*3);
+                output = frag_more(INST_WORD_SIZE*4);
 
                 int where = output - frag_now->fr_literal;
 
-                fix_new_exp (frag_now, where, 6, &exp, 0, newReloc);
+                fix_new_exp (frag_now, where, 8, &exp, 0, newReloc);
 
                 output = xtc_emit_e24(output,0, CONDITION_NONE);
 
-                output[0] = INST_BYTE0(inst);
+                output[0] = INST_BYTE0(inst) | 0x80;
                 output[1] = INST_BYTE1(inst);
+                output[2] = 0x40;
+                output[3] = 0x00;
 
                 return;
                 //as_bad("Cannot yet handle offsets in memory access");

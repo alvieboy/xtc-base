@@ -5032,6 +5032,9 @@ the linker could optimize the movq to a leaq if possible.  */
   BFD_RELOC_XTC_E8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_E8_NR,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E8_I8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
@@ -5044,6 +5047,9 @@ the linker could optimize the movq to a leaq if possible.  */
   BFD_RELOC_XTC_E24_E8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_E24_E8_NR,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E24_E8_I8,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
@@ -5051,6 +5057,9 @@ the linker could optimize the movq to a leaq if possible.  */
 
 /* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E8_PCREL,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_E8_NR_PCREL,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E8_I8_PCREL,
@@ -5063,6 +5072,9 @@ the linker could optimize the movq to a leaq if possible.  */
 
 /* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E24_E8_PCREL,
+
+/* This is a 32-bit reloc that stores an address with IMM  */
+  BFD_RELOC_XTC_E24_E8_NR_PCREL,
 
 /* This is a 32-bit reloc that stores an address with IMM  */
   BFD_RELOC_XTC_E24_E8_I8_PCREL,

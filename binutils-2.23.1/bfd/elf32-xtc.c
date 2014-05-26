@@ -236,6 +236,20 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
+   HOWTO (R_XTC_32_E8_NR,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          8,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_NR",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
    HOWTO (R_XTC_32_E8_I8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
@@ -287,6 +301,19 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
           "R_XTC_32_E24_E8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		/* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_NR,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_NR",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		/* Dest Mask.  */
@@ -343,6 +370,19 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE), /* PC relative offset?  */
+   HOWTO (R_XTC_32_E8_NR_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          8,			/* Bitsize.  */
+          TRUE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_NR_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0xffffffff,		/* Dest Mask.  */
+          TRUE), /* PC relative offset?  */
 
    HOWTO (R_XTC_32_E8_I8_R,/* Type.  */
           0,			/* Rightshift.  */
@@ -371,7 +411,6 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Source Mask.  */
           0x0,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
-
    HOWTO (R_XTC_32_E24_I8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
@@ -394,6 +433,19 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
           "R_XTC_32_E24_E8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_NR_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_NR_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0x0,		/* Dest Mask.  */
@@ -461,6 +513,9 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
     case BFD_RELOC_XTC_E8:
         xtc_reloc = R_XTC_32_E8;
         break;
+    case BFD_RELOC_XTC_E8_NR:
+        xtc_reloc = R_XTC_32_E8_NR;
+        break;
     case BFD_RELOC_XTC_E8_I8:
         xtc_reloc = R_XTC_32_E8_I8;
         break;
@@ -473,12 +528,18 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
     case BFD_RELOC_XTC_E24_E8:
         xtc_reloc = R_XTC_32_E24_E8;
         break;
+    case BFD_RELOC_XTC_E24_E8_NR:
+        xtc_reloc = R_XTC_32_E24_E8_NR;
+        break;
 
     case BFD_RELOC_XTC_I8_PCREL:
         xtc_reloc = R_XTC_32_I8_R;
         break;
     case BFD_RELOC_XTC_E8_PCREL:
         xtc_reloc = R_XTC_32_E8_R;
+        break;
+    case BFD_RELOC_XTC_E8_NR_PCREL:
+        xtc_reloc = R_XTC_32_E8_NR_R;
         break;
     case BFD_RELOC_XTC_E8_I8_PCREL:
         xtc_reloc = R_XTC_32_E8_I8_R;
@@ -491,6 +552,9 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
         break;
     case BFD_RELOC_XTC_E24_E8_PCREL:
         xtc_reloc = R_XTC_32_E24_E8_R;
+        break;
+    case BFD_RELOC_XTC_E24_E8_NR_PCREL:
+        xtc_reloc = R_XTC_32_E24_E8_NR_R;
         break;
 
 
@@ -1948,7 +2012,7 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 
         dest = xtc_emit_e24(dest,value>>8);
 
-        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+        xtc_put16( (xtc_get16(dest+2) & 0xFF00) | ((value)&0xff), dest+2 );
 
         break;
 
@@ -2045,7 +2109,9 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
         case R_XTC_32_E24_E8:
             /* This reloc uses an extra extension because it has some condition code.
              We can only remove the extension immed. */
-            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 4,xtc_relax_e24_e8_to_e8);
+
+            
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 4,xtc_relax_e24_e8_to_e8);
             //abort();
             break;
 

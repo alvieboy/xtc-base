@@ -5837,6 +5837,10 @@ ENUM
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
+  BFD_RELOC_XTC_E8_NR
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
   BFD_RELOC_XTC_E8_I8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
@@ -5853,6 +5857,10 @@ ENUM
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
+  BFD_RELOC_XTC_E24_E8_NR
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
   BFD_RELOC_XTC_E24_E8_I8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
@@ -5862,6 +5870,10 @@ ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
   BFD_RELOC_XTC_E8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E8_NR_PCREL
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
@@ -5878,6 +5890,10 @@ ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
   BFD_RELOC_XTC_E24_E8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_E8_NR_PCREL
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM

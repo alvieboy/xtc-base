@@ -77,7 +77,8 @@ typedef enum {
 
 typedef enum {
     NO_IMM,
-    IMM8
+    IMM8,
+    IMM_CHANGES_MEANING /* This instruction, when appended with IMM, has a diferent meaning */
 } xtc_imm_type_t;
 
 const struct op_code_struct
@@ -95,7 +96,7 @@ const struct op_code_struct
 
 } opcodes[] =
 {
-    {"imm",    IS_EXT, IMM8,  INST_TYPE_IMM, 0x60008000, OPCODE_MASK_IMM, INST_NO_OFFSET, imm },
+    {"imm",   IS_EXT,      IMM8,   INST_TYPE_IMM, 0x60008000, OPCODE_MASK_IMM, INST_NO_OFFSET, imm },
 
     {"add",   CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x0000, OPCODE_MASK_ARITH, INST_NO_OFFSET, add  },
     {"addc",  CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x0100, OPCODE_MASK_ARITH, INST_NO_OFFSET, addc },
