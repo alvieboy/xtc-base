@@ -12,7 +12,7 @@ package xtcpkg is
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
-  constant DEBUG_OPCODES: boolean := false ;
+  constant DEBUG_OPCODES: boolean := false;
   constant DEBUG_MEMORY: boolean := false;
   constant ENABLE_SHIFTER: boolean := true;
 
@@ -23,46 +23,31 @@ package xtcpkg is
   subtype word_type_std is std_logic_vector(31 downto 0);
   subtype regaddress_type is std_logic_vector(3 downto 0);
 
-  --subtype alu1_op_type is std_logic_vector(2 downto 0);
-  type alu1_op_type is (
+  type alu_source_type is (
+    alu_source_reg,
+    alu_source_immed
+  );
+
+  type alu_op_type is (
     ALU_ADD,
     ALU_ADDC,
     ALU_SUB,
     ALU_SUBB,
     ALU_AND,
     ALU_OR,
-    ALU_NOR,
-    ALU_XOR
+    ALU_XOR,
+    ALU_ADDRI,
+    ALU_CMP,
+    ALU_SRA,
+    ALU_SRL,
+    ALU_SHL,
+    ALU_NOT,
+    ALU_MUL,
+    ALU_SEXTB,
+    ALU_SEXTS
   );
 
-  --constant ALU_ADD:   alu1_op_type := "000";
-  --constant ALU_ADDC:  alu1_op_type := "001";
-  --constant ALU_SUB:   alu1_op_type := "010";
-  --constant ALU_SUBB:  alu1_op_type := "011";
-  --constant ALU_AND:   alu1_op_type := "100";
-  --constant ALU_OR:    alu1_op_type := "101";
-  --constant ALU_COPY:    alu1_op_type := "110";
-  --constant ALU_CMPI:    alu1_op_type := "111";
-  --constant ALU_UNKNOWN:  alu1_op_type := (others => 'X');
-
-  
-
-  --subtype alu2_op_type is std_logic_vector(2 downto 0);
-  type alu2_op_type is (
-    ALU2_ADD,
-    ALU2_CMPI,
-    ALU2_SRA,
-    ALU2_SRL,
-    ALU2_SHL,
-    ALU2_NOT,
-    ALU2_MUL,
-    ALU2_SEXTB,
-    ALU2_SEXTS
-  );
-
-  constant SR_PC: std_logic_vector(2 downto 0) := "000";
   constant SR_Y: std_logic_vector(2 downto 0) := "001";
-  constant SR_BR: std_logic_vector(2 downto 0) := "010";
   constant SR_CCSR: std_logic_vector(2 downto 0) := "011";
   constant SR_INTPC: std_logic_vector(2 downto 0) := "100";
   constant SR_INTM: std_logic_vector(2 downto 0) := "101";
@@ -76,48 +61,17 @@ package xtcpkg is
     O_ADDRI,
     O_CMPI,
 
-    O_ADD,
-    O_ADDC,
-    O_SUB,
-    O_SUBB,
-    O_AND,
-    O_OR,
-    O_NOR,
-    O_XOR,
-    O_NOT,
-    O_SRL,
-    O_SRA,
-    O_SHL,
-    O_SEXTB,
-    O_SEXTS,
-    O_MUL,
-    O_CMP,
+    O_ALU,
 
     O_ST,
     O_LD,
 
     -- Branch instructions
-    O_BRIE,
-    O_BRINE,
-    O_BRIG,
-    O_BRIGE,
-    O_BRIL,
-    O_BRILE,
-    O_BRIUG,
-    O_BRIUGE,
-    O_BRIUL,
-    O_BRIULE,
-
-    O_BRI,
-    O_BRR,
-
-    O_CALLR,
-    O_CALLI,
-    O_SSR,
-    O_LSR,
-
-    O_RET,
-    O_RETX
+    O_BR,
+    O_JMP,
+    O_JMPE,
+    -- Errors
+    O_ABORT
   );
 
   type memory_access_type is (
@@ -135,64 +89,46 @@ package xtcpkg is
     LOADNONE,
     LOAD0,
     LOAD8,
-    LOAD12
-  );
-
-  type flagssource_type is (
-    FLAGS_ALU1,
-    FLAGS_ALU2
+    LOAD16,
+    LOAD24
   );
 
   type reg_source_type is (
     reg_source_alu,
     reg_source_memory,
     reg_source_imm,
-    reg_source_spr
-  );
-
-  type opuse_type is (
-    uses_alu1,
-    uses_alu2,
-    uses_both_alu,
-    uses_nothing
+    reg_source_spr,
+    reg_source_pcnext
   );
 
   constant JUMP_RI_PCREL: std_logic_vector(1 downto 0) := "00";
   constant JUMP_I_PCREL:  std_logic_vector(1 downto 0) := "01";
-  constant JUMP_BR_ABS:   std_logic_vector(1 downto 0) := "10";
   constant JUMP_RI_ABS:   std_logic_vector(1 downto 0) := "11";
 
-  type jumpcond_type is (
-    JUMP_NONE,
-    JUMP_INCONDITIONAL,
-    JUMP_NE,
-    JUMP_E,
-    JUMP_G,
-    JUMP_GE,
-    JUMP_L,
-    JUMP_LE,
-    JUMP_UG,
-    JUMP_UGE,
-    JUMP_UL,
-    JUMP_ULE
+  type condition_type is (
+    CONDITION_UNCONDITIONAL,
+    CONDITION_NE,
+    CONDITION_E,
+    CONDITION_G,
+    CONDITION_GE,
+    CONDITION_L,
+    CONDITION_LE,
+    CONDITION_UG,
+    CONDITION_UGE,
+    CONDITION_UL,
+    CONDITION_ULE,
+    CONDITION_S,
+    CONDITION_NS
   );
 
-  type br_source_type is (
-    br_source_pc,
-    br_source_reg,
-    br_source_brs,
-    br_source_none
-  );
 
   type opdec_type is record
-    blocking:       boolean; -- OP is blocking.
     modify_gpr:     boolean; -- Modifies GPR
     modify_mem:     boolean; -- Modifies memory (write)
     modify_spr:     boolean; -- Modifies (loads) SPR
-    uses:           opuse_type; -- General resource usage, for ALU
-    alu1_op:        alu1_op_type; -- ALU1 operation
-    alu2_op:        alu2_op_type; -- ALU2 operation
+    alu_op:         alu_op_type; -- ALU1 operation
     opcode:         opcode_type;  -- The fetched opcode
+    opcode_ext:     boolean; -- Extended opcode
     sreg1:          regaddress_type; -- Source GPR
     sreg2:          regaddress_type; -- Source GPR
     dreg:           regaddress_type; -- Destination GPR
@@ -204,24 +140,24 @@ package xtcpkg is
     rd1:            std_logic;      -- Read enable for GPR0
     rd2:            std_logic;      -- Read enable for GPR1
     reg_source:     reg_source_type;
-    alu2_imreg:     std_logic;
-    alu2_samereg:   std_logic;
+    condition:      condition_type;
+    enable_alu:     std_logic;
+    imflag:         std_logic;
     blocks:         std_logic;
+    extended:       boolean;
+    alu_source:     alu_source_type;
     -- IMMediate helpers
-    imm12:          std_logic_vector(11 downto 0);
-    imm8:           std_logic_vector(7 downto 0);
-    imm4:           std_logic_vector(3 downto 0);
+    imm8l:           std_logic_vector(7 downto 0);
+    imm8h:           std_logic_vector(7 downto 0);
+    imm24:           std_logic_vector(23 downto 0);
     -- Special reg
     sr:             std_logic_vector(2 downto 0);
     loadimm:        loadimmtype;
     op:             decoded_opcode_type;
     jump:           std_logic_vector(1 downto 0);
-    jump_clause:    jumpcond_type;
-    br_source:      br_source_type;
+    --jump_clause:    jumpcond_type;
+    is_jump:        boolean;
     except_return:  boolean;
--- synthesis translate_off
-    strasm:     string(1 to 25);    -- Assembly string, for debugging purposes
--- synthesis translate_on
   end record;
 
 
@@ -248,32 +184,30 @@ package xtcpkg is
   type decode_regs_type is record
     decoded:        decoded_opcode_type;
     valid:          std_logic;
-    rd1, rd2, rd3, rd4:       std_logic;
-    sra1, sra2, sra3, sra4:     regaddress_type;
+    rd1, rd2:       std_logic;
+    sra1, sra2:     regaddress_type;
+    opcode:         std_logic_vector(15 downto 0);
+    opcode_low:     std_logic_vector(15 downto 0);
+    dual:           boolean;
     --dra:            regaddress_type;
 
     -- Target writeback registers
-    reg_source0:    reg_source_type;
-    regwe0:         std_logic;
-    dreg0:          regaddress_type;
-    reg_source1:    reg_source_type;
-    regwe1:         std_logic;
-    dreg1:          regaddress_type;
+    reg_source:     reg_source_type;
+    regwe:          std_logic;
+    dreg:           regaddress_type;
+    --reg_source1:    reg_source_type;
+    --regwe1:         std_logic;
+    --dreg1:          regaddress_type;
     sprwe:          std_logic;
     blocks:         std_logic;
     --blocks2:        std_logic;
 
     -- FLAGS and flags source
     modify_flags:   boolean;
-    flags_source:   flagssource_type;
 
     --op:             decoded_opcode_type;
-    alu1_op:        alu1_op_type;
-    alu2_op:        alu2_op_type;
-    alu2_opcode:    opcode_type;
-    alu2_imreg:     std_logic;
-    alu2_samereg:   std_logic;
-
+    alu_op:         alu_op_type;
+    enable_alu:     std_logic;
     swap_target_reg:std_logic;
     memory_write:   std_logic;
     memory_access:  std_logic;
@@ -283,19 +217,20 @@ package xtcpkg is
     npc:            word_type;
     fpc:            word_type;
     pc:             word_type;
+    condition_clause: condition_type;
+    alu_source:     alu_source_type;
     -- IMMediate helpers
-    imm12:          std_logic_vector(11 downto 0);
-    imm8:           std_logic_vector(7 downto 0);
-    imm4:           std_logic_vector(3 downto 0);
-
+    --imm12:          std_logic_vector(11 downto 0);
+    --imm8:           std_logic_vector(7 downto 0);
+    --imm4:           std_logic_vector(3 downto 0);
+    is_jump:        boolean;
     jump:           std_logic_vector(1 downto 0);
-    jump_clause:    jumpcond_type;
+    --jump_clause:    jumpcond_type;
     except_return:  boolean;
     delay_slot:     boolean;
-
+    --extended:       boolean;
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;
-    br_source:      br_source_type;
 
     opcode_q:       std_logic_vector(15 downto 0);
 
@@ -308,19 +243,19 @@ package xtcpkg is
 
   type decode_output_type is record
     -- Fast-forward
-    rd1, rd2, rd3, rd4:       std_logic;
-    sra1, sra2,sra3,sra4:     regaddress_type;
+    rd1, rd2:       std_logic;
+    sra1, sra2:     regaddress_type;
     r: decode_regs_type;
   end record;
 
   type fetchdata_regs_type is record
     drq:            decode_regs_type;
-    rd1q,rd2q,rd3q,rd4q: std_logic;
+    rd1q,rd2q:      std_logic;
   end record;
 
   type fetchdata_output_type is record
     r:                    fetchdata_regs_type;
-    rr1,rr2,rr3,rr4:      word_type_std; -- Register data
+    rr1,rr2:              word_type_std; -- Register data
     valid:                std_logic;
   end record;
 
@@ -328,8 +263,6 @@ package xtcpkg is
     valid:          std_logic;
     wb_is_data_address: std_logic;
     -- Own
-    br:             unsigned(31 downto 0); -- BRanch register
-    brs:            unsigned(31 downto 0); -- Saved BRanch register
     psr:            unsigned(31 downto 0); -- Processor Status register
     spsr:           unsigned(31 downto 0); -- Saved Processor Status register
     alur1:          unsigned(31 downto 0);
@@ -337,12 +270,12 @@ package xtcpkg is
 
     sr:             std_logic_vector(2 downto 0);
 
-    dreg0:          regaddress_type; -- Destination reg 0
-    dreg1:          regaddress_type; -- Destination reg 1
-    regwe0:         std_logic; -- Write-enable for destination reg 0
-    regwe1:         std_logic; -- Write-enable for destination reg 1
-    reg_source0:    reg_source_type; -- Source for destination reg 0
-    reg_source1:    reg_source_type; -- Source for destination reg 1
+    dreg:           regaddress_type; -- Destination reg 0
+    --dreg1:          regaddress_type; -- Destination reg 1
+    regwe:          std_logic; -- Write-enable for destination reg 0
+    --regwe1:         std_logic; -- Write-enable for destination reg 1
+    reg_source:     reg_source_type; -- Source for destination reg 0
+    --reg_source1:    reg_source_type; -- Source for destination reg 1
 
     jump:           std_logic;
     jumpaddr:       word_type;
@@ -355,13 +288,13 @@ package xtcpkg is
     r: execute_regs_type;
 
     -- Async stuff for writeback
-    reg_source0:  reg_source_type;
-    dreg0:        regaddress_type;
-    regwe0:       std_logic;
+    reg_source:   reg_source_type;
+    dreg:         regaddress_type;
+    regwe:        std_logic;
 
-    reg_source1:  reg_source_type;
-    dreg1:        regaddress_type;
-    regwe1:       std_logic;
+    --reg_source1:  reg_source_type;
+    --dreg1:        regaddress_type;
+    --regwe1:       std_logic;
 
     sr: std_logic_vector(2 downto 0);
     
@@ -370,7 +303,7 @@ package xtcpkg is
     imreg: word_type;
     sprval: word_type;
     sprwe:      std_logic;
-
+    npc:  word_type;
     mwreg:          regaddress_type;    -- Memory writeback register
     macc:           memory_access_type;
     data_write:     std_logic_vector(31 downto 0);
@@ -407,6 +340,15 @@ package xtcpkg is
     mreg:     regaddress_type;
     mregwe:   std_logic;
     msprwe:   std_logic;
+  end record;
+
+  type execute_debug_type is record
+    opcode1:    std_logic_vector(15 downto 0);
+    opcode2:    std_logic_vector(15 downto 0);
+    pc:         word_type;
+    dual:       boolean;
+    valid:      boolean;
+    executed:   boolean;
   end record;
   
   constant DontCareValue: std_logic := 'X';

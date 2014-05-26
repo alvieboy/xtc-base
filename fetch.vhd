@@ -66,6 +66,10 @@ begin
     enable <= not freeze;
     strobe <= not freeze;
 
+    if fr.unaligned_jump='1' and dual='1' then
+      fuo.valid <= '0';
+    end if;
+
     opcode0 <= read(31 downto 16);
 
     if fr.invert_readout='1' then
@@ -85,7 +89,9 @@ begin
       
           if valid='1' then
             if freeze='0' then
+              if not (fr.unaligned_jump='1' and dual='1') then
               fw.pc := realnpc;
+              end if;
               fw.qopc := read(15 downto 0);
               fw.unaligned_jump := '0';
             end if;
@@ -110,6 +116,12 @@ begin
               -- is the value usually queued.
               fw.unaligned := '0';
               fw.invert_readout := '0';
+            end if;
+          else
+            if dual='1' and fr.unaligned_jump='1' then
+              fw.invert_readout:='1';
+            else
+              --fw.invert_readout:='0';
             end if;
           end if;
         else

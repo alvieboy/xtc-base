@@ -12,7 +12,7 @@ end entity tb;
 
 architecture sim of tb is
 
-  constant period: time := 9.615 ns;
+  constant period: time := 10 ns;--9.615 ns;
   signal w_clk: std_logic := '0';
   signal w_clk_2x: std_logic := '1';
   signal w_rst: std_logic := '0';

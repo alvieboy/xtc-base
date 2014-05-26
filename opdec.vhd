@@ -9,8 +9,9 @@ use work.txt_util.all;
 
 entity opdec is
   port (
-    opcode:   in std_logic_vector(15 downto 0);
-    dec:      out opdec_type
+    opcode_high:  in std_logic_vector(15 downto 0);
+    opcode_low:   in std_logic_vector(15 downto 0);
+    dec:          out opdec_type
   );
 end entity opdec;
 
@@ -19,133 +20,76 @@ architecture behave of opdec is
 
   signal decoded_op: decoded_opcode_type;
   signal mtype: memory_access_type;
-  signal blocking: boolean;
+  signal opcode: std_logic_vector(15 downto 0);
+  signal is_extended_opcode: boolean;
+
 begin
 
+  -- Insn opcode depends on whether we have an extention opcode or
+  -- not.
+
+  is_extended_opcode <= true when opcode_high(15)='1' else false;
+
+  opcode <= opcode_high;
+
+
   -- Top level instruction decoder.
-  process(opcode)
+  process(opcode, is_extended_opcode, opcode_low)
     variable op: decoded_opcode_type;
   begin
-    case opcode(15 downto 12) is
-      when "0000" =>
-        blocking <= false;
-        case opcode(11 downto 8) is
-          when "0001" =>
-            op := O_LSR;
-          when "0010" =>
-            op := O_SSR;
+    
+    case opcode(14 downto 12) is
+      when "000" => -- ALU
+        op := O_ALU;
+
+      when "001" =>
+        -- Memory instructions.
+        case opcode(11) is
+          when '0' => op := O_ST;
+          when '1' => op := O_LD;
           when others =>
-            op := O_NOP;
         end case;
 
-      when "0001" =>
-        -- ALU operations
-        blocking <= false;
-        case opcode(11 downto 8) is
-          when "0000" => op := O_ADD;
-          when "0001" => op := O_ADDC;
-          when "0010" => op := O_SUB;
-          when "0011" => op := O_SUBB;
-          when "0100" => op := O_AND;
-          when "0101" => op := O_OR;
-          when "0110" => op := O_CMP;
-          when "0111" => op := O_XOR;
-          -- ALU B operations. These are the dual-reg
-          -- operations.
-          when "1000" => op := O_SHL;
-          when "1001" => op := O_SRL;
-          when "1010" => op := O_SRA;
-          when "1011" => op := O_MUL;
+      when "010" =>
+        -- Cop instructions
+        op := O_ABORT;
 
-          when "1100" => op := O_SHL;
-          when "1101" => op := O_SRL;
-          when "1110" => op := O_SRA;
-          when "1111" => op := O_MUL;
-          when others => null;
+      when "011" =>
+        -- Single R/NoR.
+        case opcode(11) is
+          when '0' =>
+            -- Single R
+            case opcode(10) is
+              when '0' => op := O_JMP;
+              when '1' => op := O_JMPE;
+              when others =>
+            end case;
+          when '1' =>
+            -- No/R
+            op := O_ABORT;
+          when others =>
+            op := O_ABORT;
         end case;
 
-      when "0010" =>
-        blocking <= false;
-        op := O_ST;
-
-      when "0011" =>
-        blocking <= false;
-        -- NOT USED
-        op := O_NOP;
-
-      when "0100" =>
-        blocking <= true; -- Not sure why....
-        op := O_LD;
-
-      when "0101" =>
-        blocking <= false;
-        -- NOT USED
-        op := O_ADDRI;
-
-      when "0110" =>
-        blocking <= false;
+      when "100" =>
+        op := O_BR;
+      when "101" =>
         op := O_ADDI;
-
-      when "0111" =>
-        blocking <= true;
-        -- NOT USED
+      when "110" =>
         op := O_CMPI;
-
-      when "1000" =>
-        blocking <= false;
-        op := O_IM;
-
-      when "1001" =>
-        blocking <= true;
-        -- NOT USED
-        op := O_BRI;
-
-      when "1010" =>
-        blocking <= true;
-        case opcode(3 downto 0) is
-          when "1000" => op := O_BRIE;
-          when "1001" => op := O_BRINE;
-          when "1010" => op := O_BRIG;
-          when "1011" => op := O_BRIGE;
-          when "1100" => op := O_BRIL;
-          when "1101" => op := O_BRILE;
-          when "1110" => op := O_BRIUG;
-          when "1111" => op := O_BRIUGE;
-          when "0001" => op := O_BRIUL;
-          when "0010" => op := O_BRIULE;
-          when others => op := O_BRIE;
-        end case;
-
-      when "1011" =>
-        blocking <= true;
-        op := O_BRR;
-
-      when "1100" =>
-        blocking <= true;
-        op := O_CALLR;
-
-      when "1101" =>
-        blocking <= true;
-        op := O_CALLI;
-
-      when "1110" =>
-        blocking <= false;
+      when "111" =>
         op := O_LIMR;
 
-      when "1111" =>
-        blocking <= true;
-        -- TODO: change this
-        if opcode(11)='1' then
-          op := O_RETX;
-        else
-          op := O_RET;
-        end if;
-
       when others =>
-        blocking <= true;
-        op := O_NOP;
 
     end case;
+
+    -- Special case op.
+    if is_extended_opcode then
+      if opcode_low(14 downto 13)="11" then
+        op := O_IM;
+      end if;
+    end if;
 
     decoded_op <= op;
 
@@ -169,7 +113,7 @@ begin
   end process;
 
 
-  process(opcode, decoded_op, mtype,blocking)
+  process(opcode, decoded_op, mtype, opcode_low, is_extended_opcode)
     -- synthesis translate_off
     variable targetstr: string(1 to 2);
     variable sourcestr: string(1 to 5);
@@ -177,6 +121,8 @@ begin
     variable rnum:  string(1 to 1);
     -- synthesis translate_on
     variable d: opdec_type;
+    variable subloadimm: loadimmtype;
+
   begin
     --d := dec;
     d.opcode := opcode;
@@ -188,517 +134,231 @@ begin
 
     d.memory_access := '0';
     d.memory_write := 'X';
+    d.alu_source := alu_source_reg;
     d.rd1 := '0';
     d.rd2 := '0';
     d.except_return := false;
 
-    -- synthesis translate_off
-    dec.strasm <= opcode_txt_pad("UNKNOWN");
-    -- synthesis translate_on
+    subloadimm := LOADNONE;
 
     -- Default values
-    d.blocking    := true;
     d.modify_gpr  := false;
-    d.uses        := uses_alu1;
-    d.imm8        := opcode(11 downto 4);
-    d.imm12       := opcode(11 downto 0);
-    d.imm4        := opcode(11 downto 8);
     d.op          := decoded_op;
     d.macc        := mtype;
     d.reg_source  := reg_source_alu;
     d.modify_flags:= false;
     d.loadimm     := LOADNONE;
-    d.jump_clause := JUMP_NONE;
+    d.is_jump     := false;
     d.jump        := (others => 'X');
-    d.alu2_imreg  := 'X';
-    d.alu2_samereg:= '1';
-    d.br_source   := br_source_none;
     d.modify_spr  := false;
     d.blocks      := '0';
+    d.condition   := CONDITION_UNCONDITIONAL;
+    d.imflag      := '0';
+    d.enable_alu  := '0';
 
     -- ALU operations are directly extracted from
     -- the opcode.
 
-    -- TODO: this table is *wrong*.
+    case opcode(11 downto 8) is
+      when "0000" =>
+        d.alu_op := ALU_ADD;
+      when "0001" =>
+        d.alu_op := ALU_ADDC;
+      when "0010" =>
+        d.alu_op := ALU_SUB;
+      when "0011" =>
+        d.alu_op := ALU_SUBB;
+      when "0100" =>
+        d.alu_op := ALU_AND;
+      when "0101" =>
+        d.alu_op := ALU_OR;
+      when "0110" =>
+        d.alu_op := ALU_XOR;
+      when "0111" =>
+        d.alu_op := ALU_CMP;
 
-    case opcode(10 downto 8) is
-          when "000" =>
-            d.alu1_op := ALU_ADD;
-            d.alu2_op := ALU2_SHL;
-          when "001" =>
-            d.alu1_op := ALU_ADDC;
-            d.alu2_op := ALU2_SRL;
-          when "010" =>
-            d.alu1_op := ALU_SUB;
-            d.alu2_op := ALU2_SRA;
-          when "011" =>
-            d.alu1_op := ALU_SUBB;
-            d.alu2_op := ALU2_MUL;
-          when "100" =>
-            d.alu1_op := ALU_AND;
-            d.alu2_op := ALU2_SHL;
-          when "101" =>
-            d.alu1_op := ALU_OR;
-            d.alu2_op := ALU2_SRL;
-          when "110" =>
-            d.alu1_op := ALU_SUB; -- CMP
-            d.alu2_op := ALU2_SRA;
-          when "111" =>
-            d.alu1_op := ALU_XOR;
-            d.alu2_op := ALU2_MUL;
-          when others => null;
-        end case;
+      when "1000" =>
+        d.alu_op := ALU_SHL;
+      when "1001" =>
+        d.alu_op := ALU_SRL;
+      when "1010" =>
+        d.alu_op := ALU_SRA;
+      when "1011" =>
+        d.alu_op := ALU_MUL;
+      when "1100" =>
+        d.alu_op := ALU_ADDRI;
+      when "1101" =>
+        d.alu_op := ALU_NOT;
+      when "1110" =>
+        d.alu_op := ALU_SEXTB;
+      when "1111" =>
+        d.alu_op := ALU_SEXTS;
+
+
+      when others => null;
+    end case;
 
 
 
     case decoded_op is
 
-      when O_NOP =>
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("NOP ");
-        -- synthesis translate_on
-        d.uses := uses_nothing;
-        d.blocking := true;
       when O_IM =>
-        d.loadimm     := LOAD12;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("IM 0x" & hstr(d.imm12));
-        -- synthesis translate_on
-        d.blocking := false;
-        d.uses := uses_nothing;
-
+        subloadimm := LOAD24;
+        
+      when O_NOP =>
       when O_LIMR =>
-        d.loadimm     := LOAD8;
+        subloadimm     := LOAD8;
         -- Load IMMediate into register target
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_imm;
-        d.blocking := false;
-        d.uses := uses_nothing;
+        --if opcode(3 downto 0)="000" then
+          -- Target is IMMed.
+          -- TODO
+        --  d.imflag := '1';
+        --end if;
 
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("LIMR 0x" & hstr(d.imm8) &", "& regname(d.dreg));
-        -- synthesis translate_on
-      when O_ADD =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("ADD " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-
-      when O_ADDC =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("ADDC " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_AND =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("AND " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_OR =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("OR " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_XOR =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("XOR " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SUB =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SUB " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_CMP =>
-        d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("CMP " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SUBB =>
-        --d.modify_flags := true;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SUBB " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_NOT =>
-        --d.modify_flags := true;
-        d.uses := uses_alu2;
-        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("NOT " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SRA =>
-        --d.modify_flags := true;
-        d.uses := uses_alu2;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        --d.alu2_samereg := '0';
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SRA " & regname(d.sreg2) & ", " &regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SRL =>
-        --d.modify_flags := true;
-        d.uses := uses_alu2;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        --d.alu2_samereg := '0';
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SRL " & regname(d.sreg2) & ", " &regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SHL =>
-        --d.modify_flags := true;
-        d.uses := uses_alu2;
-        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        --d.alu2_samereg:='0';
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SHL " & regname(d.sreg2) &", "&regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
+      when O_ALU =>
+        d.modify_gpr:=true; 
+        if d.alu_op=ALU_CMP then
+          d.modify_flags := true;
+          d.modify_gpr := false;
+        end if;
+        if d.alu_op=ALU_ADDRI then
+          d.alu_source := alu_source_immed;
+          d.sreg1 := opcode(7 downto 4);
+          --d.sreg2 := opcode(3 downto 0);
+        end if;
+        d.rd1:='1'; d.rd2:='1'; d.reg_source:=reg_source_alu;
+        d.enable_alu := '1';
 
       when O_ADDI =>
-        d.loadimm     := LOAD8;
-        --d.modify_flags := true;
-        d.alu2_imreg := '1';
-        d.alu2_op := ALU2_ADD;
-
+        subloadimm     := LOAD8;
+        d.alu_source := alu_source_immed;
+        d.alu_op := ALU_ADD;
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("ADDI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
-        -- synthesis translate_on
-        d.blocking := false;
-        d.uses := uses_alu2;
+        d.enable_alu := '1';
 
       when O_ADDRI =>
-        d.loadimm     := LOAD0;
-        --d.modify_flags := false; -- This should be eventually true.
-        d.alu2_imreg := '1';
-        d.alu2_op := ALU2_ADD;
-        d.alu2_samereg:='0';
+        --subloadimm     := LOAD0;
+        -- Swap register...
+        --d.sreg1 := opcode(7 downto 4);
 
+        d.alu_op := ALU_ADD;
+        d.alu_source := alu_source_immed;
         d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("ADDRI " & regname(d.sreg2) & ", " & regname(d.dreg) );
-        -- synthesis translate_on
-        d.blocking := false;
-        d.uses := uses_alu2;
+        d.enable_alu := '1';
 
       when O_CMPI =>
-        d.loadimm     := LOAD8;
+        subloadimm     := LOAD8;
         d.modify_flags := true;
+        d.alu_source := alu_source_immed;
+        d.alu_op := ALU_CMP;
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
-        d.alu2_imreg:='1';
-        d.alu2_op := ALU2_CMPI;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("CMPI " & regname(d.sreg1) & ", " & hstr(d.imm8) );
-        -- synthesis translate_on
-        d.uses := uses_alu2;
-        d.blocking := true;
+        d.enable_alu := '1';
+        --d.alu2_imreg:='1';
+        --d.alu2_op := ALU2_CMPI;
+        --d.uses := uses_alu2;
+        --d.blocking := true;
 
-      when O_BRR =>
+      when O_BR =>
+        subloadimm := LOAD8;
+        d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_pcnext;
+        d.is_jump := true;
+        d.jump := JUMP_I_PCREL;
+
+      when O_JMP | O_JMPE =>
+        -- Swap register...
+        d.sreg1 := opcode(7 downto 4);
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
-        d.alu2_imreg:='1';
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
-        -- synthesis translate_on
-
-      when O_CALLR =>
-        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
-        d.alu2_imreg:='1';
-        d.br_source := br_source_pc;
-        d.jump_clause := JUMP_INCONDITIONAL;
-        d.jump := JUMP_RI_PCREL;
-        d.blocking := true;
-
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("CALLR " & regname(d.sreg1) & " + " & hstr(d.imm8) );
-        -- synthesis translate_on
+        d.is_jump := true;
+        d.jump := JUMP_RI_ABS;
 
       when O_ST =>
-        d.alu2_op := ALU2_ADD;
         d.memory_access := '1';
         d.memory_write := '1';
-        d.blocking := false;
-
         d.rd1:='1'; d.rd2:='1';
-        d.alu2_imreg :='1';
-        d.uses := uses_alu2;
         d.loadimm := LOAD0;
-
-        case mtype is
-
-          when M_WORD =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STW " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_WORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STW+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_HWORD =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_HWORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STS+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_BYTE =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_BYTE_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STB+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_SPR =>
-            d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STSPR " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_SPR_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("STSPR+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when others =>
-        end case;
-
 
       when O_LD =>
-        d.alu2_op := ALU2_ADD;
+        -- Swap register
+        --d.sreg1 := opcode(7 downto 4);
         d.memory_access := '1';
         d.memory_write := '0';
-        d.rd1:='1'; d.rd2:='0';
-        d.alu2_imreg :='1';
-        d.uses := uses_alu2;
-        d.loadimm := LOAD0;
-        d.blocking := true;
+        d.rd1:='1'; d.rd2:='1';
         d.blocks := '1';
 
-        case mtype is
-
-          when M_WORD =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_WORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LD " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_HWORD =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDS " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_HWORD_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDS+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_BYTE =>
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDB " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_BYTE_POSTINC =>
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDB+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when M_SPR =>
-            d.modify_spr := true;
-            d.blocks := '0'; -- Withtout this it taints invalid registers.
-
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDSPR " & regname(d.sreg2) & ", [" & regname(d.dreg) & "]" );
-            -- synthesis translate_on
-          when M_SPR_POSTINC =>
-            d.modify_spr := true;
-            d.blocks := '0'; -- Withtout this it taints invalid registers.
-            d.modify_gpr:=true; d.reg_source:=reg_source_alu;
-            -- synthesis translate_off
-            d.strasm := opcode_txt_pad("LDSPR+ " & regname(d.sreg2) & ", [" & regname(d.dreg) & "++]" );
-            -- synthesis translate_on
-          when others =>
-        end case;
-
-      when O_BRI =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_INCONDITIONAL;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRI 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIE =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_E;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRINE =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_NE;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRINE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIG =>
-        d.jump_clause := JUMP_G;
-        d.jump := JUMP_I_PCREL;
-        d.loadimm := LOAD8;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIG 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIGE =>
-        d.jump_clause := JUMP_GE;
-        d.jump := JUMP_I_PCREL;
-        d.loadimm := LOAD8;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIGE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIL =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_L;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIL 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRILE =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_LE;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRILE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIUG =>
-        d.jump_clause := JUMP_UG;
-        d.jump := JUMP_I_PCREL;
-        d.loadimm := LOAD8;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIUG 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIUGE =>
-        d.jump_clause := JUMP_UGE;
-        d.jump := JUMP_I_PCREL;
-        d.loadimm := LOAD8;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIUGE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIUL =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_UL;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIUL 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-      when O_BRIULE =>
-        d.loadimm := LOAD8;
-        d.jump_clause := JUMP_ULE;
-        d.jump := JUMP_I_PCREL;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("BRIULE 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-        d.blocking := true;
-
-      when O_RET =>
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("RET ");
-        -- synthesis translate_on
-        d.jump_clause := JUMP_INCONDITIONAL;
-        d.jump := JUMP_BR_ABS;
-        d.blocking := true;
-      when O_RETX =>
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("RETX ");
-        -- synthesis translate_on
-        d.jump_clause := JUMP_INCONDITIONAL;
-        d.jump := JUMP_BR_ABS;
-        d.except_return := true;
-        d.blocking := true;
-
-
-      when O_CALLI =>
-        d.rd1:='1'; d.rd2:='0';
-        d.alu2_op:=ALU2_ADD;
-        d.modify_gpr:=false; d.reg_source:=reg_source_alu;
-        d.loadimm := LOAD8;
-        d.br_source := br_source_pc;
-        d.jump_clause := JUMP_INCONDITIONAL;
-        d.jump := JUMP_I_PCREL;
-        d.blocking := true;
-
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("CALLI 0x" & hstr(d.imm8));
-        -- synthesis translate_on
-
-      when O_LSR =>
-        d.modify_gpr:=true; d.reg_source:=reg_source_spr;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("LSR ");
-        -- synthesis translate_on
-        d.blocking := false;
-
-      when O_SSR =>
-        d.rd1:='1';
-        d.modify_spr := true;
-        if d.sreg1(2 downto 0)="001" then
-          d.br_source := br_source_reg;
-        end if;
-        -- synthesis translate_off
-        d.strasm := opcode_txt_pad("SSR ");
-        -- synthesis translate_on
-
       when others =>
-        d.blocking := true;
-
-        -- synthesis translate_off
-        d.strasm      := opcode_txt_pad("U " & hstr(opcode));
-        -- synthesis translate_on
     end case;
 
-    -- Attempt.
-    d.blocking := blocking;
+    d.imm8l(7 downto 0) := opcode(11 downto 4);
+    --d.imm8l(3 downto 0) := opcode(3 downto 0);
+
+    d.imm8h(7 downto 0) := opcode_low(7 downto 0);
+
+    d.imm24 := opcode_low(12) & opcode_low(7 downto 0) & opcode_high(14 downto 0);
+
+    if is_extended_opcode then
+      case subloadimm is
+        when LOAD8 =>
+
+          case opcode_low(14 downto 13) is
+            when "10" =>
+              d.loadimm := LOAD16;
+            when others =>
+              d.loadimm := LOAD8;
+          end case;
+
+        when LOAD24 =>
+          d.loadimm := LOAD24;
+          d.imflag := '1';
+        
+        when others =>
+          case opcode_low(14 downto 13) is
+            when "10" =>
+              -- 8L is from upper word.
+              d.imm8l := d.imm8h;
+              d.loadimm := LOAD8;
+            when others =>
+
+            d.loadimm := LOADNONE;
+          end case;
+      end case;
+    else
+      d.loadimm := subloadimm;
+
+    end if;
+
+    d.extended := is_extended_opcode;
+  
+    -- Condition codes.
+    if (is_extended_opcode) then
+      case opcode_low(11 downto 8) is
+        when "0000" => d.condition := CONDITION_UNCONDITIONAL;
+        when "0001" => d.condition := CONDITION_NE;
+        when "0010" => d.condition := CONDITION_E;
+        when "0011" => d.condition := CONDITION_G;
+        when "0100" => d.condition := CONDITION_GE;
+        when "0101" => d.condition := CONDITION_L;
+        when "0110" => d.condition := CONDITION_LE;
+        when "0111" => d.condition := CONDITION_UG;
+        when "1000" => d.condition := CONDITION_UGE;
+        when "1001" => d.condition := CONDITION_UL;
+        when "1010" => d.condition := CONDITION_ULE;
+        when "1011" => d.condition := CONDITION_S;
+        when "1100" => d.condition := CONDITION_NS;
+        when others => d.condition := CONDITION_UNCONDITIONAL;
+      end case;
+      -- Check DREG
+      if opcode_low(14 downto 12)="010" then
+        -- DREG extended....
+        d.dreg := opcode_low(3 downto 0);
+      end if;
+
+      if decoded_op=O_ALU and opcode_low(14 downto 12)="100" then
+        d.alu_source := alu_source_immed;
+        d.sreg1 := opcode(7 downto 4);
+      end if;
+    end if;
+
     dec <= d;
 
   end process;

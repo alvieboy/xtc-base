@@ -3,7 +3,9 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
+-- synthesis translate_off
 use work.txt_util.all;
+-- synthesis translate_on
 
 entity writeback is
   port (
@@ -34,12 +36,9 @@ architecture behave of writeback is
 
 begin
     process(mui.mregwe,
-      eui.reg_source0,
-      eui.reg_source1,
-      eui.regwe0,
-      eui.regwe1,
-      eui.dreg0,
-      eui.dreg1,
+      eui.reg_source,
+      eui.regwe,
+      eui.dreg,
       mui.mdata,
       mui.mreg,
       eui.alur1,
@@ -57,7 +56,7 @@ begin
       r0_en <= '1';
       r0_we <= '0';
       r0_addr <= (others => DontCareValue);
-      r1_en <= '1';
+      r1_en <= '0';
       r1_we <= '0';
       r1_addr <= (others => DontCareValue);
       busy <= '0';
@@ -70,80 +69,62 @@ begin
         -- While this happens, we must stall the pipeline if it is trying to wb also.
         -- We can use the second port if we are not writing back two registers
         -- at this point.
-          case eui.reg_source0 is
+          case eui.reg_source is
             when reg_source_alu =>
               wdata0 := eui.alur1;
             when reg_source_imm =>
               wdata0 := eui.imreg;
             when reg_source_spr =>
               wdata0 := eui.sprval;
+            when reg_source_pcnext =>
+              wdata0 := eui.npc;
             when others =>
           end case;
 
-          case eui.reg_source1 is
-            when reg_source_alu =>
-              wdata1 := eui.alur2;
-            when reg_source_imm =>
-              wdata1 := eui.imreg;
-            when reg_source_spr =>
-              wdata1 := eui.sprval;
-            when others =>
-          end case;
+          --r0_we <=  eui.regwe;
+          --r0_addr <= eui.dreg;
+          --r0_en <= '1';
 
-          r0_we <=  eui.regwe0;
-          r0_addr <= eui.dreg0;
+          busy <= eui.regwe;
+          --r1_we <=  eui.regwe1;
+          --r1_addr <= eui.dreg1;
 
-          r1_we <=  eui.regwe1;
-          r1_addr <= eui.dreg1;
+          wdata0 := unsigned(mui.mdata);
+          r0_we <= '1';
+          r0_addr <= mui.mreg;
 
-        wec := eui.regwe0 & eui.regwe1;
-
-        case wec is
-          when "00" | "01" =>
-            wdata0 := unsigned(mui.mdata);
-            r0_we <= '1';
-            r0_addr <= mui.mreg;
-          when "10" =>
-            wdata1 := unsigned(mui.mdata);
-            r1_we <= '1';
-            r1_addr <= mui.mreg;
-          when "11" =>
-            busy <= '1';
-            wdata1 := unsigned(mui.mdata);
-            r1_we <= '1';
-            r0_we <= '0'; -- Do not process the write from the other channel.
-            r1_addr <= mui.mreg;
-          when others =>
-        end case;
+        --case eui.regwe is
+        -- when '0' =>
+        --    wdata0 := unsigned(mui.mdata);
+        --   r0_we <= '1';
+        --    r0_addr <= mui.mreg;
+        --  when '1' =>
+        --    wdata1 := unsigned(mui.mdata);
+        --    r1_we <= '1';
+        --    r1_addr <= mui.mreg;
+        --  when others =>
+        --end case;
       else
 
         if FAST_WRITEBACK then
 
-          case eui.reg_source0 is
+          case eui.reg_source is
             when reg_source_alu =>
               wdata0 := eui.alur1;
             when reg_source_imm =>
               wdata0 := eui.imreg;
             when reg_source_spr =>
               wdata0 := eui.sprval;
+            when reg_source_pcnext=>
+              wdata0 := eui.npc;
             when others =>
           end case;
 
-          case eui.reg_source1 is
-            when reg_source_alu =>
-              wdata1 := eui.alur2;
-            when reg_source_imm =>
-              wdata1 := eui.imreg;
-            when reg_source_spr =>
-              wdata1 := eui.sprval;
-            when others =>
-          end case;
-    
-          r0_we <=  eui.regwe0;
-          r0_addr <= eui.dreg0;
+          r0_we <=  eui.regwe;
+          r0_addr <= eui.dreg;
 
-          r1_we <=  eui.regwe1;
-          r1_addr <= eui.dreg1;
+          --r1_we <=  eui.regwe1;
+          --r1_addr <= eui.dreg1;
 
         else
 

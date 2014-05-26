@@ -28,7 +28,9 @@ entity execute is
     euo:  out execute_output_type;
 
     -- Input from memory unit, for SPR update
-    mui:  in memory_output_type
+    mui:  in memory_output_type;
+
+    dbgo: out execute_debug_type
 
   );
 end entity execute;
@@ -37,22 +39,21 @@ architecture behave of execute is
 
   signal alu_a_a, alu_a_b: std_logic_vector(31 downto 0);
   signal alu_a_r: unsigned(31 downto 0);
-  signal alu_b_a, alu_b_b: std_logic_vector(31 downto 0);
-  signal alu_b_r: unsigned(31 downto 0);
+  --signal alu_b_a, alu_b_b: std_logic_vector(31 downto 0);
+  --signal alu_b_r: unsigned(31 downto 0);
   signal alu1_ci, alu1_co, alu1_busy, alu1_ovf, alu1_sign, alu1_zero: std_logic;
-  signal alu2_ci, alu2_co, alu2_busy, alu2_ovf, alu2_sign, alu2_zero: std_logic;
+  --signal alu2_ci, alu2_co, alu2_busy, alu2_ovf, alu2_sign, alu2_zero: std_logic;
   signal er: execute_regs_type;
   signal dbg_do_interrupt: boolean;
 
+  signal enable_alu: std_logic;
 begin
 
   euo.r <= er;
   alu_a_a <= fdui.rr1;
-  alu_a_b <= fdui.rr2;
-  alu_b_a <= fdui.rr3;
+  alu_a_b <= fdui.rr2 when fdui.r.drq.alu_source = alu_source_reg else std_logic_vector(fdui.r.drq.imreg);
 
-
-  myaluA: alu_A
+  myalu: alu
     port map (
       clk   => clk,
       rst   => rst,
@@ -60,7 +61,8 @@ begin
       a     => unsigned(alu_a_a),
       b     => unsigned(alu_a_b),
       o     => alu_a_r,
-      op    => fdui.r.drq.alu1_op,
+      en    => enable_alu,   -- Check...
+      op    => fdui.r.drq.alu_op,
       ci    => er.psr(30),
       busy  => alu1_busy,
       co    => alu1_co,
@@ -69,23 +71,9 @@ begin
       sign  => alu1_sign
     );
 
-  myaluB: alu_B
-    port map (
-      clk   => clk,
-      rst   => rst,
-  
-      a     => unsigned(alu_b_a),
-      b     => unsigned(alu_b_b),
-      o     => alu_b_r,
-      op    => fdui.r.drq.alu2_op,
-      co    => alu2_co,
-      zero  => alu2_zero,
-      sign  => alu2_sign
-    );
-
-  process(clk,fdui,er,rst,alu_a_r,alu_b_r,
+  process(clk,fdui,er,rst,alu_a_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
-          alu2_co, alu2_zero,alu2_sign,mui,
+          mui,
           mem_busy,wb_busy,int)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
@@ -95,6 +83,13 @@ begin
     variable spr: unsigned(31 downto 0);
     variable can_interrupt: boolean;
     variable do_interrupt: boolean;
+    variable passes_condition: std_logic;
+    variable reg_add_immed: unsigned(31 downto 0);
+
+    alias psr_carry:  std_logic   is  ew.psr(30);
+    alias psr_sign:   std_logic   is  ew.psr(31);
+    alias psr_ovf:    std_logic   is  ew.psr(28);
+    alias psr_zero:   std_logic   is  ew.psr(29);
 
   begin
     ew := er;
@@ -105,42 +100,43 @@ begin
     can_interrupt := true;
     do_interrupt := false;
 
-    ew.regwe0 := '0';
-    ew.regwe1 := '0';
+    ew.regwe := '0';
+    enable_alu <= '0';
 
     invalid_instr := false;
 
-    alu_b_b <= fdui.rr4;
+    reg_add_immed := unsigned(fdui.rr1) + fdui.r.drq.imreg;
 
-    if fdui.r.drq.alu2_imreg='1' then
-      alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
-    end if;
+    --alu_b_b <= fdui.rr4;
 
-    if fdui.r.drq.memory_access='1' then
-     case fdui.r.drq.macc is
-       when M_WORD_POSTINC | M_SPR_POSTINC =>
-         alu_b_b <= x"00000004";
-       when M_HWORD_POSTINC =>
-         alu_b_b <= x"00000002";
-       when M_BYTE_POSTINC =>
-         alu_b_b <= x"00000001";
-       when others =>
-         alu_b_b <= std_logic_vector(fdui.r.drq.imreg);
-     end case;
-    else
-    --  alu_b_b <= (others => 'X');
-    end if;
+    -- Conditional execution
+    case fdui.r.drq.condition_clause is
+      when CONDITION_UNCONDITIONAL =>  passes_condition := '1';
+      when CONDITION_NE =>             passes_condition := not er.psr(29);
+      when CONDITION_E =>              passes_condition := er.psr(29);
+      when CONDITION_GE =>             passes_condition := not er.psr(31);
+      when CONDITION_G =>              passes_condition := not er.psr(31) and not er.psr(29);
+      when CONDITION_LE =>             passes_condition := er.psr(31) or er.psr(29);
+      when CONDITION_L =>              passes_condition := er.psr(31);
+      when CONDITION_UGE =>            passes_condition := not er.psr(30);
+      when CONDITION_UG =>             passes_condition := not er.psr(30) or er.psr(29);
+      when CONDITION_ULE =>            passes_condition := er.psr(30) or er.psr(29);
+      when CONDITION_UL =>             passes_condition := er.psr(30);
+      when others =>                   passes_condition := '1';
+    end case;
+
+
 
     if fdui.r.drq.imflag='0' then
       can_interrupt := true;
     end if;
 
-    if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and fdui.r.drq.jump_clause=JUMP_NONE
-        and er.jump='0' then
-      do_interrupt := true;
-    end if;
+    --if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and fdui.r.drq.jump_clause=JUMP_NONE
+    --    and er.jump='0' then
+    --  do_interrupt := true;
+    --end if;
 
-    if mem_busy='1' then
+    if mem_busy='1' or alu1_busy='1' then
       busy_int := '1';
     else
       busy_int := wb_busy;
@@ -150,7 +146,11 @@ begin
     if DEBUG_OPCODES then
       if rising_edge(clk) then
         if fdui.valid='1' and busy_int='0' and er.intjmp=false then
-          report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & fdui.r.drq.strasm;
+          if fdui.r.drq.dual then
+            report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & hstr(fdui.r.drq.opcode)&hstr(fdui.r.drq.opcode_low);
+          else
+            report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & hstr(fdui.r.drq.opcode);
+          end if;
         elsif fdui.valid='0' then
           report hstr(std_logic_vector(fdui.r.drq.pc)) & " <NOT VALID>" ;
         elsif busy_int='1' then
@@ -162,76 +162,57 @@ begin
     end if;
     -- synthesis translate_on
 
-    euo.reg_source0  <= fdui.r.drq.reg_source0;
-    euo.dreg0        <= fdui.r.drq.dreg0;
+    euo.reg_source  <= fdui.r.drq.reg_source;
+    euo.dreg         <= fdui.r.drq.dreg;
 
-    euo.reg_source1  <= fdui.r.drq.reg_source1;
-    euo.dreg1        <= fdui.r.drq.dreg1;
-
-    if fdui.valid='1' and er.intjmp=false then
-      euo.regwe0       <= fdui.r.drq.regwe0;
-      euo.regwe1       <= fdui.r.drq.regwe1;
+    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+      euo.regwe        <= fdui.r.drq.regwe;
     else
-      euo.regwe0       <= '0';
-      euo.regwe1       <= '0';
+      euo.regwe        <= '0';
     end if;
 
+    dbgo.valid <= false;
+    dbgo.executed <= false;
 
     if fdui.valid='1' and busy_int='0' and er.intjmp=false then
+      dbgo.valid <= true;
+      if passes_condition='1' then
+        dbgo.executed <= true;
+      end if;
+    end if;
+
+    dbgo.dual <= fdui.r.drq.dual;
+    dbgo.opcode1 <= fdui.r.drq.opcode_low;
+    dbgo.opcode2 <= fdui.r.drq.opcode;
+    dbgo.pc <= fdui.r.drq.pc;
+
+    if fdui.valid='1' and busy_int='0' and er.intjmp=false and passes_condition='1' then
 
       ew.alur1 := alu_a_r(31 downto 0);
-      ew.alur2 := alu_b_r(31 downto 0);
       
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
       if fdui.r.drq.modify_flags then
-        case fdui.r.drq.flags_source is
-          when FLAGS_ALU1 =>
             ew.psr(30)      := alu1_co;
             ew.psr(31)      := alu1_sign;
             ew.psr(28)      := alu1_ovf;
             ew.psr(29)      := alu1_zero;
-          when FLAGS_ALU2 =>
-            ew.psr(30)      := alu2_co;
-            ew.psr(31)      := alu2_sign;
-            ew.psr(29)      := alu2_zero;
-            ew.psr(28)      := 'X';
-          when others =>
-        end case;
       end if;
 
-      ew.reg_source0  := fdui.r.drq.reg_source0;
-      ew.regwe0       := fdui.r.drq.regwe0;
-      ew.dreg0        := fdui.r.drq.dreg0;
+      ew.reg_source  := fdui.r.drq.reg_source;
+      ew.regwe       := fdui.r.drq.regwe;
+      ew.dreg        := fdui.r.drq.dreg;
 
-      ew.reg_source1  := fdui.r.drq.reg_source1;
-      ew.regwe1       := fdui.r.drq.regwe1;
-      ew.dreg1        := fdui.r.drq.dreg1;
-
-
-
-      -- Branching
-      case fdui.r.drq.jump_clause is
-        when JUMP_NONE =>           ew.jump := '0';
-        when JUMP_INCONDITIONAL =>  ew.jump := '1';
-        when JUMP_NE =>             ew.jump := not er.psr(29);
-        when JUMP_E =>              ew.jump := er.psr(29);
-        when JUMP_GE =>             ew.jump := not er.psr(31);
-        when JUMP_G =>              ew.jump := not er.psr(31) and not er.psr(29);
-        when JUMP_LE =>             ew.jump := er.psr(31) or er.psr(29);
-        when JUMP_L =>              ew.jump := er.psr(31);
-        when JUMP_UGE =>            ew.jump := not er.psr(30);
-        when JUMP_UG =>             ew.jump := not er.psr(30) or er.psr(29);
-        when JUMP_ULE =>            ew.jump := er.psr(30) or er.psr(29);
-        when JUMP_UL =>             ew.jump := er.psr(30);
-        when others =>              ew.jump := '0';
-      end case;
+      if fdui.r.drq.is_jump and passes_condition='1' then
+        ew.jump:='1';
+      else
+        ew.jump:='0';
+      end if;
 
       case fdui.r.drq.jump is
-        when JUMP_RI_PCREL => ew.jumpaddr := alu_b_r(31 downto 0) + fdui.r.drq.npc(31 downto 0);
+        --when JUMP_RI_PCREL => ew.jumpaddr := reg_add_immed + fdui.r.drq.npc(31 downto 0);
         when JUMP_I_PCREL =>  ew.jumpaddr := fdui.r.drq.imreg + fdui.r.drq.npc(31 downto 0);
-        when JUMP_BR_ABS =>   ew.jumpaddr := er.br;
-        when JUMP_RI_ABS =>   ew.jumpaddr := alu_b_r;
+        when JUMP_RI_ABS =>   ew.jumpaddr := reg_add_immed;
         when others =>        ew.jumpaddr := (others => 'X');
       end case;
 
@@ -239,13 +220,6 @@ begin
       if busy_int='1' then
         ew.jump := '0';
       end if;
-
-      case fdui.r.drq.br_source is
-        when br_source_pc =>    ew.br := fdui.r.drq.fpc;  -- This is PC+2. We have to skip delay slot
-        when br_source_reg =>   ew.br := unsigned(fdui.rr1);
-        --when br_source_brs =>   ew.br := er.brs;
-        when others =>          -- Keep
-      end case;
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
         case fdui.r.drq.sra2(2 downto 0) is
@@ -257,7 +231,6 @@ begin
           when "100" => -- SPSR
             ew.spsr := unsigned(fdui.rr1);
           when "101" => -- SBR
-            ew.brs := unsigned(fdui.rr1);
           when "110" => -- TTR
             ew.trapvector := unsigned(fdui.rr1);
 
@@ -268,9 +241,9 @@ begin
       if ew.jump='1' and fdui.r.drq.except_return then
         -- Restore PSR, BR
         ew.psr := ew.spsr;
-        ew.br := ew.brs;
       end if;
 
+      enable_alu <= fdui.r.drq.enable_alu;
 
     else
       -- Instruction is not being processed.
@@ -282,11 +255,6 @@ begin
 
     if mui.msprwe='1' then
       case mui.mreg(2 downto 0) is
-        when "001" =>
-          ew.br := unsigned(mui.mdata);
-        when "010" =>
-          -- CPU Status register
-
         when others =>
       end case;
     end if;
@@ -301,15 +269,13 @@ begin
       ew.psr(4) := '0'; -- Interrupt enable
       ew.psr(0) := '1'; -- Supervisor mode
       ew.spsr := er.psr; -- Save PSR
-      ew.brs  := er.br; -- Save branch register
-      ew.br := fdui.r.drq.npc;
     end if;
 
     busy <= busy_int;
 
     -- Fast writeback
     euo.alur1 <= alu_a_r(31 downto 0);
-    euo.alur2 <= alu_b_r(31 downto 0);
+    --euo.alur2 <= alu_b_r(31 downto 0);
 
     -- REG sources are also per ALU
     --euo.reg_source0  <= ew.reg_source0;
@@ -321,14 +287,11 @@ begin
 
     -- SPRVAL...
 
-    case fdui.r.drq.sra2(2 downto 0) is
-      when "000" => euo.sprval <= fdui.r.drq.fpc;
-      when "001" => euo.sprval <= er.br;
-      when "010" => euo.sprval <= er.y;
-      when "011" => euo.sprval <= er.psr;
-      when "100" => euo.sprval <= er.spsr;
-      when "101" => euo.sprval <= er.brs;
-      when "110" => euo.sprval <= er.trapvector;
+    case fdui.r.drq.sra2(1 downto 0) is
+      when "00" => euo.sprval <= er.y;
+      when "01" => euo.sprval <= er.psr;
+      when "10" => euo.sprval <= er.spsr;
+      when "11" => euo.sprval <= er.trapvector;
       when others => euo.sprval <= (others => 'X');
     end case;
 
@@ -339,43 +302,40 @@ begin
     -- Memory lines
 
     euo.sprwe     <= fdui.r.drq.sprwe;
-    euo.mwreg     <= fdui.r.drq.sra4;
+    euo.mwreg     <= fdui.r.drq.sra2;
     euo.sr        <= fdui.r.drq.sr;
     euo.macc      <= fdui.r.drq.macc;
+    euo.npc       <= fdui.r.drq.fpc;  -- NOTE: This is due to delay slot
 
     euo.data_write <= (others => 'X');
 
     case fdui.r.drq.macc is
-      when M_SPR | M_SPR_POSTINC =>
+     -- when M_SPR | M_SPR_POSTINC =>
         -- TODO: add missing SPRs
-        case fdui.r.drq.sra4(2 downto 0) is
-          when others =>
-            euo.data_write <= std_logic_vector(er.br);
-        end case;
 
       when others =>
-        euo.data_write <= fdui.rr4; -- Memory always go through Alu2
+        euo.data_write <= fdui.rr2; -- Memory always go through Alu2
     end case;
 
     euo.data_address <= (others => 'X');
 
-    case fdui.r.drq.macc is
-      when M_WORD  |
-           M_HWORD |
-           M_BYTE  |
-           M_SPR =>
-        euo.data_address <= std_logic_vector(alu_b_r);
-      when M_WORD_POSTINC |
-           M_HWORD_POSTINC |
-           M_BYTE_POSTINC |
-           M_SPR_POSTINC =>
-        euo.data_address <= fdui.rr3;
-    end case;
+--    case fdui.r.drq.macc is
+--     when M_WORD  |
+--           M_HWORD |
+--           M_BYTE  |
+--           M_SPR =>
+        euo.data_address <= std_logic_vector(reg_add_immed);
+--      when M_WORD_POSTINC |
+--           M_HWORD_POSTINC |
+--           M_BYTE_POSTINC |
+--           M_SPR_POSTINC =>
+--        euo.data_address <= fdui.rr1;
+--    end case;
 
     euo.data_access      <= fdui.r.drq.memory_access;
     euo.data_writeenable <= fdui.r.drq.memory_write;
 
-    if fdui.valid='0' then
+    if fdui.valid='0' or passes_condition='0' then
       euo.data_access <= '0';
     end if;
 

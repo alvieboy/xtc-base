@@ -123,7 +123,8 @@ begin
             if mr.sprwe='1' then
               mw.state := midle;
               mw.wb_cyc := '0';
-              mw.wb_stb := '0';
+              mw.wb_stb := 'X';
+              mw.wb_we := 'X';
               busy<='1';
             else
             if eui.data_access='1' then
@@ -133,7 +134,8 @@ begin
             else
               mw.state := midle;
               mw.wb_cyc := '0';
-              mw.wb_stb := '0';
+              mw.wb_stb := 'X';
+              mw.wb_we := 'X';
             end if;
             end if;
           end if;

@@ -101,7 +101,24 @@ architecture behave of xtc is
   signal refetch_registers:   std_logic;
   signal freeze_decoder:      std_logic;
 
+  component tracer is
+  port (
+    clk:              in std_logic;
+    dbgi:             in execute_debug_type
+  );
+  end component tracer;
+
+  signal dbg:   execute_debug_type;
+
 begin
+
+  -- synthesis translate_off
+  trc: tracer
+    port map (
+      clk => wb_clk_i,
+      dbgi  => dbg
+    );
+  -- synthesis translate_on
 
   -- Register bank.
 
@@ -117,10 +134,10 @@ begin
     rb2_en  => rb2_en,
     rb2_addr=> rb2_addr,
     rb2_rd  => rb2_rd,
-    rb3_en  => rb3_en,
+    rb3_en  => '0',
     rb3_addr=> rb3_addr,
     rb3_rd  => rb3_rd,
-    rb4_en  => rb4_en,
+    rb4_en  => '0',
     rb4_addr=> rb4_addr,
     rb4_rd  => rb4_rd,
 
@@ -258,12 +275,6 @@ begin
       r2_en      => rb2_en,
       r2_addr    => rb2_addr,
       r2_read    => rb2_rd,
-      r3_en      => rb3_en,
-      r3_addr    => rb3_addr,
-      r3_read    => rb3_rd,
-      r4_en      => rb4_en,
-      r4_addr    => rb4_addr,
-      r4_read    => rb4_rd,
 
 
       freeze     => execute_busy,
@@ -282,25 +293,22 @@ begin
     constant COUNT: integer :=16;
     signal tq: std_logic_vector(COUNT-1 downto 0);
   
-    signal i1,i2,i3,i4: integer range 0 to COUNT-1;
+    signal i1,i2:       integer range 0 to COUNT-1;
     signal s1:          integer range 0 to COUNT-1;
     signal c1:          integer range 0 to COUNT-1;
-    signal v1,v2,v3,v4: std_logic;
+    signal v1,v2,v3:    std_logic;
   begin
   
     i1 <= to_integer(unsigned(rb1_addr));
     i2 <= to_integer(unsigned(rb2_addr));
-    i3 <= to_integer(unsigned(rb3_addr));
-    i4 <= to_integer(unsigned(rb4_addr));
   
     s1 <= to_integer(unsigned(muo.mreg));
-    c1 <= to_integer(unsigned(duo.r.sra4));
+    c1 <= to_integer(unsigned(duo.r.sra2));
   
   
     v1<='1' when rb1_en='0' else tq(i1);
     v2<='1' when rb2_en='0' else tq(i2);
-    v3<='1' when rb3_en='0' else tq(i3);
-    v4<='1' when rb4_en='0' else tq(i4);
+    v3<='1';-- when w_en='0' else tq(s1);
 
 
     process(wb_clk_i)
@@ -312,25 +320,18 @@ begin
         if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' and allvalid='1' then
           tq(c1) <= '0';
         end if;
-        --if set1_en='1' then
-        --  t(s1) <= '1';
-        --end if;
+        -- Memory reads clear flags.
         if muo.mregwe='1' then
           tq(s1) <= '1';
         end if;
-  
-        --if clr1_en='1' then
-        --  t(c1) <= '1';
-        --end if;
-        
       end if;
 
-      retryfetch <= not (v1 and v2 and v3 and v4);
+      retryfetch <= not (v1 and v2);
 
     end if;
   end process;
 
-    allvalid <= v1 and v2 and v3 and v4;
+    allvalid <= v1 and v2;-- and v3;
     notallvalid <= not allvalid;
 
   end block;
@@ -368,7 +369,9 @@ begin
       -- Outputs for next stages
       euo       => euo,
       -- Input from memory unit (spr update)
-      mui       => muo
+      mui       => muo,
+      -- Debug
+      dbgo      => dbg
     );
 
   memory_unit: memory

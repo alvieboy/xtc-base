@@ -142,7 +142,7 @@ package xtccomppkg is
   );
   end component mux32_2;
 
-  component alu_A is
+  component alu is
   port (
     clk: in std_logic;
     rst: in std_logic;
@@ -151,7 +151,8 @@ package xtccomppkg is
     b:  in unsigned(31 downto 0);
     o: out unsigned(31 downto 0);
 
-    op: in alu1_op_type;
+    op: in alu_op_type;
+    en: in std_logic;
 
     ci: in std_logic;
     busy: out std_logic;
@@ -221,16 +222,6 @@ package xtccomppkg is
     r2_addr:   out regaddress_type;
     r2_read:   in word_type_std;
 
-    -- Register access
-    r3_en:      out std_logic;
-    r3_addr:    out regaddress_type;
-    r3_read:    in word_type_std;
-    -- Register access
-    r4_en:      out std_logic;
-    r4_addr:    out regaddress_type;
-    r4_read:    in word_type_std;
-
-
     w_addr: out regaddress_type;
     w_en:     out std_logic;
     -- Input for previous stages
@@ -258,7 +249,9 @@ package xtccomppkg is
     -- Output for next stages
     euo:  out execute_output_type;
     -- Input from memory unit, for SPR update
-    mui:  in memory_output_type
+    mui:  in memory_output_type;
+
+    dbgo: out execute_debug_type
 
   );
   end component execute;
@@ -358,27 +351,11 @@ package xtccomppkg is
   );
   end component;
 
-  component alu_B is
-  port (
-    clk: in std_logic;
-    rst: in std_logic;
-
-    a:  in unsigned(31 downto 0);
-    b:  in unsigned(31 downto 0);
-    o: out unsigned(31 downto 0);
-
-    op: in alu2_op_type;
-
-    co: out std_logic;
-    zero: out std_logic;
-    bo:   out std_logic;
-    sign: out std_logic
-  );
-  end component;
 
   component opdec is
   port (
-    opcode:   in std_logic_vector(15 downto 0);
+    opcode_low:   in std_logic_vector(15 downto 0);
+    opcode_high:   in std_logic_vector(15 downto 0);
     dec:      out opdec_type
   );
   end component;

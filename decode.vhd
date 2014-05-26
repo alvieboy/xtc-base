@@ -27,95 +27,67 @@ end entity decode;
 architecture behave of decode is
 
   signal dr: decode_regs_type;
-  signal dec1, dec2: opdec_type;
+  signal dec: opdec_type;
 
-  -- Debug helpers
-
-  signal dbg_can_issue_both: boolean;
-
-  type compositeloadimmtype is (
-    LOAD0,
-    LOAD8,
-    LOAD12,
-    LOAD12_12,
-    LOAD12_8,
-    LOAD_OTHER8,
-    LOAD_OTHER12,
-    LOADNONE
-  );
-  signal dbg_compositeloadimm: compositeloadimmtype;
-
-  signal opcode1: std_logic_vector(15 downto 0);
-  signal opcode2: std_logic_vector(15 downto 0);
+  signal opcode_high: std_logic_vector(15 downto 0);
+  signal opcode_low: std_logic_vector(15 downto 0);
 
 --  signal pc_lsb: boolean;
 
 begin
 
-    opcode1 <= fui.opcode(31 downto 16) when fui.inverted='0' else fui.opcode(15 downto 0);
-    opcode2 <= fui.opcode(15 downto 0) when fui.inverted='0' else fui.opcode(31 downto 16);
+    opcode_high <= fui.opcode(31 downto 16) when fui.inverted='0' else fui.opcode(15 downto 0);
+    opcode_low  <= fui.opcode(15 downto 0)  when fui.inverted='0' else fui.opcode(31 downto 16);
 
     duo.r <= dr;
 
-    opdec1: opdec
+    opdecoder: opdec
       port map (
-        opcode  => opcode1,
-        dec     => dec1
+        opcode_high   => opcode_high,
+        opcode_low    => opcode_low,
+        dec           => dec
       );
 
-    opdec2: opdec
-      port map (
-        opcode  => opcode2,
-        dec     => dec2
-      );
-
-    process(fui, dr, clk, rst, dec1, dec2, freeze, jump, jumpmsb, flush)
+    process(fui, dr, clk, rst, dec, freeze, jump, jumpmsb, flush)
       variable dw: decode_regs_type;
       --variable op: decoded_opcode_type;
-      variable opc1,opc2: std_logic_vector(15 downto 0);
-      variable rd1,rd2,rd3,rd4: std_logic;
-      variable ra1,ra2,ra3,ra4: regaddress_type;
+      variable opc1,opc2:       std_logic_vector(15 downto 0);
+      variable rd1,rd2:         std_logic;
+      variable ra1,ra2:         regaddress_type;
       --variable src: sourcedest_type;
-      variable dreg0, dreg1: regaddress_type;
-      variable alu1_op: alu1_op_type;
-      variable alu2_op: alu2_op_type;
-      variable imm12:          std_logic_vector(11 downto 0);
+      variable dreg0, dreg1:   regaddress_type;
+      variable alu_op:         alu_op_type;
+      variable imm16:          std_logic_vector(15 downto 0);
       variable imm8:           std_logic_vector(7 downto 0);
-      variable imm24:          std_logic_vector(23 downto 0);
-      variable imm20:          std_logic_vector(19 downto 0);
-
-      variable imm4:           std_logic_vector(3 downto 0);
       variable imm_fill:       std_logic_vector(31 downto 0);
       variable sr:             std_logic_vector(2 downto 0);
-      variable alu2_opcode: opcode_type;
 
       variable opcdelta: std_logic_vector(2 downto 0);
 
       variable can_issue_both: boolean;
       --variable is_pc_lsb: boolean;
       variable reg_source0, reg_source1: reg_source_type;
-      variable regwe0, regwe1: std_logic;
+      variable regwe :std_logic;
       variable sprwe: std_logic;
       variable prepost: std_logic;
       variable macc: memory_access_type;
-      variable strasm: string(1 to 50);
       variable memory_access: std_logic;
       variable memory_write: std_logic;
       variable modify_flags: boolean;
-      variable compositeloadimm: compositeloadimmtype;
+      --variable compositeloadimm: compositeloadimmtype;
       variable jump: std_logic_vector(1 downto 0);
-      variable jump_clause: jumpcond_type;
-      variable br_source: br_source_type;
+      variable condition_clause: condition_type;
       variable alu2_imreg: std_logic;
       variable alu2_samereg: std_logic;
       variable no_reg_conflict: boolean;
-      variable flags_source: flagssource_type;
+      --variable flags_source: flagssource_type;
       variable pc: word_type;
       variable imflag: std_logic;
       variable invert_alu: boolean;
       variable except_return: boolean;
       variable blocks1: std_logic;
       variable blocks2: std_logic;
+      variable is_jump: boolean;
 
     begin
       dw := dr;
@@ -124,380 +96,61 @@ begin
 
       rd1 := '0';
       rd2 := '0';
-      rd3 := '0';
-      rd4 := '0';
 
-      imm20 := (others => 'X');
-      imm24 := (others => 'X');
-      can_issue_both := false;
+      --can_issue_both := false;
       modify_flags:=false;
       jump := (others => 'X');
-      jump_clause := JUMP_NONE;
-      br_source := br_source_none;
+      --jump_clause := JUMP_NONE;
       no_reg_conflict := true;
       imflag := '0';
 
-      if dec1.modify_gpr then
-        -- Check if we're writing something used by the second insn
-        if dec2.rd1='1' and dec1.dreg = dec2.sreg1 then
-          no_reg_conflict := false;
-        end if;
-        if dec2.rd2='1' and dec1.dreg = dec2.sreg2 then
-          no_reg_conflict := false;
-        end if;
-      end if;
+      -- TODO: save power, only enable RB that need..
+      rd1 := dec.rd1;
+      rd2 := dec.rd2;
 
-      if not dec1.blocking then
-        -- We can issue both instructions if they do not share the same ALU,
-        -- nor they share the same output type.
+      ra1 := dec.sreg1;
+      ra2 := dec.sreg2; -- Preload DREG for some insns
 
-        if dec1.uses /= dec2.uses or (dec1.uses=uses_nothing or dec2.uses=uses_nothing) then
-           if no_reg_conflict then
-           -- if not (dec1.modify_gpr and dec2.modify_gpr) then
-              if not (dec1.modify_mem and dec2.modify_mem) then
-                can_issue_both:=true;
-              end if;
-          end if;
-        end if;
-      end if;
+      imm16 := dec.imm8h & dec.imm8l;
+      imm8  := dec.imm8l;
 
-      -- Some conjuntion of IMM is also not allowed, if the IMM is to be reset.
+      pc := fui.r.pc;
 
-      if dec1.loadimm=LOAD8 and dec2.loadimm/=LOADNONE then
-        can_issue_both := false;
-      end if;
-
-      if dec1.loadimm=LOAD0 and dec2.loadimm/=LOADNONE then
-        can_issue_both := false;
-      end if;
-
-      if fui.r.unaligned_jump='1' then
-        can_issue_both := false;
-      end if;
-
-      if dr.delay_slot then
-        can_issue_both := false;
-      end if;
-
-      --can_issue_both := false;
-
-      if not can_issue_both then
-
-        -- TODO: save power, only enable RB that need..
-        rd1 := dec1.rd1;
-        rd2 := dec1.rd2;
-
-        ra1 := dec1.sreg1;
-        ra2 := dec1.sreg2; -- Preload DREG for some insns
-
-        imm12 := dec1.imm12;
-        imm8  := dec1.imm8;
-        imm4  := dec1.imm4;
-        pc := fui.r.pc;
-
-        sr := dec1.sr;
-        jump := dec1.jump;
-        jump_clause := dec1.jump_clause;
-        br_source := dec1.br_source;
-        except_return:=dec1.except_return;
+      sr := dec.sr;
+      jump := dec.jump;
+      condition_clause := dec.condition;
+      except_return:=dec.except_return;
 
 
-        case dec1.loadimm is
-          when LOAD8 =>  compositeloadimm := LOAD8;
-          when LOAD12 =>  compositeloadimm := LOAD12;
-          when LOAD0 =>  compositeloadimm := LOAD0;
-          when others =>  compositeloadimm := LOADNONE;
-        end case;
+      alu_op := dec.alu_op;
 
-      --  op := dec1.op;
-        alu1_op := dec1.alu1_op;
-        alu2_op := dec1.alu2_op;
-        alu2_opcode := dec1.opcode;
-        alu2_imreg := dec1.alu2_imreg;
-        alu2_samereg := dec1.alu2_samereg;
-        if dec1.alu2_samereg='1' then
-          ra3 := dec1.sreg1;
-          ra4 := dec1.sreg2;
-          rd3 := dec1.rd1;
-          rd4 := dec1.rd2;
-        else
-          ra3 := dec1.sreg2;
-          ra4 := dec1.sreg1;
-          rd3 := dec1.rd2;
-          rd4 := dec1.rd1;
-        end if;
-
-        reg_source0 := dec1.reg_source;
-        reg_source1 := dec1.reg_source;
-        dreg0 := dec1.dreg;
-        dreg1 := dec1.dreg;
-        blocks1 := dec1.blocks;
-        blocks2 := dec1.blocks;
+      reg_source0 := dec.reg_source;
+      reg_source1 := dec.reg_source;
+      dreg0 := dec.dreg;
+      dreg1 := dec.dreg;
+      blocks1 := dec.blocks;
+      blocks2 := dec.blocks;
 
 
-        macc := dec1.macc;
-        memory_access := dec1.memory_access;
-        memory_write := dec1.memory_write;
-        modify_flags := dec1.modify_flags;
-        -- synthesis translate_off
-        strasm := dec1.strasm & opcode_txt_pad("");
-        -- synthesis translate_on
+      macc := dec.macc;
+      memory_access := dec.memory_access;
+      memory_write := dec.memory_write;
+      modify_flags := dec.modify_flags;
 
-        if dec1.uses=uses_alu1 then
-          flags_source := FLAGS_ALU1;
-        else
-          flags_source := FLAGS_ALU2;
-        end if;
-
-        if dec1.modify_gpr then
-          if dec1.uses = uses_alu1 then
-            regwe0:='1';
-            regwe1:='0';
-          else
-            regwe0:='0';
-            regwe1:='1';
-          end if;
-        else
-          regwe0:='0';
-          regwe1:='0';
-        end if;
-
-        if dec1.modify_spr then
-          sprwe :='1';
-        else
-          sprwe :='0';
-        end if;
-
-        if compositeloadimm=LOAD12 then
-          imflag := '1';
-        end if;
-
+      if dec.modify_gpr then
+          regwe:='1';
       else
-
-        -- Issue two instructions at the time, one for each of the ALU
-
-        -- Fix the PC. We will advance 2 instructions, and on this scenario,
-        -- an eventual branch instruction is the second one. PC needs to reflect
-        -- this offset.
-
-        pc := fui.r.pc + 2;
-
-        sr := (others => 'X');
-        dual <= '1';
-
-        prepost := DontCareValue; -- No prepost in composite
-        memory_access := '0';
-        memory_write := DontCareValue;
-
-        if dec1.modify_spr or dec2.modify_spr then
-          sprwe := '1';
-        else
-          sprwe := '0';
-        end if;
-
-
-        -- RD1/RD2 are output to ALU1.
-
-        -- Make sure we issue the instructions to the correct ALU.
-
-        invert_alu := false;
-        if (dec1.uses=uses_alu2 or (dec1.uses=uses_nothing and dec2.uses=uses_alu1)) then
-          invert_alu := true;
-        end if;
-
-        if invert_alu=false then
-          ra1 := dec1.sreg1;
-          ra2 := dec1.sreg2;
-
-          rd1 := dec1.rd1;
-          rd2 := dec1.rd2;
-          dreg0 := dec1.dreg;
-          blocks1:= dec1.blocks;
-          dreg1 := dec2.dreg;
-          blocks2:= dec2.blocks;
-
-          reg_source0 := dec1.reg_source;
-          reg_source1 := dec2.reg_source;
-
-          if dec1.modify_gpr then
-            regwe0 := '1';
-          else
-            regwe0 := '0';
-          end if;
-          if dec2.modify_gpr then
-            regwe1 := '1';
-          else
-            regwe1 := '0';
-          end if;
-
-          if dec2.alu2_samereg='1' then
-            ra3 := dec2.sreg1;
-            ra4 := dec2.sreg2;
-            rd3 := dec2.rd1;
-            rd4 := dec2.rd2;
-          else
-            ra3 := dec2.sreg2;
-            ra4 := dec2.sreg1;
-            rd3 := dec2.rd2;
-            rd4 := dec2.rd1;
-          end if;
-
-          alu1_op := dec1.alu1_op;
-          alu2_op := dec2.alu2_op;
-          alu2_opcode := dec2.opcode;
-          alu2_imreg  := dec2.alu2_imreg;
-          alu2_samereg := dec2.alu2_samereg;
-
-          -- Flags
-          if dec2.modify_flags then
-            modify_flags := true;
-            flags_source := FLAGS_ALU2;
-          else
-            modify_flags := dec1.modify_flags;
-            flags_source := FLAGS_ALU1;
-          end if;
-        else
-          -- ALU are inverted.
-
-          ra1 := dec2.sreg1;
-          ra2 := dec2.sreg2;
-          ra3 := dec1.sreg1;
-          ra4 := dec1.sreg2;
-
-          rd1 := dec2.rd1;
-          rd2 := dec2.rd2;
-
-          rd3 := dec1.rd1;
-          rd4 := dec1.rd2;
-
-          dreg0 := dec2.dreg;
-          blocks1:=dec2.blocks;
-          dreg1 := dec1.dreg;
-          blocks2:= dec1.blocks;
-
-          reg_source0 := dec2.reg_source;
-          reg_source1 := dec1.reg_source;
-          if dec2.modify_gpr then
-            regwe0 := '1';
-          else
-            regwe0 := '0';
-          end if;
-          if dec1.modify_gpr then
-            regwe1 := '1';
-          else
-            regwe1 := '0';
-          end if;
-
-          alu1_op := dec2.alu1_op;
-          alu2_op := dec1.alu2_op;
-          alu2_opcode := dec1.opcode;
-          alu2_imreg  := dec1.alu2_imreg;
-          alu2_samereg  := dec1.alu2_samereg;
-
-          if dec1.alu2_samereg='1' then
-            ra3 := dec1.sreg1;
-            ra4 := dec1.sreg2;
-            rd3 := dec1.rd1;
-            rd4 := dec1.rd2;
-          else
-            ra3 := dec1.sreg2;
-            ra4 := dec1.sreg1;
-            rd3 := dec1.rd2;
-            rd4 := dec1.rd1;
-          end if;
-
-
-          -- Flags
-          if dec2.modify_flags then
-            modify_flags := true;
-            flags_source := FLAGS_ALU1;
-          else
-            modify_flags := dec1.modify_flags;
-            flags_source := FLAGS_ALU2;
-          end if;
-
-
-        end if;
-
-        if dec2.br_source=BR_SOURCE_NONE then
-          br_source := dec1.br_source;
-        else
-          br_source := dec2.br_source;
-        end if;
-
-        -- Jump
-        if dec1.jump_clause=JUMP_NONE then
-          jump_clause := dec2.jump_clause;
-          jump := dec2.jump;
-          except_return:=dec2.except_return;
-        else
-          jump_clause := dec1.jump_clause;
-          jump := dec1.jump;
-          except_return:=dec1.except_return;
-        end if;
-        -- synthesis translate_off
-        strasm := dec1.strasm & dec2.strasm;
-        -- synthesis translate_on
-
-
-        imm20 := dec1.imm12 & dec2.imm8;
-        imm24 := dec1.imm12 & dec2.imm12;
-
-        imm12 := (others => 'X');--dec2.imm12;
-        imm8  := (others => 'X');--dec2.imm8;
-
-        if dec1.memory_access='1' then
-          macc := dec1.macc;
-          memory_access := dec1.memory_access;
-          memory_write := dec1.memory_write;
-        else
-          macc := dec2.macc;
-          memory_access := dec2.memory_access;
-          memory_write := dec2.memory_write;
-
-        end if;
-
-        imflag := '0';
-
-        case dec1.loadimm is
-          when LOAD12 =>
-            case dec2.loadimm is
-              when LOAD8 => compositeloadimm := LOAD12_8;
-                imm8  := dec1.imm8;
-              when LOAD12 => compositeloadimm := LOAD12_12;
-                imm12 := dec1.imm12;
-                imflag := '1';
-              when others => compositeloadimm := LOAD12;
-                imm12 := dec1.imm12;
-            end case;
-
-          when LOAD8 =>
-            imm8  := dec1.imm8;
-            imm12 := dec1.imm12;
-            compositeloadimm := LOAD8; -- dec2 is not IMM, we ensured that.
-
-          when LOAD0 =>
-            compositeloadimm := LOAD0;
-
-          when others =>
-            case dec2.loadimm is
-              when LOAD8 => compositeloadimm := LOAD8;
-                imm8  := dec2.imm8;
-              when LOAD12 => compositeloadimm := LOAD12;
-                imm12 := dec2.imm12;
-                imflag := '1';
-              when LOAD0 => compositeloadimm:=LOAD0;
-              when others => compositeloadimm := LOADNONE;
-            end case;
-
-        end case;
+          regwe:='0';
       end if;
 
-      opc1 := dec1.opcode;
-      opc2 := dec2.opcode;
+      if dec.modify_spr then
+        sprwe :='1';
+      else
+        sprwe :='0';
+      end if;
 
-      --dw.swap_target_reg:=DontCareValue;
-  
+      imflag := dec.imflag;
+
       if freeze='0' then
         dw.valid := fui.valid;
       end if;
@@ -506,31 +159,32 @@ begin
 
         dw.rd1 := rd1;
         dw.rd2 := rd2;
-        dw.rd3 := rd3;
-        dw.rd4 := rd4;
+        --dw.rd3 := rd3;
+        --dw.rd4 := rd4;
         dw.sra1 := ra1;
         dw.sra2 := ra2;
-        dw.sra3 := ra3;
-        dw.sra4 := ra4;
         dw.sprwe := sprwe;
 
-        dw.fpc  := pc + 4;
         dw.pc   := pc;
-        dw.npc  := pc + 2;
-        --dw.op := op;
-        dw.imm12 := imm12;
-        dw.imm8  := imm8;
+        if dec.extended then
+          dw.fpc  := pc + 6;
+          dw.npc  := pc + 4;
+        else
+          dw.fpc  := pc + 4;
+          dw.npc  := pc + 2;
+        end if;
+        --dw.imm8  := imm8;
 
         if dr.imflag='0' then
           dw.imreg := (others => '0');
         end if;
 
         dw.delay_slot := false;
-        if (jump_clause /= JUMP_NONE) then
+        if (is_jump) then
           dw.delay_slot := true;
         end if;
 
-        case compositeloadimm is
+        case dec.loadimm is
 
           when LOAD8 =>
             if dr.imflag='1' then
@@ -542,73 +196,64 @@ begin
               dw.imreg(7 downto 0) := unsigned(imm8);
             end if;
 
-          when LOAD12 =>
+          when LOAD16 =>
             if dr.imflag='0' then
-              dw.imreg(31 downto 12) := (others => imm12(11));
-              dw.imreg(11 downto 0) := unsigned(imm12(11 downto 0));
+              dw.imreg(31 downto 15) := (others => imm16(15));
+              dw.imreg(14 downto 0) := unsigned(imm16(14 downto 0));
             else
-              dw.imreg(31 downto 12) := dr.imreg(31-12 downto 0);
-              dw.imreg(11 downto 0) := unsigned(imm12(11 downto 0));
+              dw.imreg(31 downto 16) := dr.imreg(15 downto 0);
+              dw.imreg(15 downto 0) := unsigned(imm16(15 downto 0));
             end if;
+          when LOAD24 =>
+            dw.imreg(31 downto 24) := (others => dec.imm24(23));
+            dw.imreg(23 downto 0) := unsigned(dec.imm24);
 
-          when LOAD12_12 =>
-            if dr.imflag='0' then
-              dw.imreg(31 downto 24) := (others => imm24(23));
-              dw.imreg(23 downto 0) := unsigned(imm24(23 downto 0));
-            else
-              dw.imreg(31 downto 24) := dr.imreg(31-24 downto 0);
-              dw.imreg(23 downto 0) := unsigned(imm24(23 downto 0));
-            end if;
-
-          when LOAD12_8 =>
-
-            if dr.imflag='0' then
-              dw.imreg(31 downto 20) := (others => imm20(19));
-              dw.imreg(19 downto 0) := unsigned(imm20(19 downto 0));
-            else
-              dw.imreg(31 downto 20) := dr.imreg(31-20 downto 0);
-              dw.imreg(19 downto 0) := unsigned(imm20(19 downto 0));
-            end if;
-            
           when LOAD0 =>
             -- Keep imm
 
           when others =>
-            dw.imreg := (others => '0');
+            --dw.imreg := (others => '0');
         end case;
 
         dw.imflag := imflag;
+        dw.enable_alu := dec.enable_alu;
 
-        dw.alu1_op := alu1_op;
-        dw.alu2_op := alu2_op;
-        dw.alu2_opcode := alu2_opcode;
-        dw.alu2_imreg := alu2_imreg;
-        dw.alu2_samereg := alu2_samereg;
+        dw.alu_op := alu_op;
+        dw.alu_source := dec.alu_source;
+
         dw.wb_is_data_address := '0';
+
         dw.macc := macc;
         dw.sr := sr;
         dw.memory_access := memory_access;
         dw.memory_write := memory_write;
         dw.modify_flags := modify_flags;
-        dw.flags_source := flags_source;
+        --dw.flags_source := flags_source;
 
         dw.blocks := blocks1 or blocks2;
         --dw.blocks2 := blocks2;
 
-        dw.dreg0       := dreg0;
-        dw.dreg1       := dreg1;
-        dw.reg_source0 := reg_source0;
-        dw.reg_source1 := reg_source1;
-        dw.regwe0      := regwe0;
-        dw.regwe1      := regwe1;
+        dw.dreg        := dreg0;
+        --dw.dreg1       := dreg1;
+        dw.reg_source  := reg_source0;
+        --dw.reg_source1 := reg_source1;
+        dw.regwe       := regwe;
+        --dw.regwe1      := regwe1;
 
         dw.jump         := jump;
-        dw.jump_clause  := jump_clause;
+        --dw.jump_clause  := jump_clause;
         dw.except_return:= except_return;
-        dw.br_source    := br_source;
-        -- synthesis translate_off
-        dw.strasm := strasm;
-        -- synthesis translate_on
+
+        -- Preserve condition from E24 extension (imm)
+        if dr.imflag='0' then
+          dw.condition_clause    := dec.condition;
+        end if;
+
+        dw.opcode := opcode_high;
+        dw.opcode_low := opcode_low;
+        dw.dual := dec.extended;
+        dw.decoded := dec.op;
+        dw.is_jump := dec.is_jump;
       else
         busy <= freeze;
       end if;
@@ -624,29 +269,28 @@ begin
         --dw.regwe1:='0';
         --dw.sprwe:='0';
         --dw.jump_clause:=JUMP_NONE;
-        --dw.br_source:=br_source_none;
         --dw.except_return := false;
+        --dw.extended := dec.extended;
 
+      end if;
 
+      if dec.extended then
+        dual <= '1';
       end if;
 
       -- fast-forward register access
       duo.rd1 <= rd1;
       duo.rd2 <= rd2;
-      duo.rd3 <= rd3;
-      duo.rd4 <= rd4;
 
       duo.sra1 <= ra1;
       duo.sra2 <= ra2;
-      duo.sra3 <= ra3;
-      duo.sra4 <= ra4;
 
       if rising_edge(clk) then
         dr <= dw;
       end if;
     -- synthesis translate_off
-      dbg_can_issue_both <= can_issue_both;
-      dbg_compositeloadimm <= compositeloadimm;
+      --dbg_can_issue_both <= can_issue_both;
+      --dbg_compositeloadimm <= compositeloadimm;
     -- synthesis translate_on
     end process;
 

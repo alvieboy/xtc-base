@@ -16,15 +16,7 @@ entity fetchdata is
     r2_en:      out std_logic;
     r2_addr:    out regaddress_type;
     r2_read:    in word_type_std;
-    -- Register access
-    r3_en:      out std_logic;
-    r3_addr:    out regaddress_type;
-    r3_read:    in word_type_std;
-    -- Register access
-    r4_en:      out std_logic;
-    r4_addr:    out regaddress_type;
-    r4_read:    in word_type_std;
-
+   
     w_addr:     out regaddress_type;
     w_en:       out std_logic;
 
@@ -50,8 +42,8 @@ begin
   fduo.r <= fdr;
   fduo.rr1 <= r1_read;
   fduo.rr2 <= r2_read;
-  fduo.rr3 <= r3_read;
-  fduo.rr4 <= r4_read;
+  --fduo.rr3 <= r3_read;
+  --fduo.rr4 <= r4_read;
 
 
   syncfetch: if FETCHDATA_STAGE generate
@@ -67,8 +59,8 @@ begin
         fdw.drq := dui.r;
         fdw.rd1q   := dui.r.rd1;
         fdw.rd2q   := dui.r.rd2;
-        fdw.rd3q   := dui.r.rd3;
-        fdw.rd4q   := dui.r.rd4;
+        --fdw.rd3q   := dui.r.rd3;
+        --fdw.rd4q   := dui.r.rd4;
 
         if flush='1' then
           fdw.drq.valid:='0';
@@ -99,18 +91,18 @@ begin
       if freeze='1' then
         r1_en   <= '0';
         r2_en   <= '0';
-        r3_en   <= '0';
-        r4_en   <= '0';
+       -- r3_en   <= '0';
+       -- r4_en   <= '0';
       else
         r1_en   <= dui.r.rd1;
         r2_en   <= dui.r.rd2;
-        r3_en   <= dui.r.rd3;
-        r4_en   <= dui.r.rd4;
+        --r3_en   <= dui.r.rd3;
+        --r4_en   <= dui.r.rd4;
       end if;
         r1_addr <= dui.r.sra1;
         r2_addr <= dui.r.sra2;
-        r3_addr <= dui.r.sra3;
-        r4_addr <= dui.r.sra4;
+       -- r3_addr <= dui.r.sra3;
+       -- r4_addr <= dui.r.sra4;
       --end if;
 
       if rising_edge(clk) then
@@ -130,21 +122,21 @@ begin
       if refetch='1' then
         r1_en <= '1';
         r2_en <= '1';
-        r3_en <= '1';
-        r4_en <= '1';
+        --r3_en <= '1';
+        --r4_en <= '1';
         r1_addr <= fdr.drq.sra1;
         r2_addr <= fdr.drq.sra2;
-        r3_addr <= fdr.drq.sra3;
-        r4_addr <= fdr.drq.sra4;
+        --r3_addr <= fdr.drq.sra3;
+        --r4_addr <= fdr.drq.sra4;
       else
         r1_en <= dui.rd1;
         r2_en <= dui.rd2;
-        r3_en <= dui.rd3;
-        r4_en <= dui.rd4;
+        --r3_en <= dui.rd3;
+        --r4_en <= dui.rd4;
         r1_addr <= dui.sra1;
         r2_addr <= dui.sra2;
-        r3_addr <= dui.sra3;
-        r4_addr <= dui.sra4;
+        --r3_addr <= dui.sra3;
+        --r4_addr <= dui.sra4;
       end if;
     end process;
 
