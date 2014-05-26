@@ -258,6 +258,7 @@ begin
         busy <= freeze;
       end if;
 
+
       if rst='1' or flush='1' then
         dw.valid := '0';
         dw.delay_slot := false;

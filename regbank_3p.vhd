@@ -23,11 +23,11 @@ entity regbank_3p is
     rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb3_wr:   in std_logic_vector(31 downto 0);
     rb3_we:   in std_logic;
-    rb3_en:   in std_logic;
+    rb3_en:   in std_logic
 
     -- RTL Debug access
-    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
-    dbg_do:           out std_logic_vector(32-1 downto 0)
+--    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+ --   dbg_do:           out std_logic_vector(32-1 downto 0)
   );
 end entity regbank_3p;
 
@@ -51,6 +51,8 @@ architecture behave of regbank_3p is
   );
   end component;
 
+  signal    dbg_addr:         std_logic_vector(address_bits-1 downto 0) := (others => '0');
+  signal   dbg_do:            std_logic_vector(32-1 downto 0);
 begin
   -- Register bank, three port
 
@@ -67,9 +69,9 @@ begin
     rb2_addr  => rb3_addr,
     rb2_wr    => rb3_wr,
     rb2_we    => rb3_we,
-    rb2_en    => rb3_en,
-    dbg_addr  => dbg_addr,
-    dbg_do    => dbg_do
+    rb2_en    => rb3_en--,
+    --dbg_addr  => dbg_addr,
+--    dbg_do    => dbg_do
   );
 
   rbb: regbank_2p

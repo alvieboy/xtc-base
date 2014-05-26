@@ -122,7 +122,7 @@ begin
 
   -- Register bank.
 
-  rbe: regbank_4r_2w
+  rbe: regbank_3p
   generic map (
     ADDRESS_BITS => 4
   )
@@ -134,22 +134,12 @@ begin
     rb2_en  => rb2_en,
     rb2_addr=> rb2_addr,
     rb2_rd  => rb2_rd,
-    rb3_en  => '0',
-    rb3_addr=> rb3_addr,
-    rb3_rd  => rb3_rd,
-    rb4_en  => '0',
-    rb4_addr=> rb4_addr,
-    rb4_rd  => rb4_rd,
 
-    rbw1_en  => rbw1_en,
-    rbw1_we  => rbw1_we,
-    rbw1_addr=> rbw1_addr,
-    rbw1_wr  => rbw1_wr,
-    rbw2_en  => rbw2_en,
-    rbw2_we  => rbw2_we,
-    rbw2_addr=> rbw2_addr,
-    rbw2_wr  => rbw2_wr
-
+    rb3_en  => rbw1_en,
+    rb3_we  => rbw1_we,
+    rb3_addr=> rbw1_addr,
+    rb3_wr  => rbw1_wr
+    --dbg_addr => "0000"
   );
 
   cache: if INSTRUCTION_CACHE generate

@@ -122,7 +122,7 @@ begin
 
       when ALU_AND  => alu_r <= alu_a and alu_b;
       when ALU_OR   => alu_r <= alu_a or alu_b;
-      when ALU_NOT  => alu_r <= not alu_a;
+      --when ALU_NOT  => alu_r <= not alu_a;
       when ALU_XOR  => alu_r <= alu_a xor alu_b;
 
       when ALU_SEXTB => alu_r(7 downto 0) <= alu_a(7 downto 0);

@@ -343,10 +343,10 @@ package xtccomppkg is
     rb3_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb3_wr:   in std_logic_vector(31 downto 0);
     rb3_we:   in std_logic;
-    rb3_en:   in std_logic;
+    rb3_en:   in std_logic
         -- RTL Debug access
-    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
-    dbg_do:           out std_logic_vector(32-1 downto 0)
+    --dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    --dbg_do:           out std_logic_vector(32-1 downto 0)
 
   );
   end component;

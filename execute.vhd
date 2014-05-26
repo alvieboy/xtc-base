@@ -122,7 +122,7 @@ begin
       when CONDITION_UG =>             passes_condition := not er.psr(30) or er.psr(29);
       when CONDITION_ULE =>            passes_condition := er.psr(30) or er.psr(29);
       when CONDITION_UL =>             passes_condition := er.psr(30);
-      when others =>                   passes_condition := '1';
+      when others =>                   passes_condition := 'X';
     end case;
 
 
