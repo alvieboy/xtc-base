@@ -17,6 +17,8 @@ entity wbmux2 is
 
     m_wb_dat_o: out std_logic_vector(31 downto 0);
     m_wb_dat_i: in std_logic_vector(31 downto 0);
+    m_wb_tag_o: out std_logic_vector(31 downto 0);
+    m_wb_tag_i: in std_logic_vector(31 downto 0);
     m_wb_adr_i: in std_logic_vector(address_high downto address_low);
     m_wb_sel_i: in std_logic_vector(3 downto 0);
     m_wb_we_i:  in std_logic;
@@ -29,6 +31,8 @@ entity wbmux2 is
 
     s0_wb_dat_i: in std_logic_vector(31 downto 0);
     s0_wb_dat_o: out std_logic_vector(31 downto 0);
+    s0_wb_tag_i: in std_logic_vector(31 downto 0);
+    s0_wb_tag_o: out std_logic_vector(31 downto 0);
     s0_wb_adr_o: out std_logic_vector(address_high downto address_low);
     s0_wb_sel_o: out std_logic_vector(3 downto 0);
     s0_wb_we_o:  out std_logic;
@@ -41,6 +45,8 @@ entity wbmux2 is
 
     s1_wb_dat_i: in std_logic_vector(31 downto 0);
     s1_wb_dat_o: out std_logic_vector(31 downto 0);
+    s1_wb_tag_i: in std_logic_vector(31 downto 0);
+    s1_wb_tag_o: out std_logic_vector(31 downto 0);
     s1_wb_adr_o: out std_logic_vector(address_high downto address_low);
     s1_wb_sel_o: out std_logic_vector(3 downto 0);
     s1_wb_we_o:  out std_logic;
@@ -66,12 +72,14 @@ s0_wb_adr_o <= m_wb_adr_i;
 s0_wb_stb_o <= m_wb_stb_i;
 s0_wb_we_o  <= m_wb_we_i;
 s0_wb_sel_o <= m_wb_sel_i;
+s0_wb_tag_o <= m_wb_tag_i;
 
 s1_wb_dat_o <= m_wb_dat_i;
 s1_wb_adr_o <= m_wb_adr_i;
 s1_wb_stb_o <= m_wb_stb_i;
 s1_wb_we_o  <= m_wb_we_i;
 s1_wb_sel_o <= m_wb_sel_i;
+s1_wb_tag_o <= m_wb_tag_i;
 
 process(m_wb_cyc_i,select_zero)
 begin
@@ -84,16 +92,19 @@ begin
   end if;
 end process;
 
-process(select_zero,s1_wb_dat_i,s0_wb_dat_i,s0_wb_ack_i,s1_wb_ack_i,s0_wb_stall_i,s1_wb_stall_i)
+process(select_zero,s1_wb_dat_i,s0_wb_dat_i,s0_wb_ack_i,s0_wb_tag_i,
+        s1_wb_ack_i,s0_wb_stall_i,s1_wb_stall_i,s1_wb_tag_i)
 begin
   if select_zero='0' then
     m_wb_dat_o<=s1_wb_dat_i;
     m_wb_ack_o<=s1_wb_ack_i;
     m_wb_stall_o<=s1_wb_stall_i;
+    m_wb_tag_o <= s1_wb_tag_i;
   else
     m_wb_dat_o<=s0_wb_dat_i;
     m_wb_ack_o<=s0_wb_ack_i;
     m_wb_stall_o<=s0_wb_stall_i;
+    m_wb_tag_o <= s0_wb_tag_i;
   end if;
 end process;
 

@@ -91,6 +91,8 @@ architecture behave of xtc_top_ppro is
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -102,6 +104,8 @@ architecture behave of xtc_top_ppro is
   signal wb_read:    std_logic_vector(31 downto 0);
   signal wb_write:   std_logic_vector(31 downto 0);
   signal wb_address: std_logic_vector(31 downto 0);
+  signal wb_tag_i:   std_logic_vector(31 downto 0);
+  signal wb_tag_o:   std_logic_vector(31 downto 0);
   signal wb_stb:     std_logic;
   signal wb_cyc:     std_logic;
   signal wb_sel:     std_logic_vector(3 downto 0);
@@ -126,11 +130,24 @@ begin
     wb_dat_o        => wb_write,
     wb_adr_o        => wb_address,
     wb_cyc_o        => wb_cyc,
+    wb_tag_i        => wb_tag_i,
+    wb_tag_o        => wb_tag_o,
     wb_stb_o        => wb_stb,
     wb_sel_o        => wb_sel,
     wb_we_o         => wb_we,
     wb_inta_i       => wb_int
   );
+
+
+  -- Simple tag generator
+  process(wb_clk_i)
+  begin
+    if rising_edge(wb_clk_i) then
+       if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
+        wb_tag_o <= wb_tag_i;
+       end if;
+    end if;
+  end process;
 
   myuart: uart
     port map (

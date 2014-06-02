@@ -243,7 +243,7 @@ begin
         dw.jump         := jump;
         --dw.jump_clause  := jump_clause;
         dw.except_return:= except_return;
-
+        dw.use_carry := dec.use_carry;
         -- Preserve condition from E24 extension (imm)
         if dr.imflag='0' then
           dw.condition_clause    := dec.condition;

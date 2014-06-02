@@ -146,6 +146,7 @@ package xtcpkg is
     blocks:         std_logic;
     extended:       boolean;
     alu_source:     alu_source_type;
+    use_carry:      std_logic;
     -- IMMediate helpers
     imm8l:           std_logic_vector(7 downto 0);
     imm8h:           std_logic_vector(7 downto 0);
@@ -207,6 +208,7 @@ package xtcpkg is
 
     --op:             decoded_opcode_type;
     alu_op:         alu_op_type;
+    use_carry:      std_logic;
     enable_alu:     std_logic;
     swap_target_reg:std_logic;
     memory_write:   std_logic;
@@ -331,6 +333,7 @@ package xtcpkg is
     wb_we:      std_logic;
     wb_cyc:     std_logic;
     wb_stb:     std_logic;
+    wb_tago:    std_logic_vector(31 downto 0);
     wb_sel:     std_logic_vector(3 downto 0);
   end record;
 

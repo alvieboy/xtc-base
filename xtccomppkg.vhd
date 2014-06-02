@@ -70,6 +70,8 @@ package xtccomppkg is
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -155,6 +157,7 @@ package xtccomppkg is
     en: in std_logic;
 
     ci: in std_logic;
+    cen:in std_logic;
     busy: out std_logic;
     co: out std_logic;
     zero: out std_logic;
@@ -265,6 +268,8 @@ package xtccomppkg is
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -399,6 +404,8 @@ package xtccomppkg is
 
     m_wb_dat_o: out std_logic_vector(31 downto 0);
     m_wb_dat_i: in std_logic_vector(31 downto 0);
+    m_wb_tag_o: out std_logic_vector(31 downto 0);
+    m_wb_tag_i: in std_logic_vector(31 downto 0);
     m_wb_adr_i: in std_logic_vector(address_high downto address_low);
     m_wb_sel_i: in std_logic_vector(3 downto 0);
     m_wb_we_i:  in std_logic;
@@ -411,6 +418,8 @@ package xtccomppkg is
 
     s0_wb_dat_i: in std_logic_vector(31 downto 0);
     s0_wb_dat_o: out std_logic_vector(31 downto 0);
+    s0_wb_tag_i: in std_logic_vector(31 downto 0);
+    s0_wb_tag_o: out std_logic_vector(31 downto 0);
     s0_wb_adr_o: out std_logic_vector(address_high downto address_low);
     s0_wb_sel_o: out std_logic_vector(3 downto 0);
     s0_wb_we_o:  out std_logic;
@@ -423,6 +432,8 @@ package xtccomppkg is
 
     s1_wb_dat_i: in std_logic_vector(31 downto 0);
     s1_wb_dat_o: out std_logic_vector(31 downto 0);
+    s1_wb_tag_i: in std_logic_vector(31 downto 0);
+    s1_wb_tag_o: out std_logic_vector(31 downto 0);
     s1_wb_adr_o: out std_logic_vector(address_high downto address_low);
     s1_wb_sel_o: out std_logic_vector(3 downto 0);
     s1_wb_we_o:  out std_logic;
@@ -508,6 +519,8 @@ end component;
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);

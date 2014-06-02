@@ -20,6 +20,8 @@ architecture sim of tb is
   signal wb_read:    std_logic_vector(31 downto 0);
   signal wb_write:   std_logic_vector(31 downto 0);
   signal wb_address: std_logic_vector(31 downto 0);
+  signal wb_tag_i:   std_logic_vector(31 downto 0);
+  signal wb_tag_o:   std_logic_vector(31 downto 0);
   signal wb_stb:     std_logic;
   signal wb_cyc:     std_logic;
   signal wb_sel:     std_logic_vector(3 downto 0);
@@ -215,6 +217,8 @@ begin
     wb_cyc_o        => wb_cyc,
     wb_stb_o        => wb_stb,
     wb_sel_o        => wb_sel,
+    wb_tag_o        => wb_tag_o,
+    wb_tag_i        => wb_tag_i,
     wb_we_o         => wb_we,
     wb_inta_i       => wb_int
   );
@@ -235,6 +239,16 @@ begin
       tx          => txd,
       rx          => rxd
   );
+
+  -- Simple tag generator
+  process(w_clk)
+  begin
+    if rising_edge(w_clk) then
+       if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
+        wb_tag_o <= wb_tag_i;
+       end if;
+    end if;
+  end process;
 
 
   -- Reset procedure

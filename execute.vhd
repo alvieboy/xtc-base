@@ -64,6 +64,7 @@ begin
       en    => enable_alu,   -- Check...
       op    => fdui.r.drq.alu_op,
       ci    => er.psr(30),
+      cen   => fdui.r.drq.use_carry,
       busy  => alu1_busy,
       co    => alu1_co,
       zero  => alu1_zero,
@@ -86,10 +87,10 @@ begin
     variable passes_condition: std_logic;
     variable reg_add_immed: unsigned(31 downto 0);
 
-    alias psr_carry:  std_logic   is  ew.psr(30);
-    alias psr_sign:   std_logic   is  ew.psr(31);
-    alias psr_ovf:    std_logic   is  ew.psr(28);
-    alias psr_zero:   std_logic   is  ew.psr(29);
+    alias psr_carry:  std_logic   is  er.psr(30);
+    alias psr_sign:   std_logic   is  er.psr(31);
+    alias psr_ovf:    std_logic   is  er.psr(28);
+    alias psr_zero:   std_logic   is  er.psr(29);
 
   begin
     ew := er;
@@ -222,16 +223,13 @@ begin
       end if;
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
-        case fdui.r.drq.sra2(2 downto 0) is
-          when "000" => -- PC
-          when "001" => -- BR
-          when "010" => -- Y
-          when "011" => -- PSR
+        case fdui.r.drq.sra2(1 downto 0) is
+          when "00" => -- Y
+          when "01" => -- PSR
             ew.psr := unsigned(fdui.rr1);
-          when "100" => -- SPSR
+          when "10" => -- SPSR
             ew.spsr := unsigned(fdui.rr1);
-          when "101" => -- SBR
-          when "110" => -- TTR
+          when "11" => -- TTR
             ew.trapvector := unsigned(fdui.rr1);
 
           when others =>
@@ -240,7 +238,7 @@ begin
 
       if ew.jump='1' and fdui.r.drq.except_return then
         -- Restore PSR, BR
-        ew.psr := ew.spsr;
+        ew.psr := er.spsr;
       end if;
 
       enable_alu <= fdui.r.drq.enable_alu;
@@ -253,11 +251,11 @@ begin
       --alu_b_b <= (others => 'X');
     end if;
 
-    if mui.msprwe='1' then
-      case mui.mreg(2 downto 0) is
-        when others =>
-      end case;
-    end if;
+    --if mui.msprwe='1' then
+    --  case mui.mreg(2 downto 0) is
+    --    when others =>
+    --  end case;
+    --end if;
 
     ew.intjmp := false;
 
@@ -275,15 +273,6 @@ begin
 
     -- Fast writeback
     euo.alur1 <= alu_a_r(31 downto 0);
-    --euo.alur2 <= alu_b_r(31 downto 0);
-
-    -- REG sources are also per ALU
-    --euo.reg_source0  <= ew.reg_source0;
-    --euo.dreg0        <= ew.dreg0;
-    --euo.regwe0       <= ew.regwe0;
-    --euo.reg_source1  <= ew.reg_source1;
-    --euo.dreg1        <= ew.dreg1;
-    --euo.regwe1       <= ew.regwe1;
 
     -- SPRVAL...
 
@@ -317,23 +306,9 @@ begin
         euo.data_write <= fdui.rr2; -- Memory always go through Alu2
     end case;
 
-    euo.data_address <= (others => 'X');
-
---    case fdui.r.drq.macc is
---     when M_WORD  |
---           M_HWORD |
---           M_BYTE  |
---           M_SPR =>
-        euo.data_address <= std_logic_vector(reg_add_immed);
---      when M_WORD_POSTINC |
---           M_HWORD_POSTINC |
---           M_BYTE_POSTINC |
---           M_SPR_POSTINC =>
---        euo.data_address <= fdui.rr1;
---    end case;
-
-    euo.data_access      <= fdui.r.drq.memory_access;
-    euo.data_writeenable <= fdui.r.drq.memory_write;
+    euo.data_address      <= std_logic_vector(reg_add_immed);
+    euo.data_access       <= fdui.r.drq.memory_access;
+    euo.data_writeenable  <= fdui.r.drq.memory_write;
 
     if fdui.valid='0' or passes_condition='0' then
       euo.data_access <= '0';

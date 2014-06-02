@@ -10,11 +10,14 @@ entity memory is
   port (
     clk:  in std_logic;
     rst:  in std_logic;
+
     -- Memory interface
     wb_ack_i:       in std_logic;
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -164,6 +167,8 @@ begin
         mw.wb_we   := eui.data_writeenable;
         mw.wb_dat  := wdata;
         mw.wb_adr  := eui.data_address;
+        mw.wb_tago := (others => 'X');
+        mw.wb_tago(3 downto 0) := eui.mwreg;
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
         mw.sprwe   := eui.sprwe and not eui.data_writeenable;
@@ -204,5 +209,7 @@ begin
   wb_dat_o <= mr.wb_dat;
   wb_we_o  <= mr.wb_we;
   wb_sel_o <= mr.wb_sel;
+
+  wb_tag_o <= mr.wb_tago;
 
 end behave;

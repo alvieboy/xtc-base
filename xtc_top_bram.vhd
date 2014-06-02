@@ -18,6 +18,8 @@ entity xtc_top_bram is
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -32,6 +34,8 @@ architecture behave of xtc_top_bram is
   signal wb_read:       std_logic_vector(31 downto 0);
   signal wb_write:      std_logic_vector(31 downto 0);
   signal wb_address:    std_logic_vector(31 downto 0);
+  signal wb_tago:       std_logic_vector(31 downto 0);
+  signal wb_tagi:       std_logic_vector(31 downto 0);
   signal wb_stb:        std_logic;
   signal wb_cyc:        std_logic;
   signal wb_sel:        std_logic_vector(3 downto 0);
@@ -42,6 +46,8 @@ architecture behave of xtc_top_bram is
   signal ram_wb_read:       std_logic_vector(31 downto 0);
   signal ram_wb_write:      std_logic_vector(31 downto 0);
   signal ram_wb_address:    std_logic_vector(31 downto 0);
+  signal ram_wb_tag_i:      std_logic_vector(31 downto 0);
+  signal ram_wb_tag_o:      std_logic_vector(31 downto 0);
   signal ram_wb_stb:        std_logic;
   signal ram_wb_cyc:        std_logic;
   signal ram_wb_sel:        std_logic_vector(3 downto 0);
@@ -52,6 +58,8 @@ architecture behave of xtc_top_bram is
   signal pio_wb_read:       std_logic_vector(31 downto 0);
   signal pio_wb_write:      std_logic_vector(31 downto 0);
   signal pio_wb_address:    std_logic_vector(31 downto 0);
+  signal pio_wb_tag_i:      std_logic_vector(31 downto 0);
+  signal pio_wb_tag_o:      std_logic_vector(31 downto 0);
   signal pio_wb_stb:        std_logic;
   signal pio_wb_cyc:        std_logic;
   signal pio_wb_sel:        std_logic_vector(3 downto 0);
@@ -63,6 +71,8 @@ architecture behave of xtc_top_bram is
   signal rom_wb_ack:       std_logic;
   signal rom_wb_read:      std_logic_vector(31 downto 0);
   signal rom_wb_adr:       std_logic_vector(31 downto 0);
+  signal rom_wb_tag_i:     std_logic_vector(31 downto 0);
+  signal rom_wb_tag_o:     std_logic_vector(31 downto 0);
   signal rom_wb_cyc:       std_logic;
   signal rom_wb_stb:       std_logic;
   signal rom_wb_cti:       std_logic_vector(2 downto 0);
@@ -136,6 +146,8 @@ architecture behave of xtc_top_bram is
     ram_wb_ack_o:       out std_logic;
     ram_wb_dat_i:       in std_logic_vector(31 downto 0);
     ram_wb_dat_o:       out std_logic_vector(31 downto 0);
+    ram_wb_tag_i:       in std_logic_vector(31 downto 0);
+    ram_wb_tag_o:       out std_logic_vector(31 downto 0);
     ram_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     ram_wb_sel_i:       in std_logic_vector(3 downto 0);
     ram_wb_cyc_i:       in std_logic;
@@ -147,6 +159,8 @@ architecture behave of xtc_top_bram is
     rom_wb_rst_i:       in std_logic;
     rom_wb_ack_o:       out std_logic;
     rom_wb_dat_o:       out std_logic_vector(31 downto 0);
+    rom_wb_tag_i:       in std_logic_vector(31 downto 0);
+    rom_wb_tag_o:       out std_logic_vector(31 downto 0);
     rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     rom_wb_cyc_i:       in std_logic;
     rom_wb_stb_i:       in std_logic;
@@ -171,6 +185,8 @@ begin
     wb_cyc_o        => wb_cyc,
     wb_stb_o        => wb_stb,
     wb_sel_o        => wb_sel,
+    wb_tag_o        => wb_tago,
+    wb_tag_i        => wb_tagi,
     wb_we_o         => wb_we,
     wb_stall_i      => wb_stall,
       -- ROM wb interface
@@ -202,6 +218,8 @@ begin
     ram_wb_sel_i    => ram_wb_sel,
     ram_wb_we_i     => ram_wb_we,
     ram_wb_stall_o  => ram_wb_stall,
+    ram_wb_tag_i    => ram_wb_tag_i,
+    ram_wb_tag_o    => ram_wb_tag_o,
 
     rom_wb_clk_i    => wb_clk_i,
     rom_wb_rst_i    => wb_rst_i,
@@ -210,6 +228,8 @@ begin
     rom_wb_adr_i    => rom_wb_adr(14 downto 2),
     rom_wb_cyc_i    => rom_wb_cyc,
     rom_wb_stb_i    => rom_wb_stb,
+    rom_wb_tag_i    => rom_wb_tag_i,
+    rom_wb_tag_o    => rom_wb_tag_o,
     rom_wb_stall_o  => rom_wb_stall
   );
 
@@ -232,6 +252,8 @@ begin
     m_wb_we_i     => wb_we,
     m_wb_cyc_i    => wb_cyc,
     m_wb_stb_i    => wb_stb,
+    m_wb_tag_i    => wb_tago,
+    m_wb_tag_o    => wb_tagi,
     m_wb_ack_o    => wb_ack,
     m_wb_stall_o  => wb_stall,
 
@@ -239,6 +261,8 @@ begin
 
     s0_wb_dat_i   => ram_wb_read,
     s0_wb_dat_o   => ram_wb_write,
+    s0_wb_tag_i   => ram_wb_tag_o,
+    s0_wb_tag_o   => ram_wb_tag_i,
     s0_wb_adr_o   => ram_wb_address(31 downto 2),
     s0_wb_sel_o   => ram_wb_sel,
     s0_wb_we_o    => ram_wb_we,
@@ -251,6 +275,8 @@ begin
 
     s1_wb_dat_i   => pio_wb_read,
     s1_wb_dat_o   => pio_wb_write,
+    s1_wb_tag_i   => pio_wb_tag_o,
+    s1_wb_tag_o   => pio_wb_tag_i,
     s1_wb_adr_o   => pio_wb_address(31 downto 2),
     s1_wb_sel_o   => pio_wb_sel,
     s1_wb_we_o    => pio_wb_we,
@@ -271,10 +297,12 @@ begin
     mwbo.ack    => pio_wb_ack,
     mwbo.stall  => pio_wb_stall,
     mwbo.int    => pio_wb_int,
+    mwbo.tag    => pio_wb_tag_i,
 
     mwbi.dat    => pio_wb_write,
     mwbi.adr    => pio_wb_address,
     mwbi.cyc    => pio_wb_cyc,
+    mwbi.tag    => pio_wb_tag_o,
     mwbi.stb    => pio_wb_stb,
     mwbi.we     => pio_wb_we,
     mwbi.sel    => pio_wb_sel,
@@ -284,12 +312,14 @@ begin
     swbi.ack    => wb_ack_i,
     swbi.stall  => '0',
     swbi.int    => '0',
+    swbi.tag    => wb_tag_i,
     
     swbo.adr    => wb_adr_o,
     swbo.dat    => wb_dat_o,
     swbo.sel    => wb_sel_o,
     swbo.stb    => wb_stb_o,
     swbo.cyc    => wb_cyc_o,
+    swbo.tag    => wb_tag_o,
     swbo.we     => wb_we_o
   );
 

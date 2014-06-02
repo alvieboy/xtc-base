@@ -17,6 +17,8 @@ entity alu is
     en: in std_logic;
 
     ci: in std_logic;
+    cen:  in std_logic; -- Carry enable
+
     busy: out std_logic;
     co: out std_logic;
     zero: out std_logic;
@@ -100,7 +102,7 @@ begin
   mult_b <= signed(b);
   
   carryext(32 downto 1) <= (others => '0');
-  carryext(0) <= ci when op=ALU_ADDC or op=ALU_SUBB else '0';
+  carryext(0) <= ci when cen='1' else '0';--op=ALU_ADDC or op=ALU_SUBB else '0';
 
   alu_add_r <= alu_a + alu_b + carryext;
   alu_sub_r <= alu_a - alu_b - carryext;
@@ -114,11 +116,11 @@ begin
     shift_arith <= 'X';
 
     case op is
-      when ALU_ADD | ALU_ADDRI |
-           ALU_ADDC => alu_r <= alu_add_r;
+      when ALU_ADD => -- | ALU_ADDRI |ALU_ADDC =>
+        alu_r <= alu_add_r;
 
-      when ALU_SUB | ALU_CMP |
-           ALU_SUBB => alu_r <= alu_sub_r;
+      when ALU_SUB => --| ALU_CMP | ALU_SUBB =>
+        alu_r <= alu_sub_r;
 
       when ALU_AND  => alu_r <= alu_a and alu_b;
       when ALU_OR   => alu_r <= alu_a or alu_b;

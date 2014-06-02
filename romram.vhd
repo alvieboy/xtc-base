@@ -14,6 +14,8 @@ entity romram is
     ram_wb_ack_o:       out std_logic;
     ram_wb_dat_i:       in std_logic_vector(31 downto 0);
     ram_wb_dat_o:       out std_logic_vector(31 downto 0);
+    ram_wb_tag_o:       out std_logic_vector(31 downto 0);
+    ram_wb_tag_i:       in std_logic_vector(31 downto 0);
     ram_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     ram_wb_cyc_i:       in std_logic;
     ram_wb_stb_i:       in std_logic;
@@ -25,6 +27,8 @@ entity romram is
     rom_wb_rst_i:       in std_logic;
     rom_wb_ack_o:       out std_logic;
     rom_wb_dat_o:       out std_logic_vector(31 downto 0);
+    rom_wb_tag_i:       in std_logic_vector(31 downto 0);
+    rom_wb_tag_o:       out std_logic_vector(31 downto 0);
     rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     rom_wb_cyc_i:       in std_logic;
     rom_wb_stb_i:       in std_logic;
@@ -98,6 +102,7 @@ begin
         romack <= '0';
       else
         romack <= '1';
+        rom_wb_tag_o <= rom_wb_tag_i;
       end if;
     end if;
   end process;
@@ -113,6 +118,9 @@ begin
         ramack <= '0';
       else
         ramack <= ram_enable;
+        if ram_enable='1' then
+          ram_wb_tag_o <= ram_wb_tag_i;
+        end if;
       end if;
     end if;
   end process;

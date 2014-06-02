@@ -18,6 +18,8 @@ entity xtc is
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
+    wb_tag_o:       out std_logic_vector(31 downto 0);
+    wb_tag_i:       in std_logic_vector(31 downto 0);
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -376,6 +378,8 @@ begin
     wb_cyc_o        => wb_cyc_o,
     wb_stb_o        => wb_stb_o,
     wb_sel_o        => wb_sel_o,
+    wb_tag_o        => wb_tag_o,
+    wb_tag_i        => wb_tag_i,
     wb_we_o         => wb_we_o,
     wb_stall_i      => wb_stall_i,
 

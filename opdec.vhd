@@ -155,6 +155,7 @@ begin
     d.condition   := CONDITION_UNCONDITIONAL;
     d.imflag      := '0';
     d.enable_alu  := '0';
+    d.use_carry   := 'X';
 
     -- ALU operations are directly extracted from
     -- the opcode.
@@ -218,16 +219,35 @@ begin
 
       when O_ALU =>
         d.modify_gpr:=true; 
+
         if d.alu_op=ALU_CMP then
           d.modify_flags := true;
           d.modify_gpr := false;
+          d.alu_op := ALU_SUB;
         end if;
+
         if d.alu_op=ALU_ADDRI then
           d.alu_source := alu_source_immed;
           d.sreg1 := opcode(7 downto 4);
           --d.sreg2 := opcode(3 downto 0);
+          d.alu_op := ALU_ADD;
         end if;
-        d.rd1:='1'; d.rd2:='1'; d.reg_source:=reg_source_alu;
+
+        d.use_carry := '0';
+
+        if d.alu_op=ALU_ADDC then
+          d.use_carry := '1';
+          d.alu_op := ALU_ADD;
+        end if;
+
+        if d.alu_op=ALU_SUBB then
+          d.use_carry := '1';
+          d.alu_op := ALU_SUB;
+        end if;
+
+        d.rd1:='1'; d.rd2:='1';
+        d.reg_source:=reg_source_alu;
+
         d.enable_alu := '1';
 
       when O_ADDI =>
@@ -251,7 +271,7 @@ begin
         subloadimm     := LOAD8;
         d.modify_flags := true;
         d.alu_source := alu_source_immed;
-        d.alu_op := ALU_CMP;
+        d.alu_op := ALU_SUB;
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
         d.enable_alu := '1';
         --d.alu2_imreg:='1';
