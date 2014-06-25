@@ -1078,6 +1078,7 @@ md_assemble (char * str)
     int is_extended=0;
     extension.condition=0;
     extension.flags=EXT_FLAG_NONE;
+    int copid,copreg;
 
     /* Drop leading whitespace.  */
     while (ISSPACE (* str))
@@ -1574,6 +1575,51 @@ md_assemble (char * str)
 
         
         return;
+        break;
+
+    case INST_TYPE_COP:
+
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, 0, 3);
+        else
+            as_fatal (_("Error in statement syntax - expecting immediate, got '%s'"),op_end+1);
+
+        if (exp.X_op != O_constant) {
+            as_fatal(_("Not a constant coprocessor id"));
+            break;
+        }
+        copid = exp.X_add_number;
+
+        if (strcmp (op_end, ""))
+            op_end = parse_imm (op_end + 1, & exp, 0, 3);
+        else
+            as_fatal (_("Error in statement syntax - expecting immediate, got '%s'"),op_end+1);
+
+        if (exp.X_op != O_constant) {
+            as_fatal(_("Not a constant coprocessor register"));
+            break;
+        }
+        copreg = exp.X_add_number;
+
+        if (strcmp (op_end, ""))
+            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+        else
+        {
+            as_fatal (_("Error in statement syntax - expecting register, got '%s'"), op_end+1);
+            reg1 = 0;
+        }
+
+        inst = opcode->bit_sequence;
+        inst |= copid << 9;
+        inst |= copreg << 7;
+        inst |= reg1;
+        output = frag_more (isize);
+        as_warn("inst %04lx\n", inst);
+        /*
+        output[0] = INST_BYTE0 (inst1);
+        output[1] = INST_BYTE1 (inst1);
+        */
+        // abort();
         break;
 
     case INST_TYPE_NOARGS:

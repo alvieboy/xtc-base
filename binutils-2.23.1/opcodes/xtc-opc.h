@@ -41,7 +41,7 @@
 #define INST_TYPE_R1_R2_IMM 13
 #define INST_TYPE_MEM_STORE 14
 #define INST_TYPE_MEM_STORE_S 15
-
+#define INST_TYPE_COP 16
 
 /* Instructions where the label address is resolved as a PC offset
    (for branch label).  */
@@ -57,6 +57,7 @@
 #define OPCODE_MASK_MEM     OPCODE_MASK_EXT
 #define OPCODE_MASK_ARITH   OPCODE_MASK_EXT
 #define OPCODE_MASK_BRI     0x7000
+#define OPCODE_MASK_COP     0x7C00
 
 #define OPCODE_MASK_IMM    0x60008000
 
@@ -136,6 +137,9 @@ const struct op_code_struct
     {"ldb+",   CAN_EXT_IMMED, NO_IMM, INST_TYPE_MEM_LOAD,    0x1E00, OPCODE_MASK_MEM, INST_NO_OFFSET, ldbpostinc },
     {"ldspr+", CAN_EXT_IMMED, NO_IMM, INST_TYPE_MEM_LOAD_S,  0x1F00, OPCODE_MASK_MEM, INST_NO_OFFSET, ldsprpostinc },
 
+    {"copr",   NO_EXT,        NO_IMM, INST_TYPE_COP,         0x2000, OPCODE_MASK_COP, INST_NO_OFFSET, copr },
+    {"copw",   NO_EXT,        NO_IMM, INST_TYPE_COP,         0x2400, OPCODE_MASK_COP, INST_NO_OFFSET, copw },
+
     {"br",     CAN_EXT_IMMED, IMM8, INST_TYPE_IMM8_R, 0x4000, OPCODE_MASK_H, INST_PC_OFFSET, bri },
     {"addi",   CAN_EXT_ALL,   IMM8, INST_TYPE_IMM8_R, 0x5000, OPCODE_MASK_H, INST_NO_OFFSET, addi },
     {"cmpi",   CAN_EXT_IMMED, IMM8, INST_TYPE_IMM8_R, 0x6000, OPCODE_MASK_H, INST_NO_OFFSET, cmpi },
@@ -145,6 +149,7 @@ const struct op_code_struct
     {"jmpe",   NO_EXT,       NO_IMM, INST_TYPE_R1_R2, 0x3400, OPCODE_MASK_ARITH, INST_NO_OFFSET, jmpe },
     {"sextb", CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x3800, OPCODE_MASK_ARITH, INST_NO_OFFSET, sextb },
     {"sexts", CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x3A00, OPCODE_MASK_ARITH, INST_NO_OFFSET, sexts },
+
 
     {"nop",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x3810, 0x7fff, INST_NO_OFFSET, nop },
     { NULL, 0, 0, 0, 0, 0, 0, 0},

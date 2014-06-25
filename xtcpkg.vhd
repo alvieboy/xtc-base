@@ -70,6 +70,9 @@ package xtcpkg is
     O_BR,
     O_JMP,
     O_JMPE,
+    -- COP
+    O_COPR,
+    O_COPW,
     -- Errors
     O_ABORT
   );
@@ -98,7 +101,8 @@ package xtcpkg is
     reg_source_memory,
     reg_source_imm,
     reg_source_spr,
-    reg_source_pcnext
+    reg_source_pcnext,
+    reg_source_cop
   );
 
   constant JUMP_RI_PCREL: std_logic_vector(1 downto 0) := "00";
@@ -159,6 +163,10 @@ package xtcpkg is
     --jump_clause:    jumpcond_type;
     is_jump:        boolean;
     except_return:  boolean;
+    cop_en:         std_logic;
+    cop_wr:         std_logic;
+    cop_id:         std_logic_vector(1 downto 0);
+    cop_reg:        std_logic_vector(3 downto 0);
   end record;
 
 
@@ -237,6 +245,11 @@ package xtcpkg is
     opcode_q:       std_logic_vector(15 downto 0);
 
     sr:             std_logic_vector(2 downto 0);
+    cop_en:         std_logic;
+    cop_wr:         std_logic;
+    cop_id:         std_logic_vector(1 downto 0);
+    cop_reg:        std_logic_vector(3 downto 0);
+
 -- synthesis translate_off
     strasm:     string(1 to 50);
 -- synthesis translate_on
@@ -313,6 +326,7 @@ package xtcpkg is
     data_access:    std_logic;
     data_writeenable: std_logic;
 
+    cop:     std_logic_vector(31 downto 0);
 
 
   end record;
@@ -352,6 +366,29 @@ package xtcpkg is
     dual:       boolean;
     valid:      boolean;
     executed:   boolean;
+  end record;
+
+  type tlb_entry_type is record
+    pagesize:   std_logic_vector(1 downto 0);
+    ctx:        std_logic_vector(7 downto 0);
+    paddr:      std_logic_vector(31 downto 12);
+    vaddr:      std_logic_vector(31 downto 12);
+    flags:      std_logic_vector(3 downto 0);
+  end record;
+
+
+  type copo is record
+    id:   std_logic_vector(1 downto 0);
+    reg:  std_logic_vector(3 downto 0);
+    data: std_logic_vector(31 downto 0);
+    wr:   std_logic;
+    en:   std_logic;
+  end record;
+
+  type copi is record
+    data:   std_logic_vector(31 downto 0);
+    valid:  std_logic;
+    fault:  std_logic;
   end record;
   
   constant DontCareValue: std_logic := 'X';

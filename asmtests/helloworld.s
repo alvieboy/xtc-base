@@ -2,6 +2,7 @@
 
 .globl _start
 _start:
+	copr	0,3,r11
         br    tests, r13
         nop
         limr    0x80000000, r3    /* Load IO base address into r3 */

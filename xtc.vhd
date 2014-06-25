@@ -111,7 +111,8 @@ architecture behave of xtc is
   end component tracer;
 
   signal dbg:   execute_debug_type;
-
+  signal co: copo;
+  signal ci: copi;
 begin
 
   -- synthesis translate_off
@@ -362,9 +363,30 @@ begin
       euo       => euo,
       -- Input from memory unit (spr update)
       mui       => muo,
+      -- COP
+      co        => co,
+      ci        => ci,
       -- Debug
       dbgo      => dbg
     );
+
+  --- Dummy COP
+  process(wb_clk_i)
+  begin
+    if rising_edge(wb_clk_i) then
+      if wb_rst_i='1' then
+        ci.valid<='0';
+        ci.data <= (others => 'X');
+      else
+        ci.data <= (others => 'X');
+        ci.valid<='0';
+        if ci.valid='0' and co.en='1' then
+          ci.valid<='1';
+          ci.data <= x"deadbeef";
+        end if;
+      end if;
+    end if;
+  end process;
 
   memory_unit: memory
     port map (

@@ -44,7 +44,8 @@ begin
       eui.alur1,
       eui.alur2,
       eui.imreg,
-      eui.sprval
+      eui.sprval,
+      eui.cop
       )
       variable wdata0: unsigned(31 downto 0);
       variable wdata1: unsigned(31 downto 0);
@@ -119,6 +120,8 @@ begin
               wdata0 := eui.sprval;
             when reg_source_pcnext=>
               wdata0 := eui.npc;
+            when reg_source_cop=>
+              wdata0 := unsigned(eui.cop);
             when others =>
               wdata0 := (others => 'X');
           end case;

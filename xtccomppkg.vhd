@@ -253,6 +253,9 @@ package xtccomppkg is
     euo:  out execute_output_type;
     -- Input from memory unit, for SPR update
     mui:  in memory_output_type;
+    -- Coprocessor interface
+    co:   out copo;
+    ci:   in  copi;
 
     dbgo: out execute_debug_type
 

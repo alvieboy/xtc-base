@@ -92,6 +92,8 @@ enum xtc_instr
     ssr,
     jmp,
     jmpe,
+    copr,
+    copw,
 
     invalid_inst
 };
