@@ -62,6 +62,9 @@ begin
   dbgo.lhs <= unsigned(alu_a_a);
   dbgo.rhs <= unsigned(alu_a_b);
 
+  dbgo.lhs <= unsigned(alu_a_a);
+  dbgo.rhs <= unsigned(alu_a_b);
+
   myalu: alu
     port map (
       clk   => clk,
