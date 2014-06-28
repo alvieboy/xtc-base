@@ -253,12 +253,20 @@ package xtcpkg is
   type fetchdata_regs_type is record
     drq:            decode_regs_type;
     rd1q,rd2q:      std_logic;
+    alu:            std_logic;
+
+    alufwa:         std_logic;
+    alufwb:         std_logic;
+
+    dreg:           regaddress_type;
   end record;
 
   type fetchdata_output_type is record
     r:                    fetchdata_regs_type;
     rr1,rr2:              word_type_std; -- Register data
     valid:                std_logic;
+    alufwa:                std_logic;
+    alufwb:                std_logic;
   end record;
 
   type execute_regs_type is record
@@ -267,9 +275,7 @@ package xtcpkg is
     -- Own
     psr:            unsigned(31 downto 0); -- Processor Status register
     spsr:           unsigned(31 downto 0); -- Saved Processor Status register
-    alur1:          unsigned(31 downto 0);
-    alur2:          unsigned(31 downto 0);
-
+    alur:           unsigned(31 downto 0);
     sr:             std_logic_vector(2 downto 0);
 
     dreg:           regaddress_type; -- Destination reg 0
@@ -278,12 +284,16 @@ package xtcpkg is
     --regwe1:         std_logic; -- Write-enable for destination reg 1
     reg_source:     reg_source_type; -- Source for destination reg 0
     --reg_source1:    reg_source_type; -- Source for destination reg 1
+    alufwa:                std_logic;
+    alufwb:                std_logic;
 
     jump:           std_logic;
     jumpaddr:       word_type;
     trapvector:     word_type;
     y:              word_type;
     intjmp:         boolean;
+    npc:  word_type;
+    sprval: word_type;
   end record;
 
   type execute_output_type is record
@@ -293,15 +303,11 @@ package xtcpkg is
     reg_source:   reg_source_type;
     dreg:         regaddress_type;
     regwe:        std_logic;
-
-    --reg_source1:  reg_source_type;
-    --dreg1:        regaddress_type;
-    --regwe1:       std_logic;
-
-    sr: std_logic_vector(2 downto 0);
+    executed:     boolean;
+    sr:           std_logic_vector(2 downto 0);
     
-    alur1: word_type;
-    alur2: word_type;
+    alur:   word_type;
+
     imreg: word_type;
     sprval: word_type;
     sprwe:      std_logic;

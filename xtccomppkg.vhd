@@ -232,6 +232,7 @@ package xtccomppkg is
     freeze: in std_logic;
     flush: in std_logic;
     refetch: in std_logic;
+    executed:in boolean;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );

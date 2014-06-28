@@ -26,7 +26,8 @@ entity fetchdata is
     freeze: in std_logic;
     flush:  in std_logic;
     refetch: in std_logic;
-    
+
+    executed: in boolean;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );
@@ -42,9 +43,9 @@ begin
   fduo.r <= fdr;
   fduo.rr1 <= r1_read;
   fduo.rr2 <= r2_read;
-  --fduo.rr3 <= r3_read;
-  --fduo.rr4 <= r4_read;
 
+      fduo.alufwa <= fdr.alufwa;
+      fduo.alufwb <= fdr.alufwb;
 
   syncfetch: if FETCHDATA_STAGE generate
 
@@ -54,17 +55,40 @@ begin
       fdw := fdr;
 
       fduo.valid <= fdr.drq.valid;
-
       if freeze='0' then
-        fdw.drq := dui.r;
-        fdw.rd1q   := dui.r.rd1;
-        fdw.rd2q   := dui.r.rd2;
-        --fdw.rd3q   := dui.r.rd3;
-        --fdw.rd4q   := dui.r.rd4;
+        fdw.drq     := dui.r;
+        fdw.rd1q    := dui.r.rd1;
+        fdw.rd2q    := dui.r.rd2;
+
+        -- Forwarding control
+
+        fdw.alu:='0';
+        if ( dui.r.reg_source = reg_source_alu ) then
+
+          if dui.r.regwe='1' then
+            fdw.alu:='1';
+            fdw.dreg := dui.r.dreg;
+          end if;
+
+          fdw.alufwa:='0';
+          fdw.alufwb:='0';
+
+          if (fdr.alu='1' and dui.r.sra1=fdr.dreg and executed) then
+            fdw.alufwa:='1';
+          end if;
+  
+          if (fdr.alu='1' and dui.r.sra2=fdr.dreg and executed) then
+            fdw.alufwb:='1';
+          end if;
+
+        end if;
+
 
         if flush='1' then
           fdw.drq.valid:='0';
+          fdw.alu:='0';
         end if;
+
       end if;
 
       if rst='1' then
@@ -72,45 +96,26 @@ begin
       end if;
 
       if refetch='1' then
-        --fduo.valid <= '0';
         if freeze='0' then
-        fdw.drq.valid := '0';
+          fdw.drq.valid := '0';
         end if;
-
-        --r1_en <= fdr.rd1q;
-        --r2_en <= fdr.rd2q;
-        --r3_en <= fdr.rd3q;
-        --r4_en <= fdr.rd4q;
-
-        --r1_addr <= fdr.drq.sra1;
-        --r2_addr <= fdr.drq.sra2;
-        --r3_addr <= fdr.drq.sra3;
-        --r4_addr <= fdr.drq.sra4;
       end if;
-      --else
+
       if freeze='1' then
         r1_en   <= '0';
         r2_en   <= '0';
-       -- r3_en   <= '0';
-       -- r4_en   <= '0';
       else
         r1_en   <= dui.r.rd1;
         r2_en   <= dui.r.rd2;
-        --r3_en   <= dui.r.rd3;
-        --r4_en   <= dui.r.rd4;
       end if;
-        r1_addr <= dui.r.sra1;
-        r2_addr <= dui.r.sra2;
-       -- r3_addr <= dui.r.sra3;
-       -- r4_addr <= dui.r.sra4;
-      --end if;
+
+      r1_addr <= dui.r.sra1;
+      r2_addr <= dui.r.sra2;
 
       if rising_edge(clk) then
         fdr <= fdw;
       end if;
     end process;
-
-
 
   end generate;
 

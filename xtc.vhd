@@ -102,6 +102,7 @@ architecture behave of xtc is
   signal e_busy:  std_logic;
   signal refetch_registers:   std_logic;
   signal freeze_decoder:      std_logic;
+  signal executed:            boolean;
 
   component tracer is
   port (
@@ -274,6 +275,7 @@ begin
       refetch    => notallvalid, --refetch_registers,--execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
+      executed  => executed,
       -- Input from decode unit
       dui       => duo,
       -- Outputs for next stages
@@ -344,7 +346,7 @@ begin
    -- end if;
   end process;
   --execute_busy <= retryfetch or e_busy;-- or (not allvalid);
-
+  executed <= euo.executed;
 
   execute_unit: execute
     port map (

@@ -47,11 +47,17 @@ architecture behave of execute is
   signal dbg_do_interrupt: boolean;
 
   signal enable_alu: std_logic;
+
+  signal lhs,rhs: std_logic_vector(31 downto 0);
+
 begin
 
+  lhs<=fdui.rr1 when fdui.alufwa='0' else std_logic_vector(er.alur);
+  rhs<=fdui.rr2 when fdui.alufwb='0' else std_logic_vector(er.alur);
+
   euo.r <= er;
-  alu_a_a <= fdui.rr1;
-  alu_a_b <= fdui.rr2 when fdui.r.drq.alu_source = alu_source_reg else std_logic_vector(fdui.r.drq.imreg);
+  alu_a_a <= lhs;
+  alu_a_b <= rhs when fdui.r.drq.alu_source = alu_source_reg else std_logic_vector(fdui.r.drq.imreg);
 
   myalu: alu
     port map (
@@ -106,7 +112,7 @@ begin
 
     invalid_instr := false;
 
-    reg_add_immed := unsigned(fdui.rr1) + fdui.r.drq.imreg;
+    reg_add_immed := unsigned(lhs) + fdui.r.drq.imreg;
 
     --alu_b_b <= fdui.rr4;
 
@@ -174,11 +180,13 @@ begin
 
     dbgo.valid <= false;
     dbgo.executed <= false;
+    euo.executed <= false;
 
     if fdui.valid='1' and busy_int='0' and er.intjmp=false then
       dbgo.valid <= true;
       if passes_condition='1' then
         dbgo.executed <= true;
+        euo.executed <= true;
       end if;
     end if;
 
@@ -189,8 +197,11 @@ begin
 
     if fdui.valid='1' and busy_int='0' and er.intjmp=false and passes_condition='1' then
 
-      ew.alur1 := alu_a_r(31 downto 0);
-      
+      ew.alur := alu_a_r(31 downto 0);
+
+      ew.alufwa := fdui.r.alufwa;
+      ew.alufwb := fdui.r.alufwb;
+
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
       if fdui.r.drq.modify_flags then
@@ -203,6 +214,7 @@ begin
       ew.reg_source  := fdui.r.drq.reg_source;
       ew.regwe       := fdui.r.drq.regwe;
       ew.dreg        := fdui.r.drq.dreg;
+      ew.npc         := fdui.r.drq.npc;
 
       if fdui.r.drq.is_jump and passes_condition='1' then
         ew.jump:='1';
@@ -226,11 +238,11 @@ begin
         case fdui.r.drq.sra2(1 downto 0) is
           when "00" => -- Y
           when "01" => -- PSR
-            ew.psr := unsigned(fdui.rr1);
+            ew.psr := unsigned(lhs);
           when "10" => -- SPSR
-            ew.spsr := unsigned(fdui.rr1);
+            ew.spsr := unsigned(lhs);
           when "11" => -- TTR
-            ew.trapvector := unsigned(fdui.rr1);
+            ew.trapvector := unsigned(lhs);
 
           when others =>
         end case;
@@ -272,17 +284,19 @@ begin
     busy <= busy_int;
 
     -- Fast writeback
-    euo.alur1 <= alu_a_r(31 downto 0);
+    euo.alur <= alu_a_r(31 downto 0);
 
     -- SPRVAL...
 
     case fdui.r.drq.sra2(1 downto 0) is
-      when "00" => euo.sprval <= er.y;
-      when "01" => euo.sprval <= er.psr;
-      when "10" => euo.sprval <= er.spsr;
-      when "11" => euo.sprval <= er.trapvector;
-      when others => euo.sprval <= (others => 'X');
+      when "00" => ew.sprval := er.y;
+      when "01" => ew.sprval := er.psr;
+      when "10" => ew.sprval := er.spsr;
+      when "11" => ew.sprval := er.trapvector;
+      when others => ew.sprval := (others => 'X');
     end case;
+
+    euo.sprval <= ew.sprval;
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;
@@ -303,7 +317,7 @@ begin
         -- TODO: add missing SPRs
 
       when others =>
-        euo.data_write <= fdui.rr2; -- Memory always go through Alu2
+        euo.data_write <= rhs; -- Memory always go through Alu2
     end case;
 
     euo.data_address      <= std_logic_vector(reg_add_immed);

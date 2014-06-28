@@ -210,7 +210,10 @@ begin
       when O_LIMR =>
         subloadimm     := LOAD8;
         -- Load IMMediate into register target
-        d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_imm;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source := reg_source_alu;
+        d.alu_source := alu_source_immed;
+        d.sreg1 := (others => '0');
+        d.alu_op := ALU_ADD;
         --if opcode(3 downto 0)="000" then
           -- Target is IMMed.
           -- TODO

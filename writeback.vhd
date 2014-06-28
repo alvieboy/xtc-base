@@ -41,8 +41,7 @@ begin
       eui.dreg,
       mui.mdata,
       mui.mreg,
-      eui.alur1,
-      eui.alur2,
+      eui.alur,
       eui.imreg,
       eui.sprval
       )
@@ -86,7 +85,7 @@ begin
           --r0_addr <= eui.dreg;
           --r0_en <= '1';
 
-          busy <= eui.regwe;
+          busy <= eui.r.regwe;
 
           --r1_we <=  eui.regwe1;
           --r1_addr <= eui.dreg1;
@@ -112,19 +111,19 @@ begin
 
           case eui.reg_source is
             when reg_source_alu =>
-              wdata0 := eui.alur1;
-            when reg_source_imm =>
-              wdata0 := eui.imreg;
+              wdata0 := eui.r.alur;
+--            when reg_source_imm =>
+--              wdata0 := eui.imreg;
             when reg_source_spr =>
-              wdata0 := eui.sprval;
+              wdata0 := eui.r.sprval;
             when reg_source_pcnext=>
-              wdata0 := eui.npc;
+              wdata0 := eui.r.npc;
             when others =>
               wdata0 := (others => 'X');
           end case;
 
-          r0_we <=  eui.regwe;
-          r0_addr <= eui.dreg;
+          r0_we <=  eui.r.regwe;
+          r0_addr <= eui.r.dreg;
 
           --r1_we <=  eui.regwe1;
           --r1_addr <= eui.dreg1;
