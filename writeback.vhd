@@ -43,7 +43,8 @@ begin
       mui.mreg,
       eui.alur,
       eui.imreg,
-      eui.sprval
+      eui.sprval,
+      eui.r
       )
       variable wdata0: unsigned(31 downto 0);
       variable wdata1: unsigned(31 downto 0);
@@ -109,7 +110,7 @@ begin
 
         if FAST_WRITEBACK then
 
-          case eui.reg_source is
+          case eui.r.reg_source is
             when reg_source_alu =>
               wdata0 := eui.r.alur;
 --            when reg_source_imm =>

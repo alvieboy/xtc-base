@@ -113,7 +113,9 @@ begin
     can_interrupt := true;
     do_interrupt := false;
 
-    ew.regwe := '0';
+    if wb_busy='0' then
+      ew.regwe := '0';
+    end if;
     enable_alu <= '0';
 
     invalid_instr := false;
@@ -178,11 +180,11 @@ begin
     euo.reg_source  <= fdui.r.drq.reg_source;
     euo.dreg         <= fdui.r.drq.dreg;
 
-    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
-      euo.regwe        <= fdui.r.drq.regwe;
-    else
-      euo.regwe        <= '0';
-    end if;
+--    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+--      euo.regwe        <= fdui.r.drq.regwe;
+--    else
+--      euo.regwe        <= '0';
+--    end if;
 
     dbgo.valid <= false;
     dbgo.executed <= false;
@@ -220,7 +222,7 @@ begin
       ew.reg_source  := fdui.r.drq.reg_source;
       ew.regwe       := fdui.r.drq.regwe;
       ew.dreg        := fdui.r.drq.dreg;
-      ew.npc         := fdui.r.drq.npc;
+      ew.npc         := fdui.r.drq.fpc;
 
       if fdui.r.drq.is_jump and passes_condition='1' then
         ew.jump:='1';
