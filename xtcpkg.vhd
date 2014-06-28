@@ -352,6 +352,8 @@ package xtcpkg is
     dual:       boolean;
     valid:      boolean;
     executed:   boolean;
+    lhs:        word_type;
+    rhs:        word_type;
   end record;
   
   constant DontCareValue: std_logic := 'X';
