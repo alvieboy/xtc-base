@@ -59,6 +59,9 @@ begin
   alu_a_a <= lhs;
   alu_a_b <= rhs when fdui.r.drq.alu_source = alu_source_reg else std_logic_vector(fdui.r.drq.imreg);
 
+  dbgo.lhs <= unsigned(alu_a_a);
+  dbgo.rhs <= unsigned(alu_a_b);
+
   myalu: alu
     port map (
       clk   => clk,
