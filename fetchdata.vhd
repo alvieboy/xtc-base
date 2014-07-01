@@ -63,6 +63,9 @@ begin
         -- Forwarding control
 
         fdw.alu:='0';
+        fdw.alufwa:='0';
+        fdw.alufwb:='0';
+
         if ( dui.r.reg_source = reg_source_alu ) then
 
           if dui.r.regwe='1' then
@@ -70,19 +73,19 @@ begin
             fdw.dreg := dui.r.dreg;
           end if;
 
-          fdw.alufwa:='0';
-          fdw.alufwb:='0';
+          -- R0 Must never be forwarded.
 
-          if (fdr.alu='1' and dui.r.sra1=fdr.dreg and executed) then
+          if (fdr.alu='1' and dui.r.sra1=fdr.dreg and executed and fdr.dreg/="0000") then
             fdw.alufwa:='1';
           end if;
   
-          if (fdr.alu='1' and dui.r.sra2=fdr.dreg and executed) then
+          if (fdr.alu='1' and dui.r.sra2=fdr.dreg and executed and fdr.dreg/="0000") then
             fdw.alufwb:='1';
           end if;
 
-        end if;
+  
 
+        end if;
 
         if flush='1' then
           fdw.drq.valid:='0';
