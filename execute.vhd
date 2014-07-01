@@ -116,13 +116,12 @@ begin
     if wb_busy='0' then
       ew.regwe := '0';
     end if;
+
     enable_alu <= '0';
 
     invalid_instr := false;
 
     reg_add_immed := unsigned(lhs) + fdui.r.drq.imreg;
-
-    --alu_b_b <= fdui.rr4;
 
     -- Conditional execution
     case fdui.r.drq.condition_clause is
@@ -134,7 +133,7 @@ begin
       when CONDITION_LE =>             passes_condition := er.psr(31) or er.psr(29);
       when CONDITION_L =>              passes_condition := er.psr(31);
       when CONDITION_UGE =>            passes_condition := not er.psr(30);
-      when CONDITION_UG =>             passes_condition := not er.psr(30) or er.psr(29);
+      when CONDITION_UG =>             passes_condition := not er.psr(30) and not er.psr(29);
       when CONDITION_ULE =>            passes_condition := er.psr(30) or er.psr(29);
       when CONDITION_UL =>             passes_condition := er.psr(30);
       when others =>                   passes_condition := 'X';
@@ -203,6 +202,10 @@ begin
     dbgo.opcode2 <= fdui.r.drq.opcode;
     dbgo.pc <= fdui.r.drq.pc;
 
+    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+      enable_alu <= fdui.r.drq.enable_alu;
+    end if;
+
     if fdui.valid='1' and busy_int='0' and er.intjmp=false and passes_condition='1' then
 
       ew.alur := alu_a_r(31 downto 0);
@@ -213,10 +216,10 @@ begin
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
       if fdui.r.drq.modify_flags then
-            ew.psr(30)      := alu1_co;
-            ew.psr(31)      := alu1_sign;
-            ew.psr(28)      := alu1_ovf;
-            ew.psr(29)      := alu1_zero;
+        ew.psr(30)      := alu1_co;
+        ew.psr(31)      := alu1_sign;
+        ew.psr(28)      := alu1_ovf;
+        ew.psr(29)      := alu1_zero;
       end if;
 
       ew.reg_source  := fdui.r.drq.reg_source;
@@ -261,21 +264,11 @@ begin
         ew.psr := er.spsr;
       end if;
 
-      enable_alu <= fdui.r.drq.enable_alu;
-
     else
       -- Instruction is not being processed.
-      -- Make sure all combinatory circuits do not present
-      -- overhead.
+      ew.jumpaddr := (others => 'X');
 
-      --alu_b_b <= (others => 'X');
     end if;
-
-    --if mui.msprwe='1' then
-    --  case mui.mreg(2 downto 0) is
-    --    when others =>
-    --  end case;
-    --end if;
 
     ew.intjmp := false;
 
