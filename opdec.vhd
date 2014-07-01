@@ -66,7 +66,12 @@ begin
             end case;
           when '1' =>
             -- No/R
-            op := O_ABORT;
+            case opcode(10) is
+              when '0' => op := O_SEXTB;
+              when '1' => op := O_SEXTS;
+              when others =>
+            end case;
+            --op := O_ABORT;
           when others =>
             op := O_ABORT;
         end case;
@@ -122,7 +127,7 @@ begin
     -- synthesis translate_on
     variable d: opdec_type;
     variable subloadimm: loadimmtype;
-
+    variable force_flags: boolean;
   begin
     --d := dec;
     d.opcode := opcode;
@@ -140,6 +145,7 @@ begin
     d.except_return := false;
 
     subloadimm := LOADNONE;
+    force_flags:=false;
 
     -- Default values
     d.modify_gpr  := false;
@@ -191,9 +197,11 @@ begin
       when "1101" =>
         d.alu_op := ALU_NOT;
       when "1110" =>
-        d.alu_op := ALU_SEXTB;
+        d.alu_op := ALU_ADD;--ALU_SEXTB;
+        force_flags:= true;
       when "1111" =>
-        d.alu_op := ALU_SEXTS;
+        d.alu_op := ALU_SUB;--ALU_SEXTS;
+        force_flags:=true;
 
 
       when others => null;
@@ -227,6 +235,10 @@ begin
           d.modify_flags := true;
           d.modify_gpr := false;
           d.alu_op := ALU_SUB;
+        end if;
+
+        if force_flags then
+          d.modify_flags := true;
         end if;
 
         if d.alu_op=ALU_ADDRI then
@@ -291,7 +303,7 @@ begin
       when O_JMP | O_JMPE =>
         -- Swap register...
         d.sreg1 := opcode(7 downto 4);
-        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false; d.reg_source:=reg_source_alu;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_pcnext;
         d.is_jump := true;
         d.jump := JUMP_RI_ABS;
 
@@ -308,6 +320,21 @@ begin
         d.memory_write := '0';
         d.rd1:='1'; d.rd2:='1';
         d.blocks := '1';
+
+      when O_SEXTB =>
+        d.alu_source := alu_source_reg;
+        d.alu_op := ALU_SEXTB;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
+        d.enable_alu := '1';
+          d.sreg1 := opcode(7 downto 4);
+
+      when O_SEXTS =>
+        d.alu_source := alu_source_reg;
+        d.alu_op := ALU_SEXTS;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
+        d.enable_alu := '1';
+          d.sreg1 := opcode(7 downto 4);
+
 
       when others =>
     end case;
