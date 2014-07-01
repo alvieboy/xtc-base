@@ -70,6 +70,8 @@ package xtcpkg is
     O_BR,
     O_JMP,
     O_JMPE,
+    O_SEXTB,
+    O_SEXTS,
     -- Errors
     O_ABORT
   );
