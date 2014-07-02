@@ -245,7 +245,7 @@ begin
   begin
     if rising_edge(w_clk) then
        if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
-        wb_tag_o <= wb_tag_i;
+        wb_tag_i <= wb_tag_o;
        end if;
     end if;
   end process;

@@ -96,16 +96,38 @@ process(select_zero,s1_wb_dat_i,s0_wb_dat_i,s0_wb_ack_i,s0_wb_tag_i,
         s1_wb_ack_i,s0_wb_stall_i,s1_wb_stall_i,s1_wb_tag_i)
 begin
   if select_zero='0' then
-    m_wb_dat_o<=s1_wb_dat_i;
-    m_wb_ack_o<=s1_wb_ack_i;
     m_wb_stall_o<=s1_wb_stall_i;
-    m_wb_tag_o <= s1_wb_tag_i;
   else
-    m_wb_dat_o<=s0_wb_dat_i;
-    m_wb_ack_o<=s0_wb_ack_i;
     m_wb_stall_o<=s0_wb_stall_i;
-    m_wb_tag_o <= s0_wb_tag_i;
   end if;
+end process;
+
+-- Process responses from both slaves.
+-- USE ONLY IN SIMULATION FOR NOW!!!!!
+
+process(s0_wb_ack_i,s0_wb_dat_i,s0_wb_tag_i,
+        s1_wb_ack_i,s1_wb_dat_i,s1_wb_tag_i)
+  variable sel: std_logic_vector(1 downto 0);
+begin
+  sel := s1_wb_ack_i & s0_wb_ack_i;
+  case sel is
+    when "00" =>
+      m_wb_ack_o<='0';
+      m_wb_dat_o<=(others => 'X');
+      m_wb_tag_o<=(others => 'X');
+    when "01" =>
+      m_wb_ack_o<='1';
+      m_wb_dat_o<=s0_wb_dat_i;
+      m_wb_tag_o<=s0_wb_tag_i;
+    when "10" =>
+      m_wb_ack_o<='1';
+      m_wb_dat_o<=s1_wb_dat_i;
+      m_wb_tag_o<=s1_wb_tag_i;
+    when others =>
+      m_wb_ack_o<='U';
+      m_wb_dat_o<=(others => 'X');
+      m_wb_tag_o<=(others => 'X');
+  end case;
 end process;
 
 end behave;

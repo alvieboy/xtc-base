@@ -256,7 +256,7 @@ package xtcpkg is
     drq:            decode_regs_type;
     rd1q,rd2q:      std_logic;
     alu:            std_logic;
-
+    waiting:        std_logic;
     alufwa:         std_logic;
     alufwb:         std_logic;
 

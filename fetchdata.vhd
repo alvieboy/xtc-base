@@ -44,8 +44,8 @@ begin
   fduo.rr1 <= r1_read;
   fduo.rr2 <= r2_read;
 
-      fduo.alufwa <= fdr.alufwa;
-      fduo.alufwb <= fdr.alufwb;
+  fduo.alufwa <= fdr.alufwa;
+  fduo.alufwb <= fdr.alufwb;
 
   syncfetch: if FETCHDATA_STAGE generate
 
@@ -54,7 +54,7 @@ begin
     begin
       fdw := fdr;
 
-      fduo.valid <= fdr.drq.valid;
+      fduo.valid <= fdr.drq.valid;-- or (fdr.waiting and not refetch);
       if freeze='0' then
         fdw.drq     := dui.r;
         fdw.rd1q    := dui.r.rd1;
@@ -97,10 +97,11 @@ begin
       if rst='1' then
         fdw.drq.valid := '0';
       end if;
-
+      fdw.waiting:='0';
       if refetch='1' then
         if freeze='0' then
           fdw.drq.valid := '0';
+          fdw.waiting:='1';
         end if;
       end if;
 

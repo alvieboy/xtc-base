@@ -44,15 +44,13 @@ begin
 
     muo.r <= mr;
 
-    --muo.mreg <= eui.r.mwreg;--mr.dreg;
-    --muo.mregwe <= mregwe;
-
-    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i)
+    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i, wb_tag_i)
       variable mw: memory_regs_type;
       variable wmask: std_logic_vector(3 downto 0);
       variable wdata: std_logic_vector(31 downto 0);
       variable mdata: std_logic_vector(31 downto 0);
       variable queue_request:   boolean;
+      variable mrsel: std_logic_vector(2 downto 0);
     begin
 
       mw:=mr;
@@ -65,22 +63,22 @@ begin
         when M_BYTE | M_BYTE_POSTINC =>
 
           case eui.data_address(1 downto 0) is
-            when "11" => wdata(7 downto 0)   := eui.data_write(7 downto 0); wmask:="0001";
-            when "10" => wdata(15 downto 8)  := eui.data_write(7 downto 0); wmask:="0010";
-            when "01" => wdata(23 downto 16) := eui.data_write(7 downto 0); wmask:="0100";
-            when "00" => wdata(31 downto 24) := eui.data_write(7 downto 0); wmask:="1000";
+            when "11" => wdata(7 downto 0)   := eui.data_write(7 downto 0); wmask:="0001"; mrsel:="000";
+            when "10" => wdata(15 downto 8)  := eui.data_write(7 downto 0); wmask:="0010"; mrsel:="001";
+            when "01" => wdata(23 downto 16) := eui.data_write(7 downto 0); wmask:="0100"; mrsel:="010";
+            when "00" => wdata(31 downto 24) := eui.data_write(7 downto 0); wmask:="1000"; mrsel:="011";
             when others => null;
           end case;
 
         when M_HWORD | M_HWORD_POSTINC =>
           case eui.data_address(1) is
-            when '1' => wdata(15 downto 0)  := eui.data_write(15 downto 0); wmask:="0011";
-            when '0' => wdata(31 downto 16) := eui.data_write(15 downto 0); wmask:="1100";
+            when '1' => wdata(15 downto 0)  := eui.data_write(15 downto 0); wmask:="0011"; mrsel:="100";
+            when '0' => wdata(31 downto 16) := eui.data_write(15 downto 0); wmask:="1100"; mrsel:="101";
             when others => null;
           end case;
 
         when others =>
-          wdata := eui.data_write; wmask:="1111";
+          wdata := eui.data_write; wmask:="1111"; mrsel := "111";
       end case;
 
       queue_request := false;
@@ -88,78 +86,97 @@ begin
       muo.mregwe <= '0';
       muo.msprwe <= '0';
 
-      case mr.state is
+--      case mr.state is
 
-        when midle =>
-          busy <= '0';
-          refetch <= '0';
-          if eui.data_access='1' then
-            mw.state := mbusy;
-            queue_request := true;
-            mw.wb_cyc := '1';
-            mw.wb_stb := '1';
-          end if;
+--        when midle =>
+--          busy <= '0';
+--          refetch <= '0';
+--          if eui.data_access='1' then
+--            mw.state := mbusy;
+--            queue_request := true;
+--            mw.wb_cyc := '1';
+--            mw.wb_stb := '1';
+--          end if;
 
-        when mbusy =>
-          busy <= '0';
+--        when mbusy =>
+--          busy <= '0';
 
-          if eui.data_access='1' then
-            busy <= '1';
-          end if;
+--          if eui.data_access='1' then
+--            busy <= '1';
+--          end if;
 
-          if mr.sprwe='1' then
-            busy <= '1';
-          end if;
+--          if mr.sprwe='1' then
+--            busy <= '1';
+--          end if;
 
-          refetch<= '0';
+--          refetch<= '0';
 
-          if wb_stall_i='0' then
-            mw.wb_stb := '0';
-          end if;
+--          if wb_stall_i='0' then
+--            mw.wb_stb := '0';
+--          end if;
 
-          if wb_ack_i='1' then
-            busy <= '0';
-            refetch <= '1';
+--          if wb_ack_i='1' then
+--           busy <= '0';
+--            refetch <= '1';
 
-            muo.mregwe <= mr.regwe;
-            muo.msprwe <= mr.sprwe;
-            if mr.sprwe='1' then
-              mw.state := midle;
-              mw.wb_cyc := '0';
-              mw.wb_stb := 'X';
-              mw.wb_we := 'X';
-              busy<='1';
-            else
-            if eui.data_access='1' then
-              queue_request := true;
-              mw.wb_cyc := '1';
-              mw.wb_stb := '1';
-            else
-              mw.state := midle;
-              mw.wb_cyc := '0';
-              mw.wb_stb := 'X';
-              mw.wb_we := 'X';
-            end if;
-            end if;
-          end if;
+--            muo.mregwe <= mr.regwe;
+--            muo.msprwe <= mr.sprwe;
+--            if mr.sprwe='1' then
+--              mw.state := midle;
+--              mw.wb_cyc := '0';
+--              mw.wb_stb := 'X';
+--              mw.wb_we := 'X';
+--              busy<='1';
+--            else
+--            if eui.data_access='1' then
+--              queue_request := true;
+--              mw.wb_cyc := '1';
+--              mw.wb_stb := '1';
+--            else
+--              mw.state := midle;
+--              mw.wb_cyc := '0';
+--              mw.wb_stb := 'X';
+--              mw.wb_we := 'X';
+--            end if;
+--            end if;
+--          end if;
 
-      end case;
+--      end case;
 
-      case mr.macc is
-        when M_BYTE | M_BYTE_POSTINC =>
-          case mr.wb_adr(1 downto 0) is
-            when "11" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
-            when "10" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
-            when "01" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
-            when "00" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
-            when others => null;
-          end case;
-        when M_HWORD | M_HWORD_POSTINC =>
-          case mr.wb_adr(0) is
-            when '1' => mdata(15 downto 0) := wb_dat_i(15 downto 0);
-            when '0' => mdata(15 downto 0) := wb_dat_i(31 downto 16);
-            when others => null;
-          end case;
+      --case mr.macc is
+      --  when M_BYTE | M_BYTE_POSTINC =>
+      --    case mr.wb_adr(1 downto 0) is
+      --      when "11" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
+      --      when "10" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
+      --      when "01" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
+      --      when "00" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
+      --      when others => null;
+      --    end case;
+      --  when M_HWORD | M_HWORD_POSTINC =>
+      --    case mr.wb_adr(0) is
+      --      when '1' => mdata(15 downto 0) := wb_dat_i(15 downto 0);
+      --      when '0' => mdata(15 downto 0) := wb_dat_i(31 downto 16);
+      --      when others => null;
+      --    end case;
+      --  when others => mdata := wb_dat_i;
+      --end case;
+
+      queue_request := true;
+      busy<='0';
+      if wb_stall_i='1' then
+        queue_request := false;
+        busy<='1';
+      end if;
+
+
+      case wb_tag_i(7 downto 5) is
+        when "000" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
+        when "001" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
+        when "010" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
+        when "011" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
+        when "100" => mdata(15 downto 0) := wb_dat_i(15 downto 0);
+        when "101" => mdata(15 downto 0) := wb_dat_i(31 downto 16);
+        when "110" => mdata := (others => 'X');
         when others => mdata := wb_dat_i;
       end case;
 
@@ -169,8 +186,12 @@ begin
         mw.wb_adr  := eui.data_address;
         mw.wb_tago := (others => 'X');
         mw.wb_tago(3 downto 0) := eui.mwreg;
+        mw.wb_tago(4) := not eui.data_writeenable;
+        mw.wb_tago(7 downto 5) := mrsel;
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
+        mw.wb_cyc  := '1'; -- TODO: release memory bus. eui.data_access;
+        mw.wb_stb  := eui.data_access;
         mw.sprwe   := eui.sprwe and not eui.data_writeenable;
         mw.regwe   := (not eui.sprwe) and not eui.data_writeenable;
         mw.dreg    := eui.mwreg;
@@ -178,11 +199,16 @@ begin
 
       if rst='1' then
         mw.wb_cyc := '0';
-        mw.state := midle;
+        mw.wb_stb := '0';
+        --mw.state := midle;
       end if;
 
       muo.mdata <= mdata;
-      muo.mreg <= mr.dreg;
+      --muo.mreg <= mr.dreg;
+      muo.mreg <= wb_tag_i(3 downto 0);
+
+      muo.mregwe <= wb_ack_i and wb_tag_i(4);
+      refetch <= wb_ack_i and wb_tag_i(4);
 
       if rising_edge(clk) then
 

@@ -23,6 +23,7 @@ architecture behave of wb_master_p_to_slave_np is
 type state_type is ( idle, wait_for_ack );
 
 signal state: state_type;
+signal wo: wb_mosi_type;
 
 begin
 
@@ -36,9 +37,12 @@ begin
         when idle =>
           if mwbi.cyc='1' and mwbi.stb='1' then
             state <= wait_for_ack;
+            wo <= mwbi;
           end if;
         when wait_for_ack =>
           if swbi.ack='1' then
+            wo.cyc <= '0';
+            wo.stb <= '0';
             state <= idle;
           end if;
         when others =>
@@ -48,16 +52,18 @@ begin
 end process;
 
 
-swbo.stb <= mwbi.stb when state=idle else '1';
+swbo.stb <= wo.stb;-- when state=idle else '1';
 
-swbo.dat <= mwbi.dat;
-swbo.adr <= mwbi.adr;
-swbo.sel <= mwbi.sel;
-swbo.we  <= mwbi.we;
-swbo.cyc <= mwbi.cyc;
+swbo.dat <= wo.dat;
+swbo.adr <= wo.adr;
+swbo.sel <= wo.sel;
+swbo.tag <= wo.tag;
+swbo.we  <= wo.we;
+swbo.cyc <= wo.cyc;
 
 mwbo.dat <= swbi.dat;
 mwbo.ack <= swbi.ack;
+mwbo.tag <= swbi.tag;
 
 mwbo.stall <= '0';
 
