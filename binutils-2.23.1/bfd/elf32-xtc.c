@@ -603,7 +603,7 @@ xtc_elf_info_to_howto (bfd * abfd ATTRIBUTE_UNUSED,
 
 struct elf32_mb_dyn_relocs
 {
-  struct elf32_mb_dyn_relocs *next;
+ // struct elf32_mb_dyn_relocs *next;
 
   /* The input section of the reloc.  */
   asection *sec;
@@ -622,7 +622,7 @@ struct elf32_mb_link_hash_entry
   struct elf_link_hash_entry elf;
 
   /* Track dynamic relocs copied for this symbol.  */
-  struct elf32_mb_dyn_relocs *dyn_relocs;
+  //struct elf32_mb_dyn_relocs *dyn_relocs;
 
 };
 
@@ -674,10 +674,10 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
   entry = _bfd_elf_link_hash_newfunc (entry, table, string);
   if (entry != NULL)
     {
-      struct elf32_mb_link_hash_entry *eh;
+      //struct elf32_mb_link_hash_entry *eh;
 
-      eh = (struct elf32_mb_link_hash_entry *) entry;
-      eh->dyn_relocs = NULL;
+      //eh = (struct elf32_mb_link_hash_entry *) entry;
+      //eh->dyn_relocs = NULL;
     }
 
   return entry;
@@ -1637,8 +1637,10 @@ xtc_elf_check_relocs (bfd * abfd,
                         && (h->root.type == bfd_link_hash_defweak
                             || !h->def_regular)))
                 {
-                    struct elf32_mb_dyn_relocs *p;
-                    struct elf32_mb_dyn_relocs **head;
+                    (*_bfd_error_handler)("Cannot handle relocation for symbol");
+                    abort();
+                    //struct elf32_mb_dyn_relocs *p;
+                    //struct elf32_mb_dyn_relocs **head;
 
                     /* When creating a shared object, we must copy these
                      relocs into the output file.  We create a reloc
@@ -1686,7 +1688,7 @@ xtc_elf_check_relocs (bfd * abfd,
                         }
                         elf_section_data (sec)->sreloc = sreloc;
                     }
-
+#if 0
                     /* If this is a global symbol, we count the number of
                      relocations we need for this symbol.  */
                     if (h != NULL)
@@ -1728,10 +1730,10 @@ xtc_elf_check_relocs (bfd * abfd,
                         p->count = 0;
                         p->pc_count = 0;
                     }
-
                     p->count += 1;
                     if (r_type == R_XTC_32_PCREL)
                         p->pc_count += 1;
+#endif
                 }
             }
             break;
@@ -2383,6 +2385,56 @@ error_return:
 
 
 
+static bfd_boolean
+xtc_elf_create_dynamic_sections (bfd *dynobj ATTRIBUTE_UNUSED,
+                                 struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+static bfd_boolean
+xtc_elf_adjust_dynamic_symbol (struct bfd_link_info *info ATTRIBUTE_UNUSED,
+                               struct elf_link_hash_entry *h ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+/* Set the sizes of the dynamic sections.  */
+
+static bfd_boolean
+xtc_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+                               struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+/* Finish up dynamic symbol handling.  We set the contents of various
+   dynamic sections here.  */
+
+static bfd_boolean
+xtc_elf_finish_dynamic_symbol (bfd *output_bfd ATTRIBUTE_UNUSED,
+                               struct bfd_link_info *info ATTRIBUTE_UNUSED,
+                               struct elf_link_hash_entry *h ATTRIBUTE_UNUSED,
+                               Elf_Internal_Sym *sym ATTRIBUTE_UNUSED)
+{
+  
+  return FALSE;
+}
+
+
+/* Finish up the dynamic sections.  */
+
+static bfd_boolean
+xtc_elf_finish_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+                                 struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+
+
+
+
 
 
 
@@ -2421,17 +2473,17 @@ error_return:
 //#define elf_backend_copy_indirect_symbol        xtc_elf_copy_indirect_symbol
 #define bfd_elf32_bfd_link_hash_table_create    xtc_elf_link_hash_table_create
 #define elf_backend_can_gc_sections		1
-#define elf_backend_can_refcount    		1
-#define elf_backend_want_got_plt    		1
-#define elf_backend_plt_readonly    		1
-#define elf_backend_got_header_size 		12
+//#define elf_backend_can_refcount    		1
+//#define elf_backend_want_got_plt                0
+//#define elf_backend_plt_readonly    		1
+//#define elf_backend_got_header_size 		12
 #define elf_backend_rela_normal     		1
 
-//#define elf_backend_adjust_dynamic_symbol       xtc_elf_adjust_dynamic_symbol
-//#define elf_backend_create_dynamic_sections     xtc_elf_create_dynamic_sections
-//#define elf_backend_finish_dynamic_sections     xtc_elf_finish_dynamic_sections
-//#define elf_backend_finish_dynamic_symbol       xtc_elf_finish_dynamic_symbol
-//#define elf_backend_size_dynamic_sections       xtc_elf_size_dynamic_sections
+#define elf_backend_adjust_dynamic_symbol       xtc_elf_adjust_dynamic_symbol
+#define elf_backend_create_dynamic_sections     xtc_elf_create_dynamic_sections
+#define elf_backend_finish_dynamic_sections     xtc_elf_finish_dynamic_sections
+#define elf_backend_finish_dynamic_symbol       xtc_elf_finish_dynamic_symbol
+#define elf_backend_size_dynamic_sections       xtc_elf_size_dynamic_sections
 //#define elf_backend_add_symbol_hook		xtc_elf_add_symbol_hook
 
 #include "elf32-target.h"
