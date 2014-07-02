@@ -1263,7 +1263,7 @@ write_relocs (bfd *abfd, asection *sec, void *xxx ATTRIBUTE_UNUSED)
       if (slack > 0)
 	fx_size = fx_size > slack ? fx_size - slack : 0;
       loc = fixp->fx_where + fx_size;
-#if 1
+#if 0
       as_warn_where(fixp->fx_file, fixp->fx_line,"write_relocs: slack %d, loc %ld, fr_fix %ld, size %d, where %ld\n",
              slack ,loc, fixp->fx_frag->fr_fix, fx_size, fixp->fx_where);
 #endif
