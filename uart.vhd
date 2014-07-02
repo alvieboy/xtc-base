@@ -228,8 +228,9 @@ begin
 
   fifo_rd<='1' when wb_adr_i(3 downto 2)="00" and (wb_cyc_i='1' and wb_stb_i='1' and wb_we_i='0') else '0';
 
-  process(wb_adr_i, received_data, uart_busy, data_ready, fifo_empty, fifo_data,uart_intx, int_enabled)
+  process(wb_clk_i)--wb_adr_i, received_data, uart_busy, data_ready, fifo_empty, fifo_data,uart_intx, int_enabled)
   begin
+    if rising_edge(wb_clk_i) then
     case wb_adr_i(3 downto 2) is
       when "01" =>
         wb_dat_o <= (others => '0');
@@ -245,6 +246,7 @@ begin
       when others =>
         wb_dat_o <= (others => 'X');
     end case;
+    end if;
   end process;
 
   process(wb_clk_i)
