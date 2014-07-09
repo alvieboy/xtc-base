@@ -60,37 +60,15 @@ package xtccomppkg is
 
   component xtc is
   port (
-    wb_clk_i:       in std_logic;
-    wb_clk_i_2x:    in std_logic;
-    wb_rst_i:       in std_logic;
-
+    wb_syscon:      in wb_syscon_type;
     -- Master wishbone interface
-
-    wb_ack_i:       in std_logic;
-    wb_dat_i:       in std_logic_vector(31 downto 0);
-    wb_dat_o:       out std_logic_vector(31 downto 0);
-    wb_adr_o:       out std_logic_vector(31 downto 0);
-    wb_tag_o:       out std_logic_vector(31 downto 0);
-    wb_tag_i:       in std_logic_vector(31 downto 0);
-    wb_cyc_o:       out std_logic;
-    wb_stb_o:       out std_logic;
-    wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic;
-    wb_stall_i:     in std_logic;
-    wb_inta_i:      in std_logic;
-
+    wbo:            out wb_mosi_type;
+    wbi:            in  wb_miso_type;
     -- ROM wb interface
-
-    rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
-    rom_wb_adr_o:       out std_logic_vector(31 downto 0);
-    rom_wb_cyc_o:       out std_logic;
-    rom_wb_stb_o:       out std_logic;
-    rom_wb_cti_o:       out std_logic_vector(2 downto 0);
-    rom_wb_stall_i:     in std_logic;
+    romwbo:         out wb_mosi_type;
+    romwbi:         in  wb_miso_type;
 
     isnmi:          in std_logic;
-    poppc_inst:     out std_logic;
     break:          out std_logic;
     intack:         out std_logic
   );
@@ -167,10 +145,8 @@ package xtccomppkg is
   );
   end component;
 
-  component fetch is
-  port (
+  component fetch is  port (
     clk:  in std_logic;
-    clk2x:  in std_logic;
     rst:  in std_logic;
 
     -- Connection to ROM
@@ -398,52 +374,36 @@ package xtccomppkg is
     address_low: integer:=2
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-
+    wb_syscon:  in wb_syscon_type;
     -- Master 
-
-    m_wb_dat_o: out std_logic_vector(31 downto 0);
-    m_wb_dat_i: in std_logic_vector(31 downto 0);
-    m_wb_tag_o: out std_logic_vector(31 downto 0);
-    m_wb_tag_i: in std_logic_vector(31 downto 0);
-    m_wb_adr_i: in std_logic_vector(address_high downto address_low);
-    m_wb_sel_i: in std_logic_vector(3 downto 0);
-    m_wb_we_i:  in std_logic;
-    m_wb_cyc_i: in std_logic;
-    m_wb_stb_i: in std_logic;
-    m_wb_ack_o: out std_logic;
-    m_wb_stall_o: out std_logic;
-
-    -- Slave 0 signals
-
-    s0_wb_dat_i: in std_logic_vector(31 downto 0);
-    s0_wb_dat_o: out std_logic_vector(31 downto 0);
-    s0_wb_tag_i: in std_logic_vector(31 downto 0);
-    s0_wb_tag_o: out std_logic_vector(31 downto 0);
-    s0_wb_adr_o: out std_logic_vector(address_high downto address_low);
-    s0_wb_sel_o: out std_logic_vector(3 downto 0);
-    s0_wb_we_o:  out std_logic;
-    s0_wb_cyc_o: out std_logic;
-    s0_wb_stb_o: out std_logic;
-    s0_wb_ack_i: in std_logic;
-    s0_wb_stall_i: in std_logic;
-
-    -- Slave 1 signals
-
-    s1_wb_dat_i: in std_logic_vector(31 downto 0);
-    s1_wb_dat_o: out std_logic_vector(31 downto 0);
-    s1_wb_tag_i: in std_logic_vector(31 downto 0);
-    s1_wb_tag_o: out std_logic_vector(31 downto 0);
-    s1_wb_adr_o: out std_logic_vector(address_high downto address_low);
-    s1_wb_sel_o: out std_logic_vector(3 downto 0);
-    s1_wb_we_o:  out std_logic;
-    s1_wb_cyc_o: out std_logic;
-    s1_wb_stb_o: out std_logic;
-    s1_wb_ack_i: in std_logic;
-    s1_wb_stall_i: in std_logic
+    m_wbi:       in wb_mosi_type;
+    m_wbo:       out wb_miso_type;
+    -- Slave signals
+    s0_wbo:       out wb_mosi_type;
+    s0_wbi:       in wb_miso_type;
+    s1_wbo:       out wb_mosi_type;
+    s1_wbi:       in wb_miso_type
   );
-end component;
+  end component;
+
+  component xtc_wbmux2 is
+  generic (
+    select_line: integer;
+    address_high: integer:=31;
+    address_low: integer:=2
+  );
+  port (
+    wb_syscon:  in wb_syscon_type;
+    -- Master 
+    m_wbi:       in wb_mosi_type;
+    m_wbo:       out wb_miso_type;
+    -- Slave signals
+    s0_wbo:       out wb_mosi_type;
+    s0_wbi:       in wb_miso_type;
+    s1_wbo:       out wb_mosi_type;
+    s1_wbi:       in wb_miso_type
+  );
+  end component;
 
   component wbarb2_1 is
   generic (
@@ -451,47 +411,16 @@ end component;
     ADDRESS_LOW: integer := 0
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-
+    wb_syscon:   in wb_syscon_type;
     -- Master 0 signals
-
-    m0_wb_dat_o: out std_logic_vector(31 downto 0);
-    m0_wb_dat_i: in std_logic_vector(31 downto 0);
-    m0_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m0_wb_sel_i: in std_logic_vector(3 downto 0);
-    m0_wb_cti_i: in std_logic_vector(2 downto 0);
-    m0_wb_we_i:  in std_logic;
-    m0_wb_cyc_i: in std_logic;
-    m0_wb_stb_i: in std_logic;
-    m0_wb_stall_o: out std_logic;
-    m0_wb_ack_o: out std_logic;
-
+    m0_wbi:       in wb_mosi_type;
+    m0_wbo:       out wb_miso_type;
     -- Master 1 signals
-
-    m1_wb_dat_o: out std_logic_vector(31 downto 0);
-    m1_wb_dat_i: in std_logic_vector(31 downto 0);
-    m1_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m1_wb_sel_i: in std_logic_vector(3 downto 0);
-    m1_wb_cti_i: in std_logic_vector(2 downto 0);
-    m1_wb_we_i:  in std_logic;
-    m1_wb_cyc_i: in std_logic;
-    m1_wb_stb_i: in std_logic;
-    m1_wb_ack_o: out std_logic;
-    m1_wb_stall_o: out std_logic;
-
+    m1_wbi:       in wb_mosi_type;
+    m1_wbo:       out wb_miso_type;
     -- Slave signals
-
-    s0_wb_dat_i: in std_logic_vector(31 downto 0);
-    s0_wb_dat_o: out std_logic_vector(31 downto 0);
-    s0_wb_adr_o: out std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    s0_wb_sel_o: out std_logic_vector(3 downto 0);
-    s0_wb_cti_o: out std_logic_vector(2 downto 0);
-    s0_wb_we_o:  out std_logic;
-    s0_wb_cyc_o: out std_logic;
-    s0_wb_stb_o: out std_logic;
-    s0_wb_ack_i: in std_logic;
-    s0_wb_stall_i: in std_logic
+    s0_wbi:       in wb_miso_type;
+    s0_wbo:       out wb_mosi_type
   );
   end component;
 
@@ -510,23 +439,34 @@ end component;
 
   component xtc_top_bram is
   port (
-    wb_clk_i:       in std_logic;
-    wb_clk_i_2x:    in std_logic;
-    wb_rst_i:       in std_logic;
-
+    wb_syscon:      in wb_syscon_type;
     -- IO wishbone interface
+    iowbo:           out wb_mosi_type;
+    iowbi:           in wb_miso_type
+  );
+  end component;
 
-    wb_ack_i:       in std_logic;
-    wb_dat_i:       in std_logic_vector(31 downto 0);
-    wb_dat_o:       out std_logic_vector(31 downto 0);
-    wb_adr_o:       out std_logic_vector(31 downto 0);
-    wb_tag_o:       out std_logic_vector(31 downto 0);
-    wb_tag_i:       in std_logic_vector(31 downto 0);
-    wb_cyc_o:       out std_logic;
-    wb_stb_o:       out std_logic;
-    wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic;
-    wb_inta_i:      in std_logic
+  component xtc_top_sdram is
+  port (
+    wb_syscon:      in wb_syscon_type;
+    -- IO wishbone interface
+    iowbo:           out wb_mosi_type;
+    iowbi:           in wb_miso_type;
+
+    -- extra clocking
+    clk_off_3ns: in std_logic;
+
+    -- SDRAM signals
+    DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (11 downto 0);
+    DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
+    DRAM_CAS_N   : OUT   STD_LOGIC;
+    DRAM_CKE      : OUT   STD_LOGIC;
+    DRAM_CLK      : OUT   STD_LOGIC;
+    DRAM_CS_N   : OUT   STD_LOGIC;
+    DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
+    DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
+    DRAM_RAS_N   : OUT   STD_LOGIC;
+    DRAM_WE_N    : OUT   STD_LOGIC
 
   );
   end component;

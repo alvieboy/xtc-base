@@ -4,7 +4,7 @@ use ieee.numeric_std.all;
 library work;
 use work.wishbonepkg.all;
 
-entity xtc_top_ppro is
+entity xtc_top_ppro_sdram is
   port (
     CLK:        in std_logic;
 
@@ -21,25 +21,25 @@ entity xtc_top_ppro is
 
     -- UART (FTDI) connection
     TXD:        out std_logic;
-    RXD:        in std_logic
+    RXD:        in std_logic;
 
-    --DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (12 downto 0);
-    -- DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
-    -- DRAM_CAS_N   : OUT   STD_LOGIC;
-    -- DRAM_CKE      : OUT   STD_LOGIC;
-    -- DRAM_CLK      : OUT   STD_LOGIC;
-    -- DRAM_CS_N   : OUT   STD_LOGIC;
-    -- DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
-   --  DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
-   --  DRAM_RAS_N   : OUT   STD_LOGIC;
-    -- DRAM_WE_N    : OUT   STD_LOGIC;
+    DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (12 downto 0);
+    DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
+    DRAM_CAS_N   : OUT   STD_LOGIC;
+    DRAM_CKE      : OUT   STD_LOGIC;
+    DRAM_CLK      : OUT   STD_LOGIC;
+    DRAM_CS_N   : OUT   STD_LOGIC;
+    DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
+    DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
+    DRAM_RAS_N   : OUT   STD_LOGIC;
+    DRAM_WE_N    : OUT   STD_LOGIC
 
     -- The LED
     --LED:        out std_logic
   );
-end entity xtc_top_ppro;
+end entity xtc_top_ppro_sdram;
 
-architecture behave of xtc_top_ppro is
+architecture behave of xtc_top_ppro_sdram is
 
   component uart is
   generic (
@@ -81,12 +81,27 @@ architecture behave of xtc_top_ppro is
   signal wb_clk_i:    std_logic;
   signal wb_rst_i:    std_logic;
 
-  component xtc_top_bram is
+  component xtc_top_sdram is
   port (
     wb_syscon:      in wb_syscon_type;
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
-    iowbi:           in wb_miso_type
+    iowbi:           in wb_miso_type;
+        -- SDRAM signals
+    -- extra clocking
+    clk_off_3ns: in std_logic;
+    -- SDRAM signals
+    DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (11 downto 0);
+    DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
+    DRAM_CAS_N   : OUT   STD_LOGIC;
+    DRAM_CKE      : OUT   STD_LOGIC;
+    DRAM_CLK      : OUT   STD_LOGIC;
+    DRAM_CS_N   : OUT   STD_LOGIC;
+    DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
+    DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
+    DRAM_RAS_N   : OUT   STD_LOGIC;
+    DRAM_WE_N    : OUT   STD_LOGIC
+
   );
   end component;
 
@@ -102,11 +117,11 @@ architecture behave of xtc_top_ppro is
   signal wb_ack:     std_logic;
   signal wb_int:     std_logic;
   signal wb_stall:     std_logic;
-  signal wb_clk_i_2x: std_ulogic;
+  signal clk_off_3ns: std_ulogic;
 
 begin
 
-  cpu: xtc_top_bram
+  cpu: xtc_top_sdram
   port map (
     wb_syscon.clk        => wb_clk_i,
     wb_syscon.rst        => wb_rst_i,
@@ -124,7 +139,22 @@ begin
     iowbo.tag        => wb_tag_o,
     iowbo.stb        => wb_stb,
     iowbo.sel        => wb_sel,
-    iowbo.we         => wb_we
+    iowbo.we         => wb_we,
+        -- extra clocking
+    clk_off_3ns => clk_off_3ns,
+
+    -- SDRAM signals
+    DRAM_ADDR   => DRAM_ADDR,
+    DRAM_BA     => DRAM_BA,
+    DRAM_CAS_N  => DRAM_CAS_N,
+    DRAM_CKE    => DRAM_CKE,
+    DRAM_CLK    => DRAM_CLK,
+    DRAM_CS_N   => DRAM_CS_N,
+    DRAM_DQ     => DRAM_DQ,
+    DRAM_DQM    => DRAM_DQM,
+    DRAM_RAS_N  => DRAM_RAS_N,
+    DRAM_WE_N   => DRAM_WE_N
+
   );
 
 
@@ -175,7 +205,7 @@ begin
     clkin   => clk,
     rstin   => '0'  ,
     clkout  => sysclk,
-    clkout2x  => wb_clk_i_2x,
+    clkout2  => clk_off_3ns,
     rstout  => clkgen_rst
   );
 

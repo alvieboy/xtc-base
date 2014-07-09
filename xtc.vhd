@@ -5,39 +5,20 @@ use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
 use work.xtccomppkg.all;
+use work.wishbonepkg.all;
 
 entity xtc is
   port (
-    wb_clk_i:       in std_logic;
-    wb_clk_i_2x:    in std_logic;
-    wb_rst_i:       in std_logic;
+    wb_syscon:      in wb_syscon_type;
 
     -- Master wishbone interface
-
-    wb_ack_i:       in std_logic;
-    wb_dat_i:       in std_logic_vector(31 downto 0);
-    wb_dat_o:       out std_logic_vector(31 downto 0);
-    wb_adr_o:       out std_logic_vector(31 downto 0);
-    wb_tag_o:       out std_logic_vector(31 downto 0);
-    wb_tag_i:       in std_logic_vector(31 downto 0);
-    wb_cyc_o:       out std_logic;
-    wb_stb_o:       out std_logic;
-    wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic;
-    wb_stall_i:     in  std_logic;
+    wbo:            out wb_mosi_type;
+    wbi:            in  wb_miso_type;
     -- ROM wb interface
+    romwbo:         out wb_mosi_type;
+    romwbi:         in  wb_miso_type;
 
-    rom_wb_ack_i:       in std_logic;
-    rom_wb_dat_i:       in std_logic_vector(31 downto 0);
-    rom_wb_adr_o:       out std_logic_vector(31 downto 0);
-    rom_wb_cyc_o:       out std_logic;
-    rom_wb_stb_o:       out std_logic;
-    rom_wb_cti_o:       out std_logic_vector(2 downto 0);
-    rom_wb_stall_i:     in std_logic;
-
-    wb_inta_i:      in std_logic;
     isnmi:          in std_logic;
-    poppc_inst:     out std_logic;
     break:          out std_logic;
     intack:         out std_logic
   );
@@ -118,7 +99,7 @@ begin
   -- synthesis translate_off
   trc: tracer
     port map (
-      clk => wb_clk_i,
+      clk => wb_syscon.clk,
       dbgi  => dbg
     );
   -- synthesis translate_on
@@ -130,7 +111,7 @@ begin
     ADDRESS_BITS => 4
   )
   port map (
-    clk     => wb_clk_i,
+    clk     => wb_syscon.clk,
     rb1_en  => rb1_en,
     rb1_addr=> rb1_addr,
     rb1_rd  => rb1_rd,
@@ -147,31 +128,33 @@ begin
 
   cache: if INSTRUCTION_CACHE generate
 
---  cache: icache
---  generic map (
---    ADDRESS_HIGH => 31
---  )
---  port map (
---    wb_clk_i    => wb_clk_i,
---    wb_rst_i    => wb_rst_i,
+  cache: icache
+  generic map (
+    ADDRESS_HIGH => 31
+  )
+  port map (
+    wb_clk_i    => wb_syscon.clk,
+    wb_rst_i    => wb_syscon.rst,
 
---    valid       => cache_valid,
-    --data        => cache_data,
---    address     => cache_address,
---    strobe      => cache_strobe,
---    stall       => cache_stall,
---    enable      => cache_enable,
---    flush       => cache_flush,
+    valid       => cache_valid,
+    data        => cache_data,
+    address     => cache_address,
+    strobe      => cache_strobe,
+    stall       => cache_stall,
+    enable      => cache_enable,
+    flush       => cache_flush,
 
---    m_wb_ack_i  => rom_wb_ack_i,
---    m_wb_dat_i  => rom_wb_dat_i,
---    m_wb_adr_o  => rom_wb_adr_o,
- --   m_wb_cyc_o  => rom_wb_cyc_o,
---    m_wb_stb_o  => rom_wb_stb_o,
---    m_wb_stall_i => rom_wb_stall_i
---  );
+    m_wb_ack_i  => romwbi.ack,
+    m_wb_dat_i  => romwbi.dat,
+    m_wb_adr_o  => romwbo.adr,
+    m_wb_cyc_o  => romwbo.cyc,
+    m_wb_stb_o  => romwbo.stb,
+    m_wb_stall_i => romwbi.stall
+  );
 
   end generate;
+
+  romwbo.we<='0';
 
   nocache: if not INSTRUCTION_CACHE generate
 
@@ -179,50 +162,24 @@ begin
     -- when no pipelined transaction exists
 
     -- For now, the romram is hacked to do it.
-    nopipe: if not EXTRA_PIPELINE generate
-      cache_valid       <= rom_wb_ack_i;
-      cache_data        <= rom_wb_dat_i;
-      rom_wb_adr_o      <= cache_address;
-      rom_wb_stb_o      <= cache_strobe;
-      rom_wb_cyc_o      <= cache_enable;
-      cache_stall       <= rom_wb_stall_i;
-    end generate;
+    --nopipe: if not EXTRA_PIPELINE generate
+      cache_valid       <= romwbi.ack;
+      cache_data        <= romwbi.dat;
+      romwbo.adr      <= cache_address;
+      romwbo.stb      <= cache_strobe;
+      romwbo.cyc      <= cache_enable;
+      cache_stall       <= romwbi.stall;
+    --end generate;
   
-    pipe: if EXTRA_PIPELINE generate
-      pipeb: block
-      begin
-        process(wb_clk_i)
-        begin
-          if rising_edge(wb_clk_i) then
-            if cache_nseq='1' then
-              cache_valid<='0';
-            else
-              cache_valid <= rom_wb_ack_i;
-            end if;
-            if cache_strobe='1' and cache_enable='1' then
-              cache_data <= rom_wb_dat_i;
-            end if;
-          end if;
-        end process;
-        --cache_valid       <= rom_wb_ack_i;
-       -- cache_data        <= rom_wb_dat_i;
-        rom_wb_adr_o      <= cache_address;
-        rom_wb_stb_o      <= cache_strobe;
-        rom_wb_cyc_o      <= cache_enable;
-        cache_stall       <= rom_wb_stall_i;
-      end block;
-
-    end generate;
-
+    
   end generate;
 
 
 
   fetch_unit: fetch
     port map (
-      clk       => wb_clk_i,
-      clk2x     => wb_clk_i_2x,
-      rst       => wb_rst_i,
+      clk       => wb_syscon.clk,
+      rst       => wb_syscon.rst,
       -- Connection to ROM
       stall     => cache_stall,
       valid     => cache_valid,
@@ -242,8 +199,8 @@ begin
 
   decode_unit: decode
     port map (
-      clk       => wb_clk_i,
-      rst       => wb_rst_i,
+      clk       => wb_syscon.clk,
+      rst       => wb_syscon.rst,
       -- Input from fetch unit
       fui       => fuo,
       -- Outputs for next stages
@@ -260,8 +217,8 @@ begin
 
   fetchdata_unit: fetchdata
     port map (
-      clk       => wb_clk_i,
-      rst       => wb_rst_i,
+      clk       => wb_syscon.clk,
+      rst       => wb_syscon.rst,
       r1_en      => rb1_en,
       r1_addr    => rb1_addr,
       r1_read    => rb1_rd,
@@ -305,10 +262,10 @@ begin
     v3<='1';-- when w_en='0' else tq(s1);
 
 
-    process(wb_clk_i)
+    process(wb_syscon.clk)
     begin
-    if rising_edge(wb_clk_i) then
-      if wb_rst_i='1' then
+    if rising_edge(wb_syscon.clk) then
+      if wb_syscon.rst='1' then
         tq <= (others => '1');
       else
         if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' and allvalid='1' then
@@ -350,13 +307,13 @@ begin
 
   execute_unit: execute
     port map (
-      clk       => wb_clk_i,
-      rst       => wb_rst_i,
+      clk       => wb_syscon.clk,
+      rst       => wb_syscon.rst,
       busy      => e_busy,
       mem_busy  => memory_busy,
       wb_busy   => wb_busy,
       refetch   => refetch,
-      int       => wb_inta_i,
+      int       => '0',--wb_inta_i,
       intline   => x"00",
       -- Input from fetchdata unit
       fdui      => fduo,
@@ -370,20 +327,20 @@ begin
 
   memory_unit: memory
     port map (
-    clk             => wb_clk_i,
-    rst             => wb_rst_i,
+    clk             => wb_syscon.clk,
+    rst             => wb_syscon.rst,
     -- Memory interface
-    wb_ack_i        => wb_ack_i,
-    wb_dat_i        => wb_dat_i,
-    wb_dat_o        => wb_dat_o,
-    wb_adr_o        => wb_adr_o,
-    wb_cyc_o        => wb_cyc_o,
-    wb_stb_o        => wb_stb_o,
-    wb_sel_o        => wb_sel_o,
-    wb_tag_o        => wb_tag_o,
-    wb_tag_i        => wb_tag_i,
-    wb_we_o         => wb_we_o,
-    wb_stall_i      => wb_stall_i,
+    wb_ack_i        => wbi.ack,
+    wb_dat_i        => wbi.dat,
+    wb_dat_o        => wbo.dat,
+    wb_adr_o        => wbo.adr,
+    wb_cyc_o        => wbo.cyc,
+    wb_stb_o        => wbo.stb,
+    wb_sel_o        => wbo.sel,
+    wb_tag_o        => wbo.tag,
+    wb_tag_i        => wbi.tag,
+    wb_we_o         => wbo.we,
+    wb_stall_i      => wbi.stall,
 
     refetch         => refetch,
     busy            => memory_busy,
@@ -395,8 +352,8 @@ begin
 
   writeback_unit: writeback
     port map (
-      clk       => wb_clk_i,
-      rst       => wb_rst_i,
+      clk       => wb_syscon.clk,
+      rst       => wb_syscon.rst,
       busy      => wb_busy,
       r0_en      => rbw1_en,
       r0_we      => rbw1_we,

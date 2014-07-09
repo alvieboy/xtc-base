@@ -45,11 +45,19 @@ begin
           op := hstr(dbgi.opcode2) & "    ";
 
         end if;
+        if TRACECLOCK then
         print( t_file, executed & " 0x" & hstr(std_logic_vector(clock)) & " 0x" &
           hstr(std_logic_vector(dbgi.pc)) & " 0x" & op & " 0x"
           & hstr(std_logic_vector(dbgi.lhs))
           & " 0x" & hstr(std_logic_vector(dbgi.rhs))
           );
+        else
+        print( t_file, executed & " 0x" &
+          hstr(std_logic_vector(dbgi.pc)) & " 0x" & op & " 0x"
+          & hstr(std_logic_vector(dbgi.lhs))
+          & " 0x" & hstr(std_logic_vector(dbgi.rhs))
+          );
+        end if;
       end if;
     end if;
 

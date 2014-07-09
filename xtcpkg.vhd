@@ -8,7 +8,7 @@ use work.txt_util.all;
 package xtcpkg is
 
 
-  constant INSTRUCTION_CACHE: boolean := false;
+  constant INSTRUCTION_CACHE: boolean := true;
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
@@ -16,6 +16,7 @@ package xtcpkg is
   constant DEBUG_MEMORY: boolean := false;
   constant ENABLE_SHIFTER: boolean := true;
 
+  constant TRACECLOCK: boolean := false;
 
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
@@ -164,7 +165,7 @@ package xtcpkg is
   end record;
 
 
-  type fetchunit_state_type is ( running, jumping );
+  type fetchunit_state_type is ( running, jumping, aligning );
 
   type fetch_regs_type is record
     pc, fpc:        word_type;
@@ -343,6 +344,7 @@ package xtcpkg is
     wb_stb:     std_logic;
     wb_tago:    std_logic_vector(31 downto 0);
     wb_sel:     std_logic_vector(3 downto 0);
+    nreq:       unsigned(2 downto 0); --  Number of outstanding requests
   end record;
 
   type memory_output_type is record
