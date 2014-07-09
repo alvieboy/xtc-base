@@ -8,7 +8,6 @@ use work.xtccomppkg.all;
 entity fetch is
   port (
     clk:   in std_logic;
-    clk2x: in std_logic;
     rst:   in std_logic;
 
     -- Connection to ROM
@@ -95,6 +94,11 @@ begin
               fw.qopc := read(15 downto 0);
               fw.unaligned_jump := '0';
             end if;
+
+            -- simple check
+            --if dual='1' and fr.unaligned_jump='1' then
+            --  report "DUAL" severity note;
+            --end if;
           end if;
           if dual='0' and valid='1' and freeze='0' then
             -- Will go unaligned
@@ -118,7 +122,7 @@ begin
               fw.invert_readout := '0';
             end if;
           else
-            if dual='1' and fr.unaligned_jump='1' then
+            if dual='1' and freeze='0' and fr.unaligned_jump='1' then
               fw.invert_readout:='1';
             else
               --fw.invert_readout:='0';
