@@ -86,84 +86,9 @@ begin
       muo.mregwe <= '0';
       muo.msprwe <= '0';
 
---      case mr.state is
-
---        when midle =>
---          busy <= '0';
---          refetch <= '0';
---          if eui.data_access='1' then
---            mw.state := mbusy;
---            queue_request := true;
---            mw.wb_cyc := '1';
---            mw.wb_stb := '1';
---          end if;
-
---        when mbusy =>
---          busy <= '0';
-
---          if eui.data_access='1' then
---            busy <= '1';
---          end if;
-
---          if mr.sprwe='1' then
---            busy <= '1';
---          end if;
-
---          refetch<= '0';
-
---          if wb_stall_i='0' then
---            mw.wb_stb := '0';
---          end if;
-
---          if wb_ack_i='1' then
---           busy <= '0';
---            refetch <= '1';
-
---            muo.mregwe <= mr.regwe;
---            muo.msprwe <= mr.sprwe;
---            if mr.sprwe='1' then
---              mw.state := midle;
---              mw.wb_cyc := '0';
---              mw.wb_stb := 'X';
---              mw.wb_we := 'X';
---              busy<='1';
---            else
---            if eui.data_access='1' then
---              queue_request := true;
---              mw.wb_cyc := '1';
---              mw.wb_stb := '1';
---            else
---              mw.state := midle;
---              mw.wb_cyc := '0';
---              mw.wb_stb := 'X';
---              mw.wb_we := 'X';
---            end if;
---            end if;
---          end if;
-
---      end case;
-
-      --case mr.macc is
-      --  when M_BYTE | M_BYTE_POSTINC =>
-      --    case mr.wb_adr(1 downto 0) is
-      --      when "11" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
-      --      when "10" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
-      --      when "01" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
-      --      when "00" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
-      --      when others => null;
-      --    end case;
-      --  when M_HWORD | M_HWORD_POSTINC =>
-      --    case mr.wb_adr(0) is
-      --      when '1' => mdata(15 downto 0) := wb_dat_i(15 downto 0);
-      --      when '0' => mdata(15 downto 0) := wb_dat_i(31 downto 16);
-      --      when others => null;
-      --    end case;
-      --  when others => mdata := wb_dat_i;
-      --end case;
-
       queue_request := true;
       busy<='0';
-      if wb_stall_i='1' then
+      if wb_stall_i='1' and mr.wb_stb='1' then
         queue_request := false;
         busy<='1';
       end if;
@@ -190,7 +115,6 @@ begin
         mw.wb_tago(7 downto 5) := mrsel;
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
-        mw.wb_cyc  := '1'; -- TODO: release memory bus. eui.data_access;
         mw.wb_stb  := eui.data_access;
         mw.sprwe   := eui.sprwe and not eui.data_writeenable;
         mw.regwe   := (not eui.sprwe) and not eui.data_writeenable;
@@ -200,13 +124,10 @@ begin
       if rst='1' then
         mw.wb_cyc := '0';
         mw.wb_stb := '0';
-        --mw.state := midle;
       end if;
 
       muo.mdata <= mdata;
-      --muo.mreg <= mr.dreg;
       muo.mreg <= wb_tag_i(3 downto 0);
-
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
       refetch <= wb_ack_i and wb_tag_i(4);
 
@@ -229,7 +150,7 @@ begin
 
     end process;
 
-  wb_cyc_o <= mr.wb_cyc;
+  wb_cyc_o <= '1';
   wb_adr_o <= mr.wb_adr;
   wb_stb_o <= mr.wb_stb;
   wb_dat_o <= mr.wb_dat;
