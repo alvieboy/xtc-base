@@ -10,13 +10,18 @@ library unisim;
 use unisim.vcomponents.all;
 
 entity sdram_ctrl is
+  generic (
+    HIGH_BIT: integer := 24
+  );
   port (
     wb_clk_i: in std_logic;
 	 	wb_rst_i: in std_logic;
 
     wb_dat_o: out std_logic_vector(31 downto 0);
     wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
+    wb_adr_i: in std_logic_vector(31 downto 0);
+    wb_tag_i: in std_logic_vector(31 downto 0);
+    wb_tag_o: out std_logic_vector(31 downto 0);
     wb_we_i:  in std_logic;
     wb_cyc_i: in std_logic;
     wb_stb_i: in std_logic;
@@ -74,11 +79,13 @@ architecture behave of sdram_ctrl is
    data_out      : OUT     STD_LOGIC_VECTOR (31 downto 0);
    data_out_valid : OUT     STD_LOGIC;
    data_in      : IN     STD_LOGIC_VECTOR (31 downto 0);
-   data_mask    : in std_logic_vector(3 downto 0)
+   data_mask    : in std_logic_vector(3 downto 0);
+   tag_in       : in std_logic_vector(31 downto 0);
+   tag_out       : out std_logic_vector(31 downto 0)
    );
   end component;
 
-  signal sdr_address:    STD_LOGIC_VECTOR (22 downto 2);
+  signal sdr_address:    STD_LOGIC_VECTOR (HIGH_BIT downto 2);
   signal sdr_req_read      :     STD_LOGIC;
   signal sdr_req_write   :      STD_LOGIC;
   signal sdr_data_out      :      STD_LOGIC_VECTOR (31 downto 0);
@@ -93,7 +100,7 @@ begin
 
   ctrl: sdram_controller
     generic map (
-      HIGH_BIT => 22
+      HIGH_BIT => HIGH_BIT
    )
    port map (
     clock_100   => wb_clk_i,
@@ -118,11 +125,13 @@ begin
     data_out    => sdr_data_out,
     data_out_valid => sdr_data_out_valid,
     data_in      => sdr_data_in,
-    data_mask  => sdr_data_mask
+    data_mask  => sdr_data_mask,
+    tag_in      => wb_tag_i,
+    tag_out     => wb_tag_o
    );
 
 
-  sdr_address(22 downto 2) <= wb_adr_i(22 downto 2);
+  sdr_address(HIGH_BIT downto 2) <= wb_adr_i(HIGH_BIT downto 2);
 
   sdr_req_read<='1' when wb_cyc_i='1' and wb_stb_i='1' and wb_we_i='0' else '0';
   sdr_req_write<='1' when wb_cyc_i='1' and wb_stb_i='1' and wb_we_i='1' else '0';
