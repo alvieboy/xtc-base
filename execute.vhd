@@ -210,8 +210,8 @@ begin
 
       ew.alur := alu_a_r(31 downto 0);
 
-      ew.alufwa := fdui.r.alufwa;
-      ew.alufwb := fdui.r.alufwb;
+      --ew.alufwa := fdui.r.alufwa;
+      --ew.alufwb := fdui.r.alufwb;
 
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
