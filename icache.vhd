@@ -224,7 +224,9 @@ begin
         access_q<='0';
       else
         if busy='0' and enable='1' then
+          if strobe='1' then
           access_q <= access_i;
+          end if;
         end if;
       end if;
     end if;
