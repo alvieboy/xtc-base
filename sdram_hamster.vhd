@@ -3,10 +3,11 @@
 --
 -- Version 0.1 - Ready to simulate
 --
--- Author: Mike Field (hamster@snap.net.nz)
+-- Authors: Mike Field (hamster@snap.net.nz)
+--          Alvaro Lopes (alvieboy@alvie.com)
 --
 -- Feel free to use it however you would like, but
--- just drop me an email to say thanks.
+-- just drop us an email to say thanks.
 -------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
@@ -48,7 +49,9 @@ entity sdram_controller is
    data_out      : OUT     STD_LOGIC_VECTOR (31 downto 0);
    data_out_valid : OUT     STD_LOGIC;
    data_in      : IN     STD_LOGIC_VECTOR (31 downto 0);
-   data_mask    : IN     STD_LOGIC_VECTOR (3 downto 0)
+   data_mask    : IN     STD_LOGIC_VECTOR (3 downto 0);
+   tag_in       : in std_logic_vector(31 downto 0);
+   tag_out       : out std_logic_vector(31 downto 0)
    );
 end entity;
    
@@ -72,6 +75,10 @@ architecture rtl of sdram_controller is
       data_out_valid: std_logic;
       dq_masks      : std_logic_vector(1 downto 0);
       tristate      : std_logic;
+      tag_in        : std_logic_vector(31 downto 0);
+      tag_out       : std_logic_vector(31 downto 0);
+      tagq          : std_logic_vector(31 downto 0);
+      tagqq         : std_logic_vector(31 downto 0);
    end record;
 
    signal r : reg;
@@ -317,6 +324,8 @@ begin
 
    pending <= '1' when r.wr_pending='1' or r.rd_pending='1' else '0';
 
+   tag_out <= r.tag_out;
+
    process (r, rstate, address, req_read, rdata_write, req_write, addr_row, addr_bank, addr_col, data_in, captured)
    begin
       -- copy the existing values
@@ -325,19 +334,21 @@ begin
       ndata_write <= rdata_write;
 
       if req_read = '1' then
-         n.rd_pending <= '1';
-         if r.rd_pending='0' then
+         if r.rd_pending='0' and r.wr_pending='0' then
+           n.rd_pending <= '1';
            n.req_addr_q <= address;
+           n.tag_in <= tag_in;
          end if;
       end if;
       
       if req_write = '1' then
-         n.wr_pending <= '1';
-         if r.wr_pending='0' then
+         if r.wr_pending='0' and r.rd_pending='0' then
+           n.wr_pending <= '1';
            n.req_addr_q <= address;
            -- Queue data here
            n.req_data_write <= data_in;
            n.req_mask <= data_mask;
+           n.tag_in <= tag_in;
          end if;
       end if;
       
@@ -456,6 +467,8 @@ begin
                n.act_ba    <= addr_bank;
                n.dq_masks <= "00";
                n.rd_pending <= '0';
+               n.tagq <= r.tag_in;
+               n.tagqq<=r.tagq;
                --n.tristate<='1';
             end if;
             
@@ -469,6 +482,8 @@ begin
                n.act_ba    <= addr_bank;
                n.dq_masks<= not r.req_mask(3 downto 2);
                n.wr_pending <= '0';
+               n.tagq <= r.tag_in;
+               n.tagqq<=r.tagq;
                --n.tristate <= '0';
             end if;
             
@@ -527,6 +542,7 @@ begin
             nstate     <= s_ra2;
             --DRAM_DQ <= rdata_write;
             n.data_out_valid<='1'; -- alvie- ack write
+            n.tag_out <= r.tagq;
             n.tristate <= '0';
             n.dq_masks<= "11";
             
@@ -586,8 +602,12 @@ begin
               n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
+              n.tagq <= r.tag_in;
+              n.tagqq<=r.tagq;
 
             end if;
+            -- Update output tag immediatly
+            --n.tag_out <= r.tagq;
 
          when s_rd2_id =>       -- 10011
             nstate <= s_rd7;
@@ -620,6 +640,8 @@ begin
               n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
+              n.tagq <= r.tag_in;
+              n.tagqq<=r.tagq;
 
             else
               nstate <= s_rd6; -- NOTE: not correct
@@ -634,6 +656,8 @@ begin
 
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
+
+            n.tag_out <= r.tagqq;
 
 
          when s_rd5_id =>
@@ -657,6 +681,9 @@ begin
             nstate <= s_ra2;
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
+            n.tag_out <= r.tagq;
+            --n.tag_out <= r.tag_in;
+
             n.tristate<='1';
 
          when s_rd8_id => null;
@@ -670,7 +697,9 @@ begin
          when s_drdr1_id =>
             nstate <= s_drdr2;
             n.data_out_low <= captured;
-            n.data_out_valid <= '1';   
+            n.data_out_valid <= '1';
+            n.tag_out <= r.tag_in;
+
          when s_drdr2_id =>
             nstate <= s_idle;
 
