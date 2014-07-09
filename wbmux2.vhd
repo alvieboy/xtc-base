@@ -2,6 +2,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 use ieee.std_logic_unsigned.all;
+library work;
+use work.wishbonepkg.all;
 
 entity wbmux2 is
   generic (
@@ -10,50 +12,15 @@ entity wbmux2 is
     address_low: integer:=2
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-
+    wb_syscon:  in wb_syscon_type;
     -- Master 
-
-    m_wb_dat_o: out std_logic_vector(31 downto 0);
-    m_wb_dat_i: in std_logic_vector(31 downto 0);
-    m_wb_tag_o: out std_logic_vector(31 downto 0);
-    m_wb_tag_i: in std_logic_vector(31 downto 0);
-    m_wb_adr_i: in std_logic_vector(address_high downto address_low);
-    m_wb_sel_i: in std_logic_vector(3 downto 0);
-    m_wb_we_i:  in std_logic;
-    m_wb_cyc_i: in std_logic;
-    m_wb_stb_i: in std_logic;
-    m_wb_ack_o: out std_logic;
-    m_wb_stall_o: out std_logic;
-
-    -- Slave 0 signals
-
-    s0_wb_dat_i: in std_logic_vector(31 downto 0);
-    s0_wb_dat_o: out std_logic_vector(31 downto 0);
-    s0_wb_tag_i: in std_logic_vector(31 downto 0);
-    s0_wb_tag_o: out std_logic_vector(31 downto 0);
-    s0_wb_adr_o: out std_logic_vector(address_high downto address_low);
-    s0_wb_sel_o: out std_logic_vector(3 downto 0);
-    s0_wb_we_o:  out std_logic;
-    s0_wb_cyc_o: out std_logic;
-    s0_wb_stb_o: out std_logic;
-    s0_wb_ack_i: in std_logic;
-    s0_wb_stall_i: in std_logic;
-
-    -- Slave 1 signals
-
-    s1_wb_dat_i: in std_logic_vector(31 downto 0);
-    s1_wb_dat_o: out std_logic_vector(31 downto 0);
-    s1_wb_tag_i: in std_logic_vector(31 downto 0);
-    s1_wb_tag_o: out std_logic_vector(31 downto 0);
-    s1_wb_adr_o: out std_logic_vector(address_high downto address_low);
-    s1_wb_sel_o: out std_logic_vector(3 downto 0);
-    s1_wb_we_o:  out std_logic;
-    s1_wb_cyc_o: out std_logic;
-    s1_wb_stb_o: out std_logic;
-    s1_wb_ack_i: in std_logic;
-    s1_wb_stall_i: in std_logic
+    m_wbi:       in wb_mosi_type;
+    m_wbo:       out wb_miso_type;
+    -- Slave signals
+    s0_wbo:       out wb_mosi_type;
+    s0_wbi:       in wb_miso_type;
+    s1_wbo:       out wb_mosi_type;
+    s1_wbi:       in wb_miso_type
   );
 end entity wbmux2;
 
@@ -65,68 +32,66 @@ signal select_zero: std_logic;
 
 begin
 
-select_zero<='1' when m_wb_adr_i(select_line)='0' else '0';
+select_zero<='1' when m_wbi.adr(select_line)='0' else '0';
 
-s0_wb_dat_o <= m_wb_dat_i;
-s0_wb_adr_o <= m_wb_adr_i;
-s0_wb_stb_o <= m_wb_stb_i;
-s0_wb_we_o  <= m_wb_we_i;
-s0_wb_sel_o <= m_wb_sel_i;
-s0_wb_tag_o <= m_wb_tag_i;
+s0_wbo.dat <= m_wbi.dat;
+s0_wbo.adr <= m_wbi.adr;
+s0_wbo.stb <= m_wbi.stb;
+s0_wbo.we  <= m_wbi.we;
+s0_wbo.sel <= m_wbi.sel;
+s0_wbo.tag <= m_wbi.tag;
 
-s1_wb_dat_o <= m_wb_dat_i;
-s1_wb_adr_o <= m_wb_adr_i;
-s1_wb_stb_o <= m_wb_stb_i;
-s1_wb_we_o  <= m_wb_we_i;
-s1_wb_sel_o <= m_wb_sel_i;
-s1_wb_tag_o <= m_wb_tag_i;
+s1_wbo.dat <= m_wbi.dat;
+s1_wbo.adr <= m_wbi.adr;
+s1_wbo.stb <= m_wbi.stb;
+s1_wbo.we  <= m_wbi.we;
+s1_wbo.sel <= m_wbi.sel;
+s1_wbo.tag <= m_wbi.tag;
 
-process(m_wb_cyc_i,select_zero)
+process(m_wbi.cyc,select_zero)
 begin
-  if m_wb_cyc_i='0' then
-    s0_wb_cyc_o<='0';
-    s1_wb_cyc_o<='0';
+  if m_wbi.cyc='0' then
+    s0_wbo.cyc<='0';
+    s1_wbo.cyc<='0';
   else
-    s0_wb_cyc_o<=select_zero;
-    s1_wb_cyc_o<=not select_zero;
+    s0_wbo.cyc<=select_zero;
+    s1_wbo.cyc<=not select_zero;
   end if;
 end process;
 
-process(select_zero,s1_wb_dat_i,s0_wb_dat_i,s0_wb_ack_i,s0_wb_tag_i,
-        s1_wb_ack_i,s0_wb_stall_i,s1_wb_stall_i,s1_wb_tag_i)
+process(select_zero,s1_wbi.stall,s0_wbi.stall)
 begin
   if select_zero='0' then
-    m_wb_stall_o<=s1_wb_stall_i;
+    m_wbo.stall<=s1_wbi.stall;
   else
-    m_wb_stall_o<=s0_wb_stall_i;
+    m_wbo.stall<=s0_wbi.stall;
   end if;
 end process;
 
 -- Process responses from both slaves.
 -- USE ONLY IN SIMULATION FOR NOW!!!!!
 
-process(s0_wb_ack_i,s0_wb_dat_i,s0_wb_tag_i,
-        s1_wb_ack_i,s1_wb_dat_i,s1_wb_tag_i)
+process(s0_wbi,s1_wbi)
   variable sel: std_logic_vector(1 downto 0);
 begin
-  sel := s1_wb_ack_i & s0_wb_ack_i;
+  sel := s1_wbi.ack & s0_wbi.ack;
   case sel is
     when "00" =>
-      m_wb_ack_o<='0';
-      m_wb_dat_o<=(others => 'X');
-      m_wb_tag_o<=(others => 'X');
+      m_wbo.ack<='0';
+      m_wbo.dat<=(others => 'X');
+      m_wbo.tag<=(others => 'X');
     when "01" =>
-      m_wb_ack_o<='1';
-      m_wb_dat_o<=s0_wb_dat_i;
-      m_wb_tag_o<=s0_wb_tag_i;
+      m_wbo.ack<='1';
+      m_wbo.dat<=s0_wbi.dat;
+      m_wbo.tag<=s0_wbi.tag;
     when "10" =>
-      m_wb_ack_o<='1';
-      m_wb_dat_o<=s1_wb_dat_i;
-      m_wb_tag_o<=s1_wb_tag_i;
+      m_wbo.ack<='1';
+      m_wbo.dat<=s1_wbi.dat;
+      m_wbo.tag<=s1_wbi.tag;
     when others =>
-      m_wb_ack_o<='U';
-      m_wb_dat_o<=(others => 'X');
-      m_wb_tag_o<=(others => 'X');
+      m_wbo.ack<='U';
+      m_wbo.dat<=(others => 'X');
+      m_wbo.tag<=(others => 'X');
   end case;
 end process;
 
