@@ -40,6 +40,23 @@ architecture behave of memory is
   signal mreg_q: regaddress_type;
   signal mregwe: std_logic;
   signal wb_ack_i_q: std_logic;
+
+  component reqcnt is
+  port (
+    clk:  in std_logic;
+    rst:  in std_logic;
+
+    stb:  in std_logic;
+    stall:in std_logic;
+    ack:  in std_logic;
+
+    req:  out std_logic;
+    count:  out unsigned(2 downto 0)
+  );
+  end component;
+
+  signal req_pending: std_logic;
+
 begin
 
     muo.r <= mr;
@@ -105,6 +122,10 @@ begin
         when others => mdata := wb_dat_i;
       end case;
 
+      if mr.wb_cyc='1' and wb_stall_i='0' then
+        mw.wb_cyc:='0';
+      end if;
+
       if queue_request then
         mw.wb_we   := eui.data_writeenable;
         mw.wb_dat  := wdata;
@@ -116,6 +137,7 @@ begin
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
         mw.wb_stb  := eui.data_access;
+        mw.wb_cyc  := eui.data_access;
         mw.sprwe   := eui.sprwe and not eui.data_writeenable;
         mw.regwe   := (not eui.sprwe) and not eui.data_writeenable;
         mw.dreg    := eui.mwreg;
@@ -131,6 +153,12 @@ begin
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
       refetch <= wb_ack_i and wb_tag_i(4);
 
+      if req_pending='1' then
+        wb_cyc_o <= '1';
+      else
+        wb_cyc_o <= mr.wb_cyc;
+
+      end if;
       if rising_edge(clk) then
 
         -- synthesis translate_off
@@ -150,7 +178,17 @@ begin
 
     end process;
 
-  wb_cyc_o <= '1';
+  -- Counter
+
+  cnt0: reqcnt port map (
+  clk =>  clk,
+  rst =>  rst,
+  stb =>  mr.wb_stb,
+  stall => wb_stall_i,
+  ack   => wb_ack_i,
+  req   => req_pending
+  );
+
   wb_adr_o <= mr.wb_adr;
   wb_stb_o <= mr.wb_stb;
   wb_dat_o <= mr.wb_dat;
