@@ -32,17 +32,22 @@ begin
   if rising_edge(syscon.clk) then
     if syscon.rst='1' then
       state <= idle;
+      mwbo.stall <= '0';
+
     else
       case state is
         when idle =>
           if mwbi.cyc='1' and mwbi.stb='1' then
             state <= wait_for_ack;
             wo <= mwbi;
+            mwbo.stall <= '1';
           end if;
         when wait_for_ack =>
           if swbi.ack='1' then
             wo.cyc <= '0';
             wo.stb <= '0';
+            mwbo.stall <= '0';
+
             state <= idle;
           end if;
         when others =>
@@ -65,6 +70,5 @@ mwbo.dat <= swbi.dat;
 mwbo.ack <= swbi.ack;
 mwbo.tag <= swbi.tag;
 
-mwbo.stall <= '0';
 
 end behave;
