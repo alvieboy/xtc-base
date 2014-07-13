@@ -144,7 +144,7 @@ begin
     clk_off_3ns => clk_off_3ns,
 
     -- SDRAM signals
-    DRAM_ADDR   => DRAM_ADDR,
+    DRAM_ADDR   => DRAM_ADDR(11 downto 0),
     DRAM_BA     => DRAM_BA,
     DRAM_CAS_N  => DRAM_CAS_N,
     DRAM_CKE    => DRAM_CKE,
@@ -156,6 +156,7 @@ begin
     DRAM_WE_N   => DRAM_WE_N
 
   );
+  DRAM_ADDR(12)<='0';
 
 
   -- Simple tag generator

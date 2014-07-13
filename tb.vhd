@@ -175,18 +175,9 @@ architecture sim of tb is
     bits: integer := 11
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic;
-
-    enabled:  out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
     tx:       out std_logic;
     rx:       in std_logic
   );

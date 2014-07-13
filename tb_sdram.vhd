@@ -7,36 +7,16 @@ use work.xtcpkg.all;
 use work.xtccomppkg.all;
 use work.wishbonepkg.all;
 
-entity tb_sdram is
-end entity tb_sdram;
+entity tb_sdram_flash is
+end entity tb_sdram_flash;
 
-architecture sim of tb_sdram is
+architecture sim of tb_sdram_flash is
 
   constant period: time := 10 ns;--9.615 ns;
   signal w_clk: std_logic := '0';
   signal w_clk_2x: std_logic := '1';
   signal w_rst: std_logic := '0';
 
-  signal wb_read:    std_logic_vector(31 downto 0);
-  signal wb_write:   std_logic_vector(31 downto 0);
-  signal wb_address: std_logic_vector(31 downto 0);
-  signal wb_tag_i:   std_logic_vector(31 downto 0);
-  signal wb_tag_o:   std_logic_vector(31 downto 0);
-  signal wb_stb:     std_logic;
-  signal wb_cyc:     std_logic;
-  signal wb_sel:     std_logic_vector(3 downto 0);
-  signal wb_we:      std_logic;
-  signal wb_ack:     std_logic;
-  signal wb_stall:     std_logic;
-  signal wb_int: std_logic := '0';
-
-  signal rom_wb_ack:       std_logic;
-  signal rom_wb_read:      std_logic_vector(31 downto 0);
-  signal rom_wb_adr:       std_logic_vector(31 downto 0);
-  signal rom_wb_cyc:       std_logic;
-  signal rom_wb_stb:       std_logic;
-  signal rom_wb_cti:       std_logic_vector(2 downto 0);
-  signal rom_wb_stall:     std_logic;
 
   component wbarb2_1 is
   generic (
@@ -142,51 +122,28 @@ architecture sim of tb_sdram is
   );
   end component;
 
-  component romram is
-  generic (
-    BITS: integer := 32
-  );
+  component spirom is
   port (
-    ram_wb_clk_i:       in std_logic;
-    ram_wb_rst_i:       in std_logic;
-    ram_wb_ack_o:       out std_logic;
-    ram_wb_dat_i:       in std_logic_vector(31 downto 0);
-    ram_wb_dat_o:       out std_logic_vector(31 downto 0);
-    ram_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
-    ram_wb_sel_i:       in std_logic_vector(3 downto 0);
-    ram_wb_cyc_i:       in std_logic;
-    ram_wb_stb_i:       in std_logic;
-    ram_wb_we_i:        in std_logic;
-    ram_wb_stall_o:     out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
 
-    rom_wb_clk_i:       in std_logic;
-    rom_wb_rst_i:       in std_logic;
-    rom_wb_ack_o:       out std_logic;
-    rom_wb_dat_o:       out std_logic_vector(31 downto 0);
-    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
-    rom_wb_cyc_i:       in std_logic;
-    rom_wb_stb_i:       in std_logic;
-    rom_wb_stall_o:     out std_logic
+    mosi:     out std_logic;
+    miso:     in  std_logic;
+    sck:      out std_logic;
+    ncs:      out std_logic
   );
   end component;
 
+  
   component uart is
   generic (
     bits: integer := 11
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic;
-
-    enabled:  out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
     tx:       out std_logic;
     rx:       in std_logic
   );
@@ -251,35 +208,86 @@ architecture sim of tb_sdram is
     );
   END component;
 
+  component M25P16 IS
+
+  GENERIC (	init_file: string := string'("initM25P16.txt");         -- Init file name
+		SIZE : positive := 1048576*16;                          -- 16Mbit
+		Plength : positive := 256;                              -- Page length (in Byte)
+		SSIZE : positive := 524288;                             -- Sector size (in # of bits)
+		NB_BPi: positive := 3;                                  -- Number of BPi bits
+		signature : STD_LOGIC_VECTOR (7 downto 0):="00010100";  -- Electronic signature
+		manufacturerID : STD_LOGIC_VECTOR (7 downto 0):="00100000"; -- Manufacturer ID
+		memtype : STD_LOGIC_VECTOR (7 downto 0):="00100000"; -- Memory Type
+		density : STD_LOGIC_VECTOR (7 downto 0):="00010101"; -- Density 
+		Tc: TIME := 20 ns;                                      -- Minimum Clock period
+		Tr: TIME := 50 ns;                                      -- Minimum Clock period for read instruction
+		tSLCH: TIME:= 5 ns;                                    -- notS active setup time (relative to C)
+		tCHSL: TIME:= 5 ns;                                    -- notS not active hold time
+		tCH : TIME := 9 ns;                                    -- Clock high time
+		tCL : TIME := 9 ns;                                    -- Clock low time
+		tDVCH: TIME:= 2 ns;                                     -- Data in Setup Time
+		tCHDX: TIME:= 5 ns;                                     -- Data in Hold Time
+		tCHSH : TIME := 5 ns;                                  -- notS active hold time (relative to C)
+	 	tSHCH: TIME := 5 ns;                                   -- notS not active setup  time (relative to C)
+		tSHSL: TIME := 100 ns;                                  -- /S deselect time
+		tSHQZ: TIME := 8 ns;                                   -- Output disable Time
+		tCLQV: TIME := 8 ns;                                   -- clock low to output valid
+		tHLCH: TIME := 5 ns;                                   -- NotHold active setup time
+		tCHHH: TIME := 5 ns;                                   -- NotHold not active hold time
+		tHHCH: TIME := 5 ns;                                   -- NotHold not active setup time
+		tCHHL: TIME := 5 ns;                                   -- NotHold active hold time
+		tHHQX: TIME := 8 ns;                                   -- NotHold high to Output Low-Z
+		tHLQZ: TIME := 8 ns;                                   -- NotHold low to Output High-Z
+	  tWHSL: TIME := 20 ns;                                   -- Write protect setup time (SRWD=1)
+	  tSHWL: TIME := 100 ns;                                 -- Write protect hold time (SRWD=1)
+		tDP: TIME := 3 us;                                      -- notS high to deep power down mode
+		tRES1: TIME := 30 us;                                    -- notS high to stand-by power mode
+		tRES2: TIME := 30 us;                                  --
+		tW: TIME := 15 ms;                                      -- write status register cycle time
+		tPP: TIME := 5 ms;                                      -- page program cycle time
+		tSE: TIME := 10 us;--3 sec;                                     -- sector erase cycle time
+		tBE: TIME := 30 us;--40 sec;                                    -- bulk erase cycle time
+		tVSL: TIME := 10 us;                                    -- Vcc(min) to /S low
+		tPUW: TIME := 10 ms;                                    -- Time delay to write instruction
+		Vwi: REAL := 2.5 ;                                      -- Write inhibit voltage (unit: V)
+		Vccmin: REAL := 2.7 ;                                   -- Minimum supply voltage
+		Vccmax: REAL := 3.6                                     -- Maximum supply voltage
+		);
+
+    PORT(		VCC: IN REAL;
+		  C, D, S, W, HOLD : IN std_logic ;
+		  Q : OUT std_logic);
+  end component;
 
   signal txd, rxd: std_logic;
   signal w_clk_3ns: std_logic;
+
+  signal miso, mosi, sck, sel: std_logic;
+  signal vcc: real := 0.0;
+  signal wbi: wb_mosi_type;
+  signal wbo: wb_miso_type;
+  signal syscon: wb_syscon_type;
+  signal swbi: slot_wbi;
+  signal swbo: slot_wbo;
+  signal sids: slot_ids
+  ;
 begin
 
   rxd <= '1';
 
   w_clk <= not w_clk after period/2;
   w_clk_3ns<=transport w_clk after 3 ns;
+  wbo.stall <= '0';
+
+  syscon.clk<=w_clk;
+  syscon.rst<=w_rst;
 
   cpu: xtc_top_sdram
   port map (
-    wb_syscon.clk   => w_clk,
-    wb_syscon.rst   => w_rst,
-
+    wb_syscon   => syscon,
     -- Master wishbone interface
-
-    iowbi.ack        => wb_ack,
-    iowbi.dat        => wb_read,
-    iowbi.int        => wb_int,
-    iowbi.tag        => wb_tag_i,
-    iowbi.stall      => '0',
-    iowbo.dat        => wb_write,
-    iowbo.adr        => wb_address,
-    iowbo.cyc        => wb_cyc,
-    iowbo.stb        => wb_stb,
-    iowbo.sel        => wb_sel,
-    iowbo.tag        => wb_tag_o,
-    iowbo.we         => wb_we,
+    iowbi           => wbo,
+    iowbo           => wbi,
 
     clk_off_3ns     => w_clk_3ns,
 
@@ -317,36 +325,51 @@ begin
         Dqm   => DRAM_DQM
     );
 
+  ioctrl: xtc_ioctrl
+    port map (
+      syscon      => syscon,
+      wbi         => wbi,
+      wbo         => wbo,
+      swbi        => swbi,
+      swbo        => swbo,
+      sids        => sids
+    );
 
 
+  myrom: spirom
+    port map (
+      syscon      => syscon,
+      wbi         => swbo(0),
+      wbo         => swbi(0),
+
+      miso        => miso,
+      mosi        => mosi,
+      sck         => sck,
+      ncs         => sel
+  );
 
   myuart: uart
     port map (
-      wb_clk_i    => w_clk,
-      wb_rst_i    => w_rst,
-      wb_dat_o    => wb_read,
-      wb_dat_i    => wb_write,
-      wb_adr_i    => wb_address(31 downto 2),
-      wb_we_i     => wb_we,
-      wb_cyc_i    => wb_cyc,
-      wb_stb_i    => wb_stb,
-      wb_ack_o    => wb_ack,
-      wb_inta_o   => open,
-  
-      tx          => txd,
-      rx          => rxd
+      syscon      => syscon,
+      wbi         => swbo(1),
+      wbo         => swbi(1),
+
+      tx          => open,
+      rx          => 'X'
   );
 
-  -- Simple tag generator
-  process(w_clk)
-  begin
-    if rising_edge(w_clk) then
-       if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
-        wb_tag_i <= wb_tag_o;
-       end if;
-    end if;
-  end process;
+  
+  flash: M25P16
+    PORT map (
+		  VCC   => vcc,
+		  C     => sck,
+      D     => mosi,
+      S     => sel,
+      W     => '1',
+      HOLD  => '1',
+		  Q     => miso);
 
+  vcc<=3.3 after 10 ns;
 
   -- Reset procedure
   process
@@ -363,9 +386,10 @@ begin
   process
   begin
     wait for 310 ns;
-    wb_int <= '1';
+--    wb_int <= '1';
     wait for 50 ns;
-    wb_int <= '0';
+  --  wb_int <= '0';
+
   end process;
 
 end sim;

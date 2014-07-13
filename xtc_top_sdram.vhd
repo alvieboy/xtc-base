@@ -90,8 +90,8 @@ begin
   port map (
     wb_syscon       => wb_syscon,
     -- Master wishbone interface
-    wbo             => wbo,
-    wbi             => wbi,
+    wbo             => ramwbo,
+    wbi             => ramwbi,
     -- ROM wb interface
     romwbo          => romwbo,
     romwbi          => romwbi,
@@ -111,8 +111,8 @@ begin
     m_wbo         => wbi,
 
     -- Slave 0 signals
-    s0_wbi        => ramwbi,
-    s0_wbo        => ramwbo,
+    s0_wbi        => sdram_wbi,
+    s0_wbo        => sdram_wbo,
 
     -- Slave 0 signals
     s1_wbi        => piowbi,
@@ -130,8 +130,8 @@ begin
     m1_wbo        => romwbi,
 
     -- Slave signals
-    s0_wbi        => sdram_wbi,
-    s0_wbo        => sdram_wbo
+    s0_wbi        => wbi,
+    s0_wbo        => wbo
   );
 
 
