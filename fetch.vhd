@@ -59,9 +59,6 @@ begin
 
     fuo.valid <= valid;
 
-    address <= std_logic_vector(fr.fpc);
-    fuo.valid <= valid;
-
     enable <= not freeze;
     strobe <= not freeze;
 
@@ -158,8 +155,8 @@ begin
     end case;
 
     if rst='1' then
-      fw.pc := (others => '0');
-      fw.fpc := (others => '0');
+      fw.pc :=  RESETADDRESS;
+      fw.fpc := RESETADDRESS;
       strobe <= '0';
       enable <= '0';
       fw.unaligned := '0';

@@ -1,6 +1,9 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library work;
+use work.wishbonepkg.all;
+
 -- synthesis translate_off
 use work.txt_util.all;
 -- synthesis translate_on
@@ -17,6 +20,7 @@ package xtcpkg is
   constant ENABLE_SHIFTER: boolean := true;
 
   constant TRACECLOCK: boolean := false;
+  constant RESETADDRESS: unsigned(31 downto 0) := x"80000000";
 
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
@@ -370,6 +374,12 @@ package xtcpkg is
 
   function opcode_txt_pad(strin: in string) return string;
   function regname(r: in regaddress_type) return string;
+
+  subtype slot_id is std_logic_vector(15 downto 0);
+
+  type slot_wbi is array(0 to 15) of wb_miso_type;
+  type slot_wbo is array(0 to 15) of wb_mosi_type;
+  type slot_ids is array(0 to 15) of slot_id;
 
 end xtcpkg;
 
