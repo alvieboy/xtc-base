@@ -67,24 +67,18 @@ begin
         fdw.alufwb:='0';
 
         if ( dui.r.reg_source = reg_source_alu ) then
-
           if dui.r.regwe='1' then
             fdw.alu:='1';
             fdw.dreg := dui.r.dreg;
           end if;
+        end if;
 
-          -- R0 Must never be forwarded.
+        if (fdr.alu='1' and dui.r.sra1=fdr.dreg and executed and fdr.dreg/="0000") then
+          fdw.alufwa:='1';
+        end if;
 
-          if (fdr.alu='1' and dui.r.sra1=fdr.dreg and executed and fdr.dreg/="0000") then
-            fdw.alufwa:='1';
-          end if;
-  
-          if (fdr.alu='1' and dui.r.sra2=fdr.dreg and executed and fdr.dreg/="0000") then
-            fdw.alufwb:='1';
-          end if;
-
-  
-
+        if (fdr.alu='1' and dui.r.sra2=fdr.dreg and executed and fdr.dreg/="0000") then
+          fdw.alufwb:='1';
         end if;
 
         if flush='1' then
