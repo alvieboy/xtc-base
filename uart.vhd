@@ -35,26 +35,20 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library work;
+use work.wishbonepkg.all;
 
 entity uart is
   generic (
     bits: integer := 11
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
 
-    enabled:  out std_logic;
-    tx:       out std_logic;
-    rx:       in std_logic
+    tx:         out std_logic;
+    rx:         in std_logic
   );
 end entity uart;
 
@@ -139,14 +133,14 @@ architecture behave of uart is
 
 begin
 
-  enabled <= enabled_q;
-  wb_inta_o <= do_interrupt;
-  wb_ack_o <= ack;
+  --enabled <= enabled_q;
+  wbo.int<= do_interrupt;
+  wbo.ack <= ack;
   
   rx_inst: uart_rx
     port map(
-      clk     => wb_clk_i,
-      rst     => wb_rst_i,
+      clk     => syscon.clk,
+      rst     => syscon.rst,
       rxclk   => rx_br,
       read    => uart_read,
       rx      => rx,
@@ -158,14 +152,14 @@ begin
 
   tx_core: TxUnit
     port map(
-      clk_i     => wb_clk_i,
-      reset_i   => wb_rst_i,
+      clk_i     => syscon.clk,
+      reset_i   => syscon.rst,
       enable_i  => tx_br,
       load_i    => uart_write,
       txd_o     => tx,
       busy_o    => uart_busy,
       intx_o    => uart_intx,
-      datai_i   => wb_dat_i(7 downto 0)
+      datai_i   => wbi.dat(7 downto 0)
     );
 
   -- TODO: check multiple writes
@@ -173,8 +167,8 @@ begin
    -- Rx timing
   rx_timer: uart_brgen
     port map(
-      clk => wb_clk_i,
-      rst => wb_rst_i,
+      clk => syscon.clk,
+      rst => syscon.rst,
       en => '1',
       clkout => rx_br,
       count => divider_rx_q
@@ -183,17 +177,17 @@ begin
    -- Tx timing
   tx_timer: uart_brgen
     port map(
-      clk => wb_clk_i,
-      rst => wb_rst_i,
+      clk => syscon.clk,
+      rst => syscon.rst,
       en => rx_br,
       clkout => tx_br,
       count => divider_tx
     );
 
-  process(wb_clk_i)
+  process(syscon.clk)
   begin
-    if rising_edge(wb_clk_i) then
-      if wb_rst_i='1' then
+    if rising_edge(syscon.clk) then
+      if syscon.rst='1' then
         dready_q<='0';
         data_ready_dly_q<='0';
       else
@@ -215,8 +209,8 @@ begin
       bits => bits
     )
     port map (
-      clk   => wb_clk_i,
-      rst   => wb_rst_i,
+      clk   => syscon.clk,
+      rst   => syscon.rst,
       wr    => dready_q,
       rd    => fifo_rd,
       write => received_data,
@@ -226,33 +220,33 @@ begin
     );
   
 
-  fifo_rd<='1' when wb_adr_i(3 downto 2)="00" and (wb_cyc_i='1' and wb_stb_i='1' and wb_we_i='0') else '0';
+  fifo_rd<='1' when wbi.adr(3 downto 2)="00" and (wbi.cyc='1' and wbi.stb='1' and wbi.we='0') else '0';
 
-  process(wb_clk_i)--wb_adr_i, received_data, uart_busy, data_ready, fifo_empty, fifo_data,uart_intx, int_enabled)
+  process(syscon.clk)--wb_adr_i, received_data, uart_busy, data_ready, fifo_empty, fifo_data,uart_intx, int_enabled)
   begin
-    if rising_edge(wb_clk_i) then
-    case wb_adr_i(3 downto 2) is
+    if rising_edge(syscon.clk) then
+    case wbi.adr(3 downto 2) is
       when "01" =>
-        wb_dat_o <= (others => '0');
-        wb_dat_o(0) <= not fifo_empty;
-        wb_dat_o(1) <= uart_busy;
-        wb_dat_o(2) <= uart_intx;
-        wb_dat_o(3) <= int_enabled;
+        wbo.dat <= (others => '0');
+        wbo.dat(0) <= not fifo_empty;
+        wbo.dat(1) <= uart_busy;
+        wbo.dat(2) <= uart_intx;
+        wbo.dat(3) <= int_enabled;
       when "00" =>
-        wb_dat_o <= (others => '0');
-        wb_dat_o(7 downto 0) <= fifo_data;
+        wbo.dat <= (others => '0');
+        wbo.dat(7 downto 0) <= fifo_data;
       when "11" =>
-        wb_dat_o <= std_logic_vector(tsc);
+        wbo.dat <= std_logic_vector(tsc);
       when others =>
-        wb_dat_o <= (others => 'X');
+        wbo.dat <= (others => 'X');
     end case;
     end if;
   end process;
 
-  process(wb_clk_i)
+  process(syscon.clk)
   begin
-    if rising_edge(wb_clk_i) then
-      if wb_rst_i='1' then
+    if rising_edge(syscon.clk) then
+      if syscon.rst='1' then
         enabled_q<='0';
         int_enabled <= '0';
         do_interrupt<='0';
@@ -263,18 +257,18 @@ begin
         ack <='0';
         uart_write<='0';
 
-        if wb_cyc_i='1' and wb_stb_i='1' and ack='0' then
+        if wbi.cyc='1' and wbi.stb='1' and ack='0' then
           ack <= '1';
-          if wb_we_i='1' then
+          if wbi.we='1' then
 
-          case wb_adr_i(3 downto 2) is
+          case wbi.adr(3 downto 2) is
             when "00" =>
               uart_write <= '1';
             when "01" =>
-              divider_rx_q <= wb_dat_i(15 downto 0);
-              enabled_q  <= wb_dat_i(16);
+              divider_rx_q <= wbi.dat(15 downto 0);
+              enabled_q  <= wbi.dat(16);
             when "10" =>
-              int_enabled <= wb_dat_i(0);
+              int_enabled <= wbi.dat(0);
               do_interrupt <= '0';
             when others =>
               null;
