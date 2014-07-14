@@ -36,6 +36,36 @@ architecture behave of fetch is
 
 begin
 
+
+  -- MMU lookups are done prior to checking
+
+
+    mmub: if TRUE generate
+    immuinst: mmu
+      port map (
+        clk   => wb_syscon.clk,
+        rst   => wb_syscon.rst,
+
+        addr  => jumpaddr,
+        ctx   => immu_context,
+        en    => jump,
+
+        tlbw  => immu_tlbw,
+        tlba  => immu_tlba,
+        tlbv  => immu_tlbv,
+    
+        paddr => immu_paddr,
+        valid => immu_valid,
+        pw    => open,
+        pr    => open,
+        px    => open,
+        ps    => open
+     );
+   end generate;
+
+
+
+
   fuo.r <= fr;
 
   fuo.opcode <= opcode0 & opcode1;
