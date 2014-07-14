@@ -577,6 +577,28 @@ package xtccomppkg is
   );
   end component xtc_ioctrl;
 
+  component mmu is
+  port (
+    clk:    in std_logic;
+    rst:    in std_logic;
+
+    addr:   in std_logic_vector(31 downto 0);
+    ctx:    in std_logic_vector(7 downto 0);
+    en:     in std_logic;
+
+    tlbw:   in std_logic;
+    tlba:   in std_logic_vector(3 downto 0);
+    tlbv:   in tlb_entry_type;
+    
+    paddr:  out std_logic_vector(31 downto 0);
+    valid:  out std_logic;
+    pw:     out std_logic; -- Write permission
+    pr:     out std_logic; -- Read permission
+    px:     out std_logic; -- eXecute permission
+    ps:     out std_logic  -- Supervisor/User
+  );
+  end component;
+
 
 
 end package;
