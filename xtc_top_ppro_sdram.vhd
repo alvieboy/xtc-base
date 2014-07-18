@@ -3,6 +3,8 @@ use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
 library work;
 use work.wishbonepkg.all;
+use work.xtcpkg.all;
+use work.xtccomppkg.all;
 
 entity xtc_top_ppro_sdram is
   port (
@@ -32,7 +34,13 @@ entity xtc_top_ppro_sdram is
     DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
     DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
     DRAM_RAS_N   : OUT   STD_LOGIC;
-    DRAM_WE_N    : OUT   STD_LOGIC
+    DRAM_WE_N    : OUT   STD_LOGIC;
+
+    -- SPI flash
+    MOSI:     out std_logic;
+    MISO:     in std_logic;
+    SCK:      out std_logic;
+    NCS:      out std_logic
 
     -- The LED
     --LED:        out std_logic
@@ -41,27 +49,33 @@ end entity xtc_top_ppro_sdram;
 
 architecture behave of xtc_top_ppro_sdram is
 
+  component spirom is
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
+
+    mosi:     out std_logic;
+    miso:     in  std_logic;
+    sck:      out std_logic;
+    ncs:      out std_logic
+  );
+  end component;
+
+  
   component uart is
   generic (
     bits: integer := 11
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic;
-
-    enabled:  out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
     tx:       out std_logic;
     rx:       in std_logic
   );
   end component;
+
 
   component clkgen is
   port (
@@ -105,41 +119,25 @@ architecture behave of xtc_top_ppro_sdram is
   );
   end component;
 
-  signal wb_read:    std_logic_vector(31 downto 0);
-  signal wb_write:   std_logic_vector(31 downto 0);
-  signal wb_address: std_logic_vector(31 downto 0);
-  signal wb_tag_i:   std_logic_vector(31 downto 0);
-  signal wb_tag_o:   std_logic_vector(31 downto 0);
-  signal wb_stb:     std_logic;
-  signal wb_cyc:     std_logic;
-  signal wb_sel:     std_logic_vector(3 downto 0);
-  signal wb_we:      std_logic;
-  signal wb_ack:     std_logic;
-  signal wb_int:     std_logic;
-  signal wb_stall:     std_logic;
   signal clk_off_3ns: std_ulogic;
+
+  signal wbi: wb_mosi_type;
+  signal wbo: wb_miso_type;
+  signal syscon: wb_syscon_type;
+  signal swbi: slot_wbi;
+  signal swbo: slot_wbo;
+  signal sids: slot_ids;
 
 begin
 
+  syscon.clk<=sysclk;
+  syscon.rst<=sysrst;
+
   cpu: xtc_top_sdram
   port map (
-    wb_syscon.clk        => wb_clk_i,
-    wb_syscon.rst        => wb_rst_i,
-
-    -- Master wishbone interface
-        
-    iowbi.ack        => wb_ack,
-    iowbi.dat        => wb_read,
-    iowbi.tag        => wb_tag_i,
-    iowbi.int        => wb_int,
-    iowbi.stall      => '0',
-    iowbo.dat        => wb_write,
-    iowbo.adr        => wb_address,
-    iowbo.cyc        => wb_cyc,
-    iowbo.tag        => wb_tag_o,
-    iowbo.stb        => wb_stb,
-    iowbo.sel        => wb_sel,
-    iowbo.we         => wb_we,
+    wb_syscon   => syscon,
+    iowbi           => wbo,
+    iowbo           => wbi,
         -- extra clocking
     clk_off_3ns => clk_off_3ns,
 
@@ -159,31 +157,37 @@ begin
   DRAM_ADDR(12)<='0';
 
 
-  -- Simple tag generator
-  process(wb_clk_i)
-  begin
-    if rising_edge(wb_clk_i) then
-       if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
-        wb_tag_o <= wb_tag_i;
-       end if;
-    end if;
-  end process;
+  ioctrl: xtc_ioctrl
+    port map (
+      syscon      => syscon,
+      wbi         => wbi,
+      wbo         => wbo,
+      swbi        => swbi,
+      swbo        => swbo,
+      sids        => sids
+    );
+
+
+  myrom: spirom
+    port map (
+      syscon      => syscon,
+      wbi         => swbo(0),
+      wbo         => swbi(0),
+
+      miso        => miso,
+      mosi        => mosi,
+      sck         => sck,
+      ncs         => ncs
+  );
 
   myuart: uart
     port map (
-      wb_clk_i    => wb_clk_i,
-      wb_rst_i    => wb_rst_i,
-      wb_dat_o    => wb_read,
-      wb_dat_i    => wb_write,
-      wb_adr_i    => wb_address(31 downto 2),
-      wb_we_i     => wb_we,
-      wb_cyc_i    => wb_cyc,
-      wb_stb_i    => wb_stb,
-      wb_ack_o    => wb_ack,
-      wb_inta_o   => wb_int,
-  
-      tx          => txd,
-      rx          => rxd
+      syscon      => syscon,
+      wbi         => swbo(1),
+      wbo         => swbi(1),
+
+      tx          => open,
+      rx          => 'X'
   );
 
   wb_clk_i <= sysclk;

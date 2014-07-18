@@ -93,7 +93,20 @@ architecture behave of xtc is
   end component tracer;
 
   signal dbg:   execute_debug_type;
+  signal co: copo;
+  signal ci: copi;
 
+
+  signal immu_tlbw: std_logic:='0';
+  signal immu_tlbv: tlb_entry_type;
+  signal immu_tlba: std_logic_vector(3 downto 0):="0000";
+
+  signal immu_context: std_logic_vector(5 downto 0):=(others => '0');
+  signal immu_paddr: std_logic_vector(31 downto 0);
+  signal immu_valid: std_logic;
+  signal immu_enabled: std_logic:='1';
+
+  signal cache_tag: std_logic_vector(31 downto 0);
 begin
 
   -- synthesis translate_off
@@ -143,6 +156,8 @@ begin
     stall       => cache_stall,
     enable      => cache_enable,
     flush       => cache_flush,
+    tag         => cache_tag,
+    tagen       => immu_enabled,
 
     m_wb_ack_i  => romwbi.ack,
     m_wb_dat_i  => romwbi.dat,
@@ -151,6 +166,34 @@ begin
     m_wb_stb_o  => romwbo.stb,
     m_wb_stall_i => romwbi.stall
   );
+
+    mmub: if TRUE generate
+    cache_tag <= immu_paddr;
+    immuinst: mmu
+      port map (
+        clk   => wb_syscon.clk,
+        rst   => wb_syscon.rst,
+
+        addr  => cache_address,
+        ctx   => immu_context,
+        en    => cache_strobe,
+
+        tlbw  => immu_tlbw,
+        tlba  => immu_tlba,
+        tlbv  => immu_tlbv,
+    
+        paddr => immu_paddr,
+        valid => immu_valid,
+        pw    => open,
+        pr    => open,
+        px    => open,
+        ps    => open
+     );
+   end generate;
+
+
+
+
 
   end generate;
 
@@ -193,6 +236,7 @@ begin
       jump      => euo.r.jump,
       jumpaddr  => euo.r.jumpaddr,
       dual      => dual,
+
       -- Outputs for next stages
       fuo       => fuo
     );
@@ -321,9 +365,50 @@ begin
       euo       => euo,
       -- Input from memory unit (spr update)
       mui       => muo,
+      -- COP
+      co        => co,
+      ci        => ci,
       -- Debug
       dbgo      => dbg
     );
+
+
+  -- Dummy MMU cop
+  mmucop: block
+     component cop_mmu is
+     port (
+       clk:    in std_logic;
+       rst:    in std_logic;
+   
+       tlbw:   out std_logic;
+       tlba:   out std_logic_vector(3 downto 0);
+       tlbv:   out tlb_entry_type;
+       mmuen: out std_logic;
+       ci:     in copo;
+       co:     out copi
+     );
+     end component;
+
+  begin
+
+    copmmuinst: cop_mmu
+      port map (
+        clk   => wb_syscon.clk,
+        rst   => wb_syscon.rst,
+    
+        tlbw  => immu_tlbw,
+        tlba  => immu_tlba,
+        tlbv  => immu_tlbv,
+        mmuen => immu_enabled,
+    
+        ci    => co,
+        co    => ci
+    );
+
+
+  end block;
+
+
 
   memory_unit: memory
     port map (

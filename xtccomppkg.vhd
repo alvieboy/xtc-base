@@ -89,6 +89,10 @@ package xtccomppkg is
     enable:         in std_logic;
     stall:          out std_logic;
     flush:          in std_logic;
+
+    tag:            in std_logic_vector(31 downto 0);
+    tagen:          in std_logic;
+
     -- Master wishbone interface
 
     m_wb_ack_i:       in std_logic;
@@ -163,7 +167,7 @@ package xtccomppkg is
     jump:     in std_logic;
     jumpaddr: in word_type;
     dual: in std_logic;
-    
+
     -- Outputs for next stages
     fuo:  out fetch_output_type
   );
@@ -230,6 +234,9 @@ package xtccomppkg is
     euo:  out execute_output_type;
     -- Input from memory unit, for SPR update
     mui:  in memory_output_type;
+    -- Coprocessor interface
+    co:   out copo;
+    ci:   in  copi;
 
     dbgo: out execute_debug_type
 
@@ -583,19 +590,34 @@ package xtccomppkg is
     rst:    in std_logic;
 
     addr:   in std_logic_vector(31 downto 0);
-    ctx:    in std_logic_vector(7 downto 0);
+    ctx:    in std_logic_vector(5 downto 0);
     en:     in std_logic;
 
     tlbw:   in std_logic;
     tlba:   in std_logic_vector(3 downto 0);
     tlbv:   in tlb_entry_type;
-    
+
     paddr:  out std_logic_vector(31 downto 0);
     valid:  out std_logic;
     pw:     out std_logic; -- Write permission
     pr:     out std_logic; -- Read permission
     px:     out std_logic; -- eXecute permission
     ps:     out std_logic  -- Supervisor/User
+  );
+  end component;
+
+  component dcache is
+  generic (
+      ADDRESS_HIGH: integer := 26;
+      CACHE_MAX_BITS: integer := 13; -- 8 Kb
+      CACHE_LINE_SIZE_BITS: integer := 6 -- 64 bytes
+  );
+  port (
+    syscon:     in wb_syscon_type;
+    ci:         in dcache_in_type;
+    co:         out dcache_out_type;
+    mwbi:       in wb_miso_type;
+    mwbo:       out wb_mosi_type
   );
   end component;
 

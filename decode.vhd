@@ -121,6 +121,8 @@ begin
       condition_clause := dec.condition;
       except_return:=dec.except_return;
 
+      dw.cop_id := dec.cop_id;
+      dw.cop_reg := dec.cop_reg;
 
       alu_op := dec.alu_op;
 
@@ -222,6 +224,8 @@ begin
         dw.alu_source := dec.alu_source;
 
         dw.wb_is_data_address := '0';
+        dw.cop_en := dec.cop_en;
+        dw.cop_wr := dec.cop_wr;
 
         dw.macc := macc;
         dw.sr := sr;

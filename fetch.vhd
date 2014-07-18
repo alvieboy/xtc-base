@@ -23,6 +23,7 @@ entity fetch is
     jump:     in std_logic;
     jumpaddr: in word_type;
     dual:     in std_logic;
+
     -- Outputs for next stages
     fuo:  out fetch_output_type
   );
@@ -34,37 +35,11 @@ architecture behave of fetch is
 
   signal opcode0, opcode1: std_logic_vector(15 downto 0);
 
+  signal strobe_i: std_logic;
+
 begin
 
-
-  -- MMU lookups are done prior to checking
-
-
-    mmub: if TRUE generate
-    immuinst: mmu
-      port map (
-        clk   => wb_syscon.clk,
-        rst   => wb_syscon.rst,
-
-        addr  => jumpaddr,
-        ctx   => immu_context,
-        en    => jump,
-
-        tlbw  => immu_tlbw,
-        tlba  => immu_tlba,
-        tlbv  => immu_tlbv,
-    
-        paddr => immu_paddr,
-        valid => immu_valid,
-        pw    => open,
-        pr    => open,
-        px    => open,
-        ps    => open
-     );
-   end generate;
-
-
-
+  strobe<=strobe_i;
 
   fuo.r <= fr;
 
@@ -90,7 +65,7 @@ begin
     fuo.valid <= valid;
 
     enable <= not freeze;
-    strobe <= not freeze;
+    strobe_i <= not freeze;
 
     if fr.unaligned_jump='1' and dual='1' then
       fuo.valid <= '0';
@@ -133,13 +108,13 @@ begin
               fw.unaligned := '1';
               fw.invert_readout:='1';
               --enable <= '0';
-              --strobe <= '0';
+              --strobe_i <= '0';
             else
               if fw.invert_readout='1' then
-                strobe<='0';
+                strobe_i<='0';
                 fw.fpc := fr.fpc;
               else
-                strobe <='1';
+                strobe_i <='1';
               end if;
               
               -- If we had an unaligned jump, we have to trick
@@ -165,7 +140,7 @@ begin
           fw.pc(0) := '0';
           fw.unaligned_jump := jumpaddr(1);
           fw.state := jumping;
-          strobe <= '0';
+          strobe_i <= '0';
           enable <= '0';
           --fuo.valid <= '0';
 
@@ -174,7 +149,7 @@ begin
       when jumping =>
         if stall='0' then
           fw.fpc := npc;
-          strobe <= '1';
+          strobe_i <= '1';
           enable <= '1';
           --fw.unaligned := fr.unaligned_jump;
           fw.invert_readout := '0';
@@ -187,7 +162,7 @@ begin
     if rst='1' then
       fw.pc :=  RESETADDRESS;
       fw.fpc := RESETADDRESS;
-      strobe <= '0';
+      strobe_i <= '0';
       enable <= '0';
       fw.unaligned := '0';
       fw.unaligned_jump := '0';

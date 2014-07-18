@@ -294,6 +294,9 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
             break;
         case INST_TYPE_NOARGS:
             break;
+        case INST_TYPE_COP:
+            print_func (stream, "\t%lu, %lu, %s", (inst>>9)&0x3, (inst>>7)&0x7, get_field_r1(inst));
+            break;
          default:
 	  /* If the disassembler lags the instruction set.  */
 	  print_func (stream, "\tundecoded operands, inst is 0x%04x", (unsigned int) inst);

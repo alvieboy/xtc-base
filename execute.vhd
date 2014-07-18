@@ -29,7 +29,9 @@ entity execute is
 
     -- Input from memory unit, for SPR update
     mui:  in memory_output_type;
-
+    -- Coprocessor interface
+    co:   out copo;
+    ci:   in  copi;
     dbgo: out execute_debug_type
 
   );
@@ -49,6 +51,8 @@ architecture behave of execute is
   signal enable_alu: std_logic;
 
   signal lhs,rhs: std_logic_vector(31 downto 0);
+
+  signal cop_busy, cop_en: std_logic;
 
 begin
 
@@ -84,10 +88,14 @@ begin
       sign  => alu1_sign
     );
 
+  co.en<=cop_en;
+
+  cop_busy<='1' when cop_en='1' and ci.valid/='1' else '0';
+
   process(clk,fdui,er,rst,alu_a_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
           mui,
-          mem_busy,wb_busy,int)
+          mem_busy,wb_busy,int,cop_busy)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
     constant reg_zero: unsigned(31 downto 0) := (others => '0');
@@ -150,7 +158,7 @@ begin
     --  do_interrupt := true;
     --end if;
 
-    if mem_busy='1' or alu1_busy='1' then
+    if mem_busy='1' or alu1_busy='1' or cop_busy='1' then
       busy_int := '1';
     else
       busy_int := wb_busy;
@@ -206,6 +214,17 @@ begin
       enable_alu <= fdui.r.drq.enable_alu;
     end if;
 
+    cop_en <= '0';
+    co.wr <= 'X';
+    co.reg <= fdui.r.drq.cop_reg;
+    co.id <= fdui.r.drq.cop_id;
+    co.data <= lhs;
+
+    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+      cop_en <= fdui.r.drq.cop_en;
+      co.wr <= fdui.r.drq.cop_wr;
+    end if;
+
     if fdui.valid='1' and busy_int='0' and er.intjmp=false and passes_condition='1' then
 
       ew.alur := alu_a_r(31 downto 0);
@@ -226,6 +245,7 @@ begin
       ew.regwe       := fdui.r.drq.regwe;
       ew.dreg        := fdui.r.drq.dreg;
       ew.npc         := fdui.r.drq.fpc;
+
 
       if fdui.r.drq.is_jump and passes_condition='1' then
         ew.jump:='1';
@@ -301,7 +321,7 @@ begin
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;
-
+    euo.cop         <= ci.data;
 
     -- Memory lines
 

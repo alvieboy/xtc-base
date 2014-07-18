@@ -6,10 +6,13 @@ use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
 use work.xtccomppkg.all;
+-- synthesis translate_off
+use work.txt_util.all;
+-- synthesis translate_on
 
 entity icache is
   generic (
-      ADDRESS_HIGH: integer := 26
+      ADDRESS_HIGH: integer := 31
   );
   port (
     wb_clk_i:       in std_logic;
@@ -22,6 +25,9 @@ entity icache is
     enable:         in std_logic;
     stall:          out std_logic;
     flush:          in std_logic;
+
+    tag:            in std_logic_vector(31 downto 0);
+    tagen:          in std_logic;
     -- Master wishbone interface
 
     m_wb_ack_i:       in std_logic;
@@ -54,10 +60,10 @@ architecture behave of icache is
   alias line_offset: std_logic_vector(CACHE_LINE_SIZE_BITS-1 downto 2)
     is address(CACHE_LINE_SIZE_BITS-1 downto 2);
 
-  alias tag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS-1 downto 0)
-    is address(ADDRESS_HIGH-1 downto CACHE_MAX_BITS);
+  alias address_tag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0)
+    is address(ADDRESS_HIGH downto CACHE_MAX_BITS);
 
-  signal ctag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
+  signal ctag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS+1 downto 0);
 
   type validmemtype is ARRAY(0 to (2**line'LENGTH)-1) of std_logic;
   shared variable valid_mem: validmemtype;
@@ -76,8 +82,8 @@ architecture behave of icache is
   signal cache_addr_read,cache_addr_write:
     std_logic_vector(CACHE_MAX_BITS-1 downto 2);
 
-  alias tag_save: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS-1 downto 0)
-    is save_addr(ADDRESS_HIGH-1 downto CACHE_MAX_BITS);
+  alias tag_save: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0)
+    is save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS);
 
   alias line_save: std_logic_vector(CACHE_LINE_ID_BITS-1 downto 0)
     is save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
@@ -88,6 +94,7 @@ architecture behave of icache is
   signal busy: std_logic;
   signal hit: std_logic;
   signal tag_mem_enable: std_logic;
+  signal exttag_save: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
 
   type state_type is (
     flushing,
@@ -100,7 +107,7 @@ architecture behave of icache is
   signal state: state_type;
   signal fill_success: std_logic;
 
-  signal tag_mem_data: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
+  signal tag_mem_data: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS+1 downto 0);
   signal tag_mem_addr: std_logic_vector(CACHE_LINE_ID_BITS-1 downto 0);
 
   signal tag_mem_ena: std_logic;
@@ -110,13 +117,18 @@ architecture behave of icache is
   --constant line_length: integer := CACHE_LINE_ID_BITS;
   --constant ctag_length: integer := ADDRESS_HIGH-CACHE_MAX_BITS;
   constant dignore: std_logic_vector(ctag'RANGE) := (others => DontCareValue);
+
   constant dignore32: std_logic_vector(31 downto 0) := (others => DontCareValue);
+
+  signal ctag_address: std_logic_vector(address_tag'RANGE);
 begin
+
+  ctag_address<=ctag(address_tag'HIGH downto address_tag'LOW);
 
   tagmem: generic_dp_ram
   generic map (
     address_bits  => CACHE_LINE_ID_BITS,
-    data_bits     => ADDRESS_HIGH-CACHE_MAX_BITS+1
+    data_bits     => ADDRESS_HIGH-CACHE_MAX_BITS+2
   )
   port map (
     clka      => wb_clk_i,
@@ -136,18 +148,42 @@ begin
 
   valid_i <= ctag(ctag'HIGH);
 
-  process(state, line_save, tag_save, flushcnt)
+  process(state, line_save, tag_save, flushcnt, tagen, exttag_save)
+    variable wrtag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
+
   begin
+    if tagen='1' then
+    wrtag := exttag_save;
+    else
+    wrtag := tag_save;
+    end if;
     if state=flushing then
-      tag_mem_data <= '0' & tag_save;
+      tag_mem_data <= '0' & wrtag;
       tag_mem_addr <= std_logic_vector(flushcnt);
     else
-      tag_mem_data <= '1' & tag_save;
+      tag_mem_data <= '1' & wrtag;
       tag_mem_addr <= line_save;
     end if;
   end process;
 
-  tag_match <= '1' when ctag(tag'HIGH downto tag'LOW)=tag else '0';
+  process(ctag_address, address_tag, tag, tagen)
+  begin
+    if tagen='0' then
+      if ctag_address=address_tag then
+        tag_match<='1';
+      else
+        tag_match<='0';
+      end if;
+    else
+      if ctag_address=tag(ADDRESS_HIGH downto CACHE_MAX_BITS) then
+        tag_match<='1';
+      else
+        tag_match<='0';
+      end if;
+
+    end if;
+  end process;
+
   stall <= stall_i;
   valid <= ack;
   tag_mem_enable <= access_i and enable;
@@ -234,6 +270,7 @@ begin
 
 
   process(wb_clk_i)
+    variable ett: std_logic_vector(exttag_save'RANGE);
   begin
     if rising_edge(wb_clk_i) then
       if wb_rst_i='1' then
@@ -269,7 +306,20 @@ begin
             else
             if access_q='1' then
               if miss='1' and enable='1' then
+                ett:=        tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
+
+                exttag_save<=ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
+                -- synthesis translate_off
+                report str(ADDRESS_HIGH) & " " & hstr(ett);
+                -- synthesis translate_on
                 state <= filling;
+
+                if tagen='1' then
+                  m_wb_adr_o(31 downto CACHE_MAX_BITS) <= ett;
+                else
+                  m_wb_adr_o(31 downto CACHE_MAX_BITS) <= save_addr(31 downto CACHE_MAX_BITS);
+                end if;
+
                 offcnt <= (others => '0');
                 offcnt_write <= (others => '0');
                 cyc <= '1';
@@ -378,7 +428,8 @@ begin
   m_wb_cyc_o <= cyc;
   m_wb_stb_o <= stb when offcnt(offcnt'HIGH)='0' else '0';
   m_wb_we_o<='0';
-  m_wb_adr_o(31 downto CACHE_LINE_SIZE_BITS) <= save_addr(31 downto CACHE_LINE_SIZE_BITS);
+
+  m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
   m_wb_adr_o(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
 
 end behave;

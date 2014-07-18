@@ -52,7 +52,11 @@ begin
 
       when "010" =>
         -- Cop instructions
-        op := O_ABORT;
+        case opcode(10) is
+          when '0' => op := O_COPR;
+          when '1' => op := O_COPW;
+          when others =>
+        end case;
 
       when "011" =>
         -- Single R/NoR.
@@ -162,6 +166,12 @@ begin
     d.imflag      := '0';
     d.enable_alu  := '0';
     d.use_carry   := 'X';
+    d.cop_en      := '0';
+    d.cop_wr      := 'X';
+
+    d.cop_id      := opcode(9 downto 8);
+    d.cop_reg     := opcode(7 downto 4);
+
 
     -- ALU operations are directly extracted from
     -- the opcode.
@@ -306,6 +316,18 @@ begin
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_pcnext;
         d.is_jump := true;
         d.jump := JUMP_RI_ABS;
+
+      when O_COPR =>
+        d.cop_en := '1';
+        d.cop_wr := '0';
+        d.blocks := '0';
+        d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
+
+      when O_COPW =>
+        d.cop_en := '1';
+        d.cop_wr := '1';
+        d.blocks := '0';
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
 
       when O_ST =>
         d.memory_access := '1';

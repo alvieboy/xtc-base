@@ -20,7 +20,7 @@ package xtcpkg is
   constant ENABLE_SHIFTER: boolean := true;
 
   constant TRACECLOCK: boolean := false;
-  constant RESETADDRESS: unsigned(31 downto 0) := x"80000000";
+  constant RESETADDRESS: unsigned(31 downto 0) := x"00000000";
 
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
@@ -77,6 +77,9 @@ package xtcpkg is
     O_JMPE,
     O_SEXTB,
     O_SEXTS,
+    -- COP
+    O_COPR,
+    O_COPW,
     -- Errors
     O_ABORT
   );
@@ -105,7 +108,8 @@ package xtcpkg is
     reg_source_memory,
     reg_source_imm,
     reg_source_spr,
-    reg_source_pcnext
+    reg_source_pcnext,
+    reg_source_cop
   );
 
   constant JUMP_RI_PCREL: std_logic_vector(1 downto 0) := "00";
@@ -166,6 +170,10 @@ package xtcpkg is
     --jump_clause:    jumpcond_type;
     is_jump:        boolean;
     except_return:  boolean;
+    cop_en:         std_logic;
+    cop_wr:         std_logic;
+    cop_id:         std_logic_vector(1 downto 0);
+    cop_reg:        std_logic_vector(3 downto 0);
   end record;
 
 
@@ -244,6 +252,11 @@ package xtcpkg is
     opcode_q:       std_logic_vector(15 downto 0);
 
     sr:             std_logic_vector(2 downto 0);
+    cop_en:         std_logic;
+    cop_wr:         std_logic;
+    cop_id:         std_logic_vector(1 downto 0);
+    cop_reg:        std_logic_vector(3 downto 0);
+
 -- synthesis translate_off
     strasm:     string(1 to 50);
 -- synthesis translate_on
@@ -326,6 +339,7 @@ package xtcpkg is
     data_access:    std_logic;
     data_writeenable: std_logic;
 
+    cop:     std_logic_vector(31 downto 0);
 
 
   end record;
@@ -369,6 +383,29 @@ package xtcpkg is
     lhs:        word_type;
     rhs:        word_type;
   end record;
+
+  type tlb_entry_type is record
+    pagesize:   std_logic_vector(1 downto 0);
+    ctx:        std_logic_vector(5 downto 0);
+    paddr:      std_logic_vector(31 downto 12);
+    vaddr:      std_logic_vector(31 downto 12);
+    flags:      std_logic_vector(3 downto 0);
+  end record;
+
+
+  type copo is record
+    id:   std_logic_vector(1 downto 0);
+    reg:  std_logic_vector(3 downto 0);
+    data: std_logic_vector(31 downto 0);
+    wr:   std_logic;
+    en:   std_logic;
+  end record;
+
+  type copi is record
+    data:   std_logic_vector(31 downto 0);
+    valid:  std_logic;
+    fault:  std_logic;
+  end record;
   
   constant DontCareValue: std_logic := 'X';
 
@@ -380,6 +417,24 @@ package xtcpkg is
   type slot_wbi is array(0 to 15) of wb_miso_type;
   type slot_wbo is array(0 to 15) of wb_mosi_type;
   type slot_ids is array(0 to 15) of slot_id;
+
+  type dcache_in_type is record
+    data:           std_logic_vector(31 downto 0);
+    address:        std_logic_vector(31 downto 0);
+    strobe:         std_logic;
+    we:             std_logic;
+    wmask:          std_logic_vector(3 downto 0);
+    enable:         std_logic;
+    flush:          std_logic;
+  end record;
+
+  type dcache_out_type is record
+    valid:          std_logic;
+    data:           std_logic_vector(31 downto 0);
+    stall:          std_logic;
+  end record;
+
+
 
 end xtcpkg;
 
