@@ -246,7 +246,7 @@ begin
 
     cmem_addra <= ci.address(CACHE_MAX_BITS-1 downto 2);
     cmem_addrb <= r.req_addr(CACHE_MAX_BITS-1 downto 2);
-    cmem_ena <= ci.enable;
+    cmem_ena <= ci.enable and ci.strobe;
 
     -- In order to have reads to capture the
     -- write in the same address, we need to
@@ -305,12 +305,13 @@ begin
 
           co.valid<=not miss;
         else
-          co.valid<='1';
+          co.valid<='0';
           miss:='0';
         end if;
 
         -- Miss handling
         if miss='1' then
+         if r.req_accesstype/=ACCESS_NOCACHE then
           co.stall <= '1';
 
           --b_stall <= '1';
@@ -344,7 +345,7 @@ begin
               case r.req_accesstype is
                 when ACCESS_WB_WA =>
                   w.state := readline;
-                when ACCESS_NOCACHE | ACCESS_WB_NA | ACCESS_WT =>
+                when ACCESS_WB_NA | ACCESS_WT =>
                   -- Non-cacheable access, no allocate or writethrough.
                   -- Need to perform write directly to memory
                   w.state := directmemory;
@@ -360,6 +361,13 @@ begin
             end if;
             will_busy :='1';
           end if;
+         else
+          -- Non-cacheable address.
+          w.state := directmemory;
+          w.fill_r_done := '0';
+          will_busy := '1';
+          co.stall<='1';
+         end if;
         else
           valid := '1';
         end if;
@@ -403,8 +411,11 @@ begin
         mwbo.we <= r.req_we;
         mwbo.sel <= r.req_wmask;
         mwbo.dat <= r.req_data;
+        mwbo.tag <= r.req_tag;
+
         co.data <= mwbi.dat;
         co.tag <= mwbi.tag;
+
         if mwbi.stall='0' then
           w.fill_r_done:='1';
         end if;
@@ -573,6 +584,7 @@ begin
         cmem_addra <= r.req_addr(CACHE_MAX_BITS-1 downto 2);--r.fill_tag & r.fill_line_number & r.fill_offset_w;
         cmem_addrb <= r.req_addr(CACHE_MAX_BITS-1 downto 2);--r.fill_tag & r.fill_line_number & r.fill_offset_w;
         cmem_web <= (others => '0');
+        cmem_wea <= (others => '0');
         tmem_ena <= '1';
         cmem_ena <= '1';
         tmem_addra <= address_to_line_number(r.req_addr);
