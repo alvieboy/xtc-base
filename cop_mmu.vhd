@@ -15,6 +15,9 @@ entity cop_mmu is
     tlbv:   out tlb_entry_type;
 
     mmuen:  out std_logic;
+    icache_flush: out std_logic;
+    dcache_flush: out std_logic;
+    dcache_inflush: in std_logic;
 
     ci:     in copo;
     co:     out copi
@@ -52,17 +55,33 @@ begin
       else
       tlbw<='0';
       ack<='0';
-      if req='1' and ci.wr='1' and ack='0' then
+      icache_flush<='0';
+      dcache_flush<='0';
+      if req='1' and ack='0' then
+        co.data<=(others => '0');
         case ci.reg is
           when "0000" =>
-            addr_q <= unsigned(ci.data(3 downto 0));
+            if ci.wr='1' then
+              addr_q <= unsigned(ci.data(3 downto 0));
+            end if;
           when "0001" =>
-            wrq <= ci.data;
+            if ci.wr='1' then
+              wrq <= ci.data;
+            end if;
           when "0010" =>
-            tlbw<='1';
+            if ci.wr='1' then
+              tlbw<='1';
+            end if;
           when "0011" =>
-            mmuen<=ci.data(0);
-
+            if ci.wr='1' then
+              mmuen<=ci.data(0);
+            end if;
+          when "0100" =>
+            if ci.wr='1' then
+              icache_flush<=ci.data(0);
+              dcache_flush<=ci.data(1);
+            end if;
+            co.data(1) <= dcache_inflush;
           when others =>
         end case;
         ack<='1';

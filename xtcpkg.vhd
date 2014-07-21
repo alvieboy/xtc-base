@@ -12,6 +12,7 @@ package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := true;
+  constant DATA_CACHE: boolean := true;
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 
@@ -418,9 +419,17 @@ package xtcpkg is
   type slot_wbo is array(0 to 15) of wb_mosi_type;
   type slot_ids is array(0 to 15) of slot_id;
 
+
+  constant ACCESS_WB_WA:      std_logic_vector(1 downto 0) := "00";
+  constant ACCESS_WT:         std_logic_vector(1 downto 0) := "01";
+  constant ACCESS_WB_NA:      std_logic_vector(1 downto 0) := "10";
+  constant ACCESS_NOCACHE:    std_logic_vector(1 downto 0) := "11";
+
   type dcache_in_type is record
     data:           std_logic_vector(31 downto 0);
     address:        std_logic_vector(31 downto 0);
+    tag:            std_logic_vector(31 downto 0);
+    accesstype:     std_logic_vector(1 downto 0);
     strobe:         std_logic;
     we:             std_logic;
     wmask:          std_logic_vector(3 downto 0);
@@ -431,9 +440,10 @@ package xtcpkg is
   type dcache_out_type is record
     valid:          std_logic;
     data:           std_logic_vector(31 downto 0);
+    tag:            std_logic_vector(31 downto 0);
     stall:          std_logic;
+    in_flush:       std_logic;
   end record;
-
 
 
 end xtcpkg;

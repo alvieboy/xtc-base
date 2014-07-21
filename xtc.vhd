@@ -57,7 +57,9 @@ architecture behave of xtc is
 
   signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
-  signal cache_flush:          std_logic;
+  signal dcache_flush:          std_logic;
+  signal dcache_inflush:          std_logic;
+  signal icache_flush:          std_logic;
   signal cache_data:           std_logic_vector(31 downto 0);
   signal cache_address:        std_logic_vector(31 downto 0);
   signal cache_strobe:         std_logic;
@@ -96,6 +98,9 @@ architecture behave of xtc is
   signal co: copo;
   signal ci: copi;
 
+  signal mwbi:  wb_miso_type;
+  signal mwbo:  wb_mosi_type;
+
 
   signal immu_tlbw: std_logic:='0';
   signal immu_tlbv: tlb_entry_type;
@@ -107,6 +112,8 @@ architecture behave of xtc is
   signal immu_enabled: std_logic:='1';
 
   signal cache_tag: std_logic_vector(31 downto 0);
+  signal dcache_accesstype: std_logic_vector(1 downto 0);
+
 begin
 
   -- synthesis translate_off
@@ -155,7 +162,7 @@ begin
     strobe      => cache_strobe,
     stall       => cache_stall,
     enable      => cache_enable,
-    flush       => cache_flush,
+    flush       => icache_flush,
     tag         => cache_tag,
     tagen       => immu_enabled,
 
@@ -384,6 +391,9 @@ begin
        tlba:   out std_logic_vector(3 downto 0);
        tlbv:   out tlb_entry_type;
        mmuen: out std_logic;
+       icache_flush: out std_logic;
+       dcache_flush: out std_logic;
+       dcache_inflush: in std_logic;
        ci:     in copo;
        co:     out copi
      );
@@ -400,7 +410,9 @@ begin
         tlba  => immu_tlba,
         tlbv  => immu_tlbv,
         mmuen => immu_enabled,
-    
+        icache_flush => icache_flush,
+        dcache_flush => dcache_flush,
+        dcache_inflush => dcache_inflush,
         ci    => co,
         co    => ci
     );
@@ -408,6 +420,43 @@ begin
 
   end block;
 
+  dcachegen: if DATA_CACHE generate
+     dcache_accesstype <= ACCESS_NOCACHE when mwbo.adr(31)='1' else
+      ACCESS_WT;
+
+     dcacheinst: dcache
+       generic map (
+           ADDRESS_HIGH => 31,
+           CACHE_MAX_BITS =>  13, -- 8 Kb
+           CACHE_LINE_SIZE_BITS => 6 -- 64 bytes
+       )
+       port map (
+         syscon     => wb_syscon,
+         ci.data    => mwbo.dat,
+         ci.address => mwbo.adr,
+         ci.strobe  => mwbo.stb,
+         ci.we      => mwbo.we,
+         ci.wmask   => mwbo.sel,
+         ci.enable  => mwbo.cyc,
+         ci.tag     => mwbo.tag,
+         ci.flush   => dcache_flush,
+         ci.accesstype => dcache_accesstype,
+         co.in_flush   => dcache_inflush,
+         co.data     => mwbi.dat,
+         co.stall    => mwbi.stall,
+         co.valid    => mwbi.ack,
+         co.tag      => mwbi.tag,
+         mwbi   => wbi,
+         mwbo   => wbo
+       );
+  end generate;
+
+  nodcache: if not DATA_CACHE generate
+
+    wbo<=mwbo;
+    mwbi<=wbi;
+
+  end generate;
 
 
   memory_unit: memory
@@ -415,17 +464,17 @@ begin
     clk             => wb_syscon.clk,
     rst             => wb_syscon.rst,
     -- Memory interface
-    wb_ack_i        => wbi.ack,
-    wb_dat_i        => wbi.dat,
-    wb_dat_o        => wbo.dat,
-    wb_adr_o        => wbo.adr,
-    wb_cyc_o        => wbo.cyc,
-    wb_stb_o        => wbo.stb,
-    wb_sel_o        => wbo.sel,
-    wb_tag_o        => wbo.tag,
-    wb_tag_i        => wbi.tag,
-    wb_we_o         => wbo.we,
-    wb_stall_i      => wbi.stall,
+    wb_ack_i        => mwbi.ack,
+    wb_dat_i        => mwbi.dat,
+    wb_dat_o        => mwbo.dat,
+    wb_adr_o        => mwbo.adr,
+    wb_cyc_o        => mwbo.cyc,
+    wb_stb_o        => mwbo.stb,
+    wb_sel_o        => mwbo.sel,
+    wb_tag_o        => mwbo.tag,
+    wb_tag_i        => mwbi.tag,
+    wb_we_o         => mwbo.we,
+    wb_stall_i      => mwbi.stall,
 
     refetch         => refetch,
     busy            => memory_busy,
@@ -455,6 +504,5 @@ begin
     );
 
 
-  cache_flush<='0';
 end behave;
 
