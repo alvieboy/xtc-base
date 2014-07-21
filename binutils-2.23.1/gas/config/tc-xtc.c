@@ -1591,7 +1591,7 @@ md_assemble (char * str)
         copid = exp.X_add_number;
 
         if (strcmp (op_end, ""))
-            op_end = parse_imm (op_end + 1, & exp, 0, 3);
+            op_end = parse_imm (op_end + 1, & exp, 0, 15);
         else
             as_fatal (_("Error in statement syntax - expecting immediate, got '%s'"),op_end+1);
 
