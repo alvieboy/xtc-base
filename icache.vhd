@@ -310,7 +310,7 @@ begin
 
                 exttag_save<=ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
                 -- synthesis translate_off
-                report str(ADDRESS_HIGH) & " " & hstr(ett);
+                --report str(ADDRESS_HIGH) & " " & hstr(ett);
                 -- synthesis translate_on
                 state <= filling;
 
