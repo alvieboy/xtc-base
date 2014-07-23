@@ -50,6 +50,7 @@ architecture behave of dcache is
     idle,
     readline,
     writeback,
+    recover,
     write_after_fill,
     settle,
     flush,
@@ -148,7 +149,7 @@ architecture behave of dcache is
 
   signal dbg_valid: std_logic;
   signal dbg_dirty: std_logic;
-
+  signal dbg_miss: std_logic;
 begin
 
   -- These are alias, but written as signals so we can inspect them
@@ -221,21 +222,24 @@ begin
     stall:='0';
     miss := DontCareValue;
     will_busy := '0';
-
+    co.valid<='0';
+    co.stall<='0';
     mwbo.cyc <= '0';
     mwbo.stb <= DontCareValue;
     mwbo.adr <= (others => DontCareValue);
     mwbo.dat <= (others => DontCareValue);
+    mwbo.tag <= (others => DontCareValue);
     mwbo.we <= DontCareValue;
     mwbo.sel<=(others => '1');
 
     tmem_addra <= line_number;
-    --tmem_addrb <= b_line_number;
+    tmem_addrb <= address_to_line_number( r.req_addr );--(others => DontCareValue);
     tmem_ena <= '1';
     tmem_wea <= '0';
-    --tmem_enb <= '1';
+    tmem_enb <= '0';
     --tmem_web <= '0';
-    tmem_dib(tag_type'RANGE) <= address_to_tag(ci.address(r.req_addr'RANGE));--(others => DontCareValue);
+    --tmem_dib(tag_type'RANGE) <= address_to_tag(ci.address(r.req_addr'RANGE));--(others => DontCareValue);
+    tmem_dib(tag_type'RANGE) <= address_to_tag(r.req_addr);--(others => DontCareValue);
     tmem_dib(DIRTYBIT)<=DontCareValue;
     tmem_dib(VALIDBIT)<=DontCareValue;
 
@@ -329,8 +333,16 @@ begin
               -- Read/Write miss to a dirty line for a different
               -- tag.
               w.writeback_tag := tmem_doa(tag_type'RANGE);
-              w.state := writeback;
+              if r.req_we='1' then
+                --- Oops, we wrote to the wrong line.
+                w.state := recover; -- was writeback
+              else
+                -- TODO: if this is a direct access, no need to writeback.
+
+                w.state := writeback;
+              end if;
               will_busy :='1';
+
             else
               -- Read/Write to a non-dirty line for a different
               -- tag.
@@ -351,6 +363,7 @@ begin
                   w.state := directmemory;
                   w.fill_r_done := '0';
                 when others =>
+                  --
               end case;
 
             else
@@ -369,6 +382,12 @@ begin
           co.stall<='1';
          end if;
         else
+          -- This is a hit. Make sure we write the dirty bit.
+          tmem_web<=r.req_we;
+          tmem_enb<=r.req;
+          tmem_dib(DIRTYBIT)<='1';
+          tmem_dib(VALIDBIT)<='1';
+
           valid := '1';
         end if;
 
@@ -502,6 +521,19 @@ begin
           cmem_dib <= (others => DontCareValue);
         end if;
 
+      when recover =>
+        -- Recover lost data on the content memory
+        co.stall <= '1';
+        cmem_addrb <= r.req_addr(CACHE_MAX_BITS-1 downto 2);
+        cmem_enb <= '1';
+        cmem_web <= "1111";
+        cmem_dib <= cmem_doa;
+
+        -- synthesis translate_off
+        report "Recover write";
+        -- synthesis translate_on
+
+        w.state := writeback;
 
       when writeback =>
 
@@ -573,7 +605,7 @@ begin
         cmem_web <= r.req_wmask;
         cmem_enb <= '1';
 
-        stall := '1';
+        co.stall <= '1';
         --b_stall := '1';
         valid := '0'; -- ERROR
         --b_valid := '0'; -- ERROR
@@ -589,7 +621,7 @@ begin
         cmem_ena <= '1';
         tmem_addra <= address_to_line_number(r.req_addr);
         tmem_addrb <= address_to_line_number(r.req_addr);
-        stall := '1';
+        co.stall <= '1';
         --b_stall := '1';
         tmem_web <= '0';
 
@@ -650,27 +682,29 @@ begin
       w.flush_req :='1';
     end if;
 
-    if rising_edge(syscon.clk) then
-      if syscon.rst='1' then
+    if syscon.rst='1' then
 
-        r.req <= '0';
-        r.misses<=0;
-        r.flush_req<='1';
-        r.in_flush<='0';
+        w.req := '0';
+        w.misses :=0;
+        w.flush_req :='1';
+        w.in_flush :='0';
+        w.req:='0';
+        w.req_we:='0';
         --r.fill_line_number := (others => '0');
        -- r.flush_line_number := (others => '0');
         --r.state <= flush;
-        r.state <= idle;
-        co.valid <= '0';
-      else
+        w.state := idle;
+        --co.valid <= '0';
+    end if;
+
+    if rising_edge(syscon.clk) then
         --co.valid <= valid;
         --co.b_valid <= b_valid;
         --co.a_stall <= a_stall;
         --co.b_stall <= b_stall;
         r <= w;
-      end if;
     end if;
-
+    dbg_miss<=miss;
   end process;
 
 end behave;
