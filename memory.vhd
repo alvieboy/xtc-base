@@ -159,20 +159,8 @@ begin
         wb_cyc_o <= mr.wb_cyc;
 
       end if;
+
       if rising_edge(clk) then
-
-        -- synthesis translate_off
-        if DEBUG_MEMORY then
-          if mr.wb_cyc='1' and wb_ack_i='1' then
-            if mr.wb_we='1' then
-              report ">> MEMORY WRITE, address " & hstr(mr.wb_adr) & ", data 0x" & hstr( mr.wb_dat );
-            else
-              report ">> MEMORY READ, address " & hstr( mr.wb_adr) & " <= " & hstr(mdata);
-            end if;
-          end if;
-        end if;
-        -- synthesis translate_on
-
         mr<=mw;
       end if;
 
