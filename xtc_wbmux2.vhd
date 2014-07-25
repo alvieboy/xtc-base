@@ -34,6 +34,7 @@ architecture behave of xtc_wbmux2 is
     rst:  in std_logic;
 
     stb:  in std_logic;
+    cyc:  in std_logic;
     stall:in std_logic;
     ack:  in std_logic;
 
@@ -73,6 +74,7 @@ cnt0: reqcnt port map (
   clk =>  wb_syscon.clk,
   rst =>  wb_syscon.rst,
   stb =>  req0,
+  cyc =>  m_wbi.cyc,
   stall => s0_wbi.stall,
   ack   => s0_wbi.ack,
   req   => t0
@@ -82,6 +84,7 @@ cnt1: reqcnt port map (
   clk =>  wb_syscon.clk,
   rst =>  wb_syscon.rst,
   stb =>  req1,
+  cyc =>  m_wbi.cyc,
   stall => s1_wbi.stall,
   ack   => s1_wbi.ack,
   req   => t1

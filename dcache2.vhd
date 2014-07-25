@@ -104,6 +104,23 @@ architecture behave of dcache is
 
   ------------------------------------------------------------------------------
 
+  component reqcnt is
+  port (
+    clk:  in std_logic;
+    rst:  in std_logic;
+
+    stb:  in std_logic;
+    cyc:  in std_logic;
+    stall:in std_logic;
+    ack:  in std_logic;
+
+    req:  out std_logic;
+    lastreq:  out std_logic;
+    count:  out unsigned(2 downto 0)
+  );
+  end component;
+
+
 
   -- extracted values from port A
   signal line_number:   line_number_type;
@@ -145,11 +162,16 @@ architecture behave of dcache is
   signal same_address: std_logic;
 
   constant offset_all_ones: line_offset_type := (others => '1');
+  constant offset_all_zeroes: line_offset_type := (others => '0');
   constant line_number_all_ones: line_number_type := (others => '1');
 
   signal dbg_valid: std_logic;
   signal dbg_dirty: std_logic;
   signal dbg_miss: std_logic;
+  signal req_in_progess: std_logic;
+  signal req_last: std_logic;
+  signal wb_stb, wb_cyc: std_logic;
+
 begin
 
   -- These are alias, but written as signals so we can inspect them
@@ -207,6 +229,25 @@ begin
 
   co.in_flush <= r.in_flush;
 
+  reqcnt_inst: reqcnt
+  port map (
+    clk   => syscon.clk,
+    rst   => syscon.rst,
+    stb   => wb_stb,
+    cyc   => wb_cyc,
+    stall => mwbi.stall,
+    ack   => mwbi.ack,
+
+    req   => req_in_progess,
+    lastreq => req_last,
+    count => open
+  );
+
+  mwbo.cyc<=wb_cyc;
+  mwbo.stb<=wb_stb;
+
+
+
   process(r,syscon.clk,syscon.rst, ci, mwbi, tmem_doa,
           tmem_doa, tmem_dob, line_number, cmem_doa, cmem_dob)
     variable w: regs_type;
@@ -224,8 +265,8 @@ begin
     will_busy := '0';
     co.valid<='0';
     co.stall<='0';
-    mwbo.cyc <= '0';
-    mwbo.stb <= DontCareValue;
+    wb_cyc <= '0';
+    wb_stb <= DontCareValue;
     mwbo.adr <= (others => DontCareValue);
     mwbo.dat <= (others => DontCareValue);
     mwbo.tag <= (others => DontCareValue);
@@ -245,18 +286,12 @@ begin
 
     tmem_dia <= (others => DontCareValue);
 
-    -- content memory is accessed at same time as tag memory,
-    -- except writes are done one cycle later
+    -- content memory is accessed at same time as tag memory
 
     cmem_addra <= ci.address(CACHE_MAX_BITS-1 downto 2);
     cmem_addrb <= r.req_addr(CACHE_MAX_BITS-1 downto 2);
     cmem_ena <= ci.enable and ci.strobe;
 
-    -- In order to have reads to capture the
-    -- write in the same address, we need to
-    -- enable writes in port A if we are writing to port B
-    -- and port A is reading the same address - this includes
-    -- the tag too.
 
     if ci.we='0' then
       cmem_wea <= "0000";
@@ -276,13 +311,11 @@ begin
     --co.b_data_out <= cmem_dob;
 
     --w.ack_b_write := '0';
-    w.rvalid := '0';
+    w.rvalid := 'X';
+
     -- synopsys translate_off
     dbg_valid <= tmem_doa(VALIDBIT);
-    --dbg_b_valid <= tmem_dob(VALIDBIT);
-
     dbg_dirty <= tmem_doa(DIRTYBIT);
-    --dbg_b_dirty <= tmem_dob(DIRTYBIT);
     -- synopsys translate_on
 
     tmem_web <= '0';
@@ -338,6 +371,8 @@ begin
                 w.state := recover; -- was writeback
               else
                 -- TODO: if this is a direct access, no need to writeback.
+                w.rvalid := '0';
+                --w.fill_r_done := '0';
 
                 w.state := writeback;
               end if;
@@ -382,7 +417,7 @@ begin
           co.stall<='1';
          end if;
         else
-          -- This is a hit. Make sure we write the dirty bit.
+          -- This is a hit. Make sure we write the dirty bit (for writes).
           tmem_web<=r.req_we;
           tmem_enb<=r.req;
           tmem_dib(DIRTYBIT)<='1';
@@ -425,8 +460,8 @@ begin
 
         mwbo.adr <=(others => '0');
         mwbo.adr (ADDRESS_HIGH downto 2) <= r.req_addr;
-        mwbo.cyc <='1';
-        mwbo.stb <=not r.fill_r_done;
+        wb_cyc <='1';
+        wb_stb <=not r.fill_r_done;
         mwbo.we <= r.req_we;
         mwbo.sel <= r.req_wmask;
         mwbo.dat <= r.req_data;
@@ -463,25 +498,19 @@ begin
 
         mwbo.adr<=(others => '0');
         mwbo.adr(ADDRESS_HIGH downto 2) <= r.fill_tag & r.fill_line_number & r.fill_offset_r;
-        mwbo.cyc<='1';
-        mwbo.stb<=not r.fill_r_done;
+        mwbo.tag(cmem_addrb'LENGTH-1 downto 0) <= r.fill_line_number & r.fill_offset_r;
+        mwbo.tag(cmem_addrb'LENGTH) <= '1';
+
+        wb_cyc<='1';
+        wb_stb<=not r.fill_r_done;
         mwbo.we<='0';
 
-        --if r.fill_is_b='1' then
-          cmem_addrb <= r.fill_line_number & r.fill_offset_w;
-          cmem_addra <= (others => DontCareValue);
-          cmem_enb <= '1';
-          --cmem_ena <= '0';
-          cmem_web <= (others => mwbi.ack);
-          cmem_dib <= mwbi.dat;
-        --else
-        --  cmem_addra <= r.fill_line_number & r.fill_offset_w;
-        --  cmem_addrb <= (others => DontCareValue);
-        --  cmem_ena <= '1';
-        --  cmem_enb <= '0';
-        --  cmem_wea <= (others =>mwbi.ack);
-        --  cmem_dia <= mwbi.dat;
-        --end if;
+        cmem_addrb <= mwbi.tag(cmem_addrb'LENGTH-1 downto 0);--r.fill_line_number & r.fill_offset_w;
+        cmem_addra <= (others => DontCareValue);
+        cmem_enb <= '1';
+        --cmem_ena <= '0';
+        cmem_web <= (others => mwbi.ack);
+        cmem_dib <= mwbi.dat;
 
         if mwbi.stall='0' and r.fill_r_done='0' then
           w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
@@ -491,8 +520,9 @@ begin
         end if;
 
         if mwbi.ack='1' then
-          w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
-          if r.fill_offset_w=offset_all_ones then
+          --w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
+          --if r.fill_offset_w=offset_all_ones then
+          if r.fill_r_done='1' and req_last='1' then
             w.state := settle;
             --if r.fill_is_b='1' then
               tmem_addrb <= r.fill_line_number;
@@ -533,6 +563,8 @@ begin
         report "Recover write";
         -- synthesis translate_on
 
+        w.rvalid := '0';
+        w.fill_r_done := '0';
         w.state := writeback;
 
       when writeback =>
@@ -541,35 +573,42 @@ begin
         w.rvalid := '1';
 
         mwbo.adr<=(others => '0');
-        mwbo.adr(ADDRESS_HIGH downto 2) <= r.writeback_tag & r.fill_line_number & r.fill_offset_r;
-        mwbo.cyc<=r.rvalid; --'1';
-        mwbo.stb<=r.rvalid;--not r.fill_r_done;
+        mwbo.adr(ADDRESS_HIGH downto 2) <= r.writeback_tag & r.fill_line_number & r.fill_offset_w;
+        wb_cyc<=r.rvalid ; --'1';
+        wb_stb<=r.rvalid and not r.fill_r_done;--not r.fill_r_done;
         mwbo.we<=r.rvalid; --1';
         mwbo.sel<= (others => '1');
-        if mwbi.stall='0' and r.rvalid='1'  then
 
+        if mwbi.stall='0' then
           w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
+          w.fill_offset_w := r.fill_offset_r;
+        end if;
+
+        if mwbi.stall='0' and r.rvalid='1' and r.fill_r_done='0' then
           if r.fill_offset_r = offset_all_ones then
+            w.fill_r_done := '1';
+          end if;
+        end if;
+
+        --if (mwbi.stall='0' or r.rvalid='0') and r.fill_r_done='0' then
+        if (mwbi.ack='1') then
+          --w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
+          --if r.fill_offset_w=offset_all_ones then
+          if req_last='1' then
+            --w.fill_offset_r := (others => '0');
+            --w.fill_offset_w := (others => '0');
             --w.fill_r_done := '1';
-            w.fill_offset_r := (others => '0');
-            w.fill_offset_w := (others => '0');
-            w.fill_r_done := '0';
             if r.in_flush='1' then
               w.state := flush;
               w.in_flush:='0';
             else
+              w.fill_offset_r := (others => '0');
+              w.fill_offset_w := (others => '0');
+              --else
+              w.fill_r_done := '0';
               w.state := readline;
             end if;
-          end if;
-        end if;
-
-        if (mwbi.stall='0' or r.rvalid='0') and r.fill_r_done='0' then
-          w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
-          if r.fill_offset_w=offset_all_ones then
-            --w.fill_offset_r := (others => '0');
-            --w.fill_offset_w := (others => '0');
-            w.fill_r_done := '1';
-
+            report "End writeback";
             --w.state := readline;
           end if;
         end if;
@@ -577,7 +616,7 @@ begin
         --if r.fill_is_b='1' then
           mwbo.dat <= cmem_dob;
 
-          cmem_addrb <= r.fill_line_number & r.fill_offset_w;
+          cmem_addrb <= (r.fill_line_number & r.fill_offset_r) ;
           cmem_enb <= not mwbi.stall or not r.rvalid;
           --cmem_ena <= '0';
           cmem_addra <= (others => DontCareValue);
@@ -666,6 +705,7 @@ begin
           w.fill_offset_r := (others => '0');
           w.flush_line_number := r.flush_line_number;
           w.fill_r_done := '0';
+          w.rvalid := '1';
           w.state := writeback;
         else
           w.fill_line_number := r.flush_line_number;

@@ -47,6 +47,7 @@ architecture behave of memory is
     rst:  in std_logic;
 
     stb:  in std_logic;
+    cyc:  in std_logic;
     stall:in std_logic;
     ack:  in std_logic;
 
@@ -172,9 +173,11 @@ begin
   clk =>  clk,
   rst =>  rst,
   stb =>  mr.wb_stb,
+  cyc => '1',
   stall => wb_stall_i,
   ack   => wb_ack_i,
-  req   => req_pending
+  req   => req_pending,
+  count => open
   );
 
   wb_adr_o <= mr.wb_adr;
