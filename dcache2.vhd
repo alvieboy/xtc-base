@@ -57,6 +57,8 @@ architecture behave of dcache is
     directmemory
   );
 
+  constant BURSTWORDS: integer :=  (2**(CACHE_LINE_SIZE_BITS-2))-1;
+
   type regs_type is record
     req:            std_logic;
     req_addr:       address_type;
@@ -66,7 +68,9 @@ architecture behave of dcache is
     req_tag:        std_logic_vector(31 downto 0);
     req_accesstype: std_logic_vector(1 downto 0);
     fill_offset_r:    line_offset_type;
+    req_offset:       line_offset_type;
     fill_offset_w:    line_offset_type;
+    finished_w:       line_offset_type;
     fill_tag:         tag_type;
     fill_line_number: line_number_type;
     flush_line_number: line_number_type;
@@ -77,8 +81,11 @@ architecture behave of dcache is
     misses:           integer;
     rvalid:           std_logic;
     wr_conflict:      std_logic;
+    ack_q:            std_logic;
+    ack_q_q:            std_logic;
     flush_req:        std_logic;
     in_flush:         std_logic;
+    count:            integer;-- range 0 to BURSTWORDS;
   end record;
 
   function address_to_tag(a: in address_type) return tag_type is
@@ -312,7 +319,6 @@ begin
 
     --w.ack_b_write := '0';
     w.rvalid := 'X';
-
     -- synopsys translate_off
     dbg_valid <= tmem_doa(VALIDBIT);
     dbg_dirty <= tmem_doa(DIRTYBIT);
@@ -320,6 +326,9 @@ begin
 
     tmem_web <= '0';
     co.tag <= r.req_tag;
+
+    w.ack_q_q := '0';
+    w.ack_q := '0';
 
     case r.state is
 
@@ -350,14 +359,12 @@ begin
         if miss='1' then
          if r.req_accesstype/=ACCESS_NOCACHE then
           co.stall <= '1';
-
-          --b_stall <= '1';
           valid := '0';
-          --b_valid <= '0';
           w.misses := r.misses+1;
+
           w.fill_tag := address_to_tag(r.req_addr);
           w.fill_line_number := address_to_line_number(r.req_addr);
-          w.fill_offset_r := (others => '0');
+          w.count := BURSTWORDS;
           w.fill_offset_w := (others => '0');
           w.fill_r_done := '0';
 
@@ -374,6 +381,8 @@ begin
                 w.rvalid := '0';
                 --w.fill_r_done := '0';
 
+                w.fill_offset_r := (others => '0');
+                w.fill_offset_w := (others => '0');
                 w.state := writeback;
               end if;
               will_busy :='1';
@@ -381,6 +390,9 @@ begin
             else
               -- Read/Write to a non-dirty line for a different
               -- tag.
+
+              w.fill_offset_r := r.req_offset;--(others => '0');
+              w.fill_offset_w := r.req_offset;--(others => '0');
               w.state := readline;
               will_busy :='1';
             end if;
@@ -391,6 +403,8 @@ begin
               -- It's a write.
               case r.req_accesstype is
                 when ACCESS_WB_WA =>
+                  w.fill_offset_r := r.req_offset;--(others => '0');
+                  w.fill_offset_w := r.req_offset;--(others => '0');
                   w.state := readline;
                 when ACCESS_WB_NA | ACCESS_WT =>
                   -- Non-cacheable access, no allocate or writethrough.
@@ -404,6 +418,8 @@ begin
             else
               -- It's a read.
 
+              w.fill_offset_r := r.req_offset;--(others => '0');
+              w.fill_offset_w := r.req_offset;--(others => '0');
               w.state := readline;
 
             end if;
@@ -451,6 +467,7 @@ begin
           if ci.strobe='1' and ci.enable='1' then
             have_request := '1';
             w.req_addr(address_type'RANGE) := ci.address(address_type'RANGE);
+            w.req_offset := address_to_line_offset(ci.address(address_type'RANGE));
           end if;
         end if;
 
@@ -487,6 +504,8 @@ begin
           if ci.strobe='1' and ci.enable='1' then
             have_request := '1';
             w.req_addr(address_type'RANGE) := ci.address(address_type'RANGE);
+            w.req_offset := address_to_line_offset(ci.address(address_type'RANGE));
+
           end if;
 
           w.state:=idle;
@@ -495,6 +514,9 @@ begin
       when readline =>
         co.stall <= '1';
         tmem_web <= '0';
+
+        w.ack_q := mwbi.ack;
+        w.ack_q_q := r.ack_q;
 
         mwbo.adr<=(others => '0');
         mwbo.adr(ADDRESS_HIGH downto 2) <= r.fill_tag & r.fill_line_number & r.fill_offset_r;
@@ -506,50 +528,57 @@ begin
         mwbo.we<='0';
 
         cmem_addrb <= mwbi.tag(cmem_addrb'LENGTH-1 downto 0);--r.fill_line_number & r.fill_offset_w;
-        cmem_addra <= (others => DontCareValue);
+        cmem_addra <= r.req_addr(CACHE_MAX_BITS-1 downto 2);--r.req_offset;--(others => DontCareValue);
         cmem_enb <= '1';
-        --cmem_ena <= '0';
+        cmem_ena <= '1';
+        cmem_wea <= (others => '0');
         cmem_web <= (others => mwbi.ack);
         cmem_dib <= mwbi.dat;
 
         if mwbi.stall='0' and r.fill_r_done='0' then
-          w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
-          if r.fill_offset_r = offset_all_ones then
+          if w.count=0 then--r.fill_offset_r = offset_all_ones then
             w.fill_r_done := '1';
+          else
+            w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
+            w.count := w.count - 1;
           end if;
         end if;
 
+        --if r.ack_q='1' then
+        --end if;
+
         if mwbi.ack='1' then
-          --w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
+          w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
+          w.finished_w := r.fill_offset_w;
           --if r.fill_offset_w=offset_all_ones then
           if r.fill_r_done='1' and req_last='1' then
             w.state := settle;
-            --if r.fill_is_b='1' then
-              tmem_addrb <= r.fill_line_number;
-              tmem_dib(tag_type'RANGE) <= r.fill_tag;
-              tmem_dib(VALIDBIT)<='1';
-              tmem_dib(DIRTYBIT)<=r.req_we;
-              tmem_web<='1';
-              tmem_enb<='1';
-              tmem_ena<='0';
-              if r.req_we='1' then
-                -- Perform write
-                w.state := write_after_fill;
-              end if;
-            --else
- --             tmem_addra <= r.fill_line_number;
---              tmem_dia(tag_type'RANGE) <= r.fill_tag;
---              tmem_dia(VALIDBIT)<='1';
---              tmem_dia(DIRTYBIT)<='0';
---              tmem_wea<='1';
---              tmem_ena<='1';
---              tmem_enb<='0';
-            --end if;
+            tmem_addrb <= r.fill_line_number;
+            tmem_dib(tag_type'RANGE) <= r.fill_tag;
+            tmem_dib(VALIDBIT)<='1';
+            tmem_dib(DIRTYBIT)<=r.req_we;
+            tmem_web<='1';
+            tmem_enb<='1';
+            tmem_ena<='0';
+            if r.req_we='1' then
+              -- Perform write
+              w.state := write_after_fill;
+            end if;
           end if;
         else
           cmem_dia <= (others => DontCareValue);
           cmem_dib <= (others => DontCareValue);
         end if;
+
+        -- Validate read for IWF
+        if r.ack_q_q='1' then
+          if r.finished_w=r.req_offset then
+            co.valid<='1';
+            co.tag<=r.req_tag;
+            w.req :='0';
+          end if;
+        end if;
+
 
       when recover =>
         -- Recover lost data on the content memory
@@ -602,13 +631,12 @@ begin
               w.state := flush;
               w.in_flush:='0';
             else
-              w.fill_offset_r := (others => '0');
-              w.fill_offset_w := (others => '0');
-              --else
+              w.fill_offset_r := r.req_offset;--(others => '0');
+              w.fill_offset_w := r.req_offset;--(others => '0');
               w.fill_r_done := '0';
               w.state := readline;
             end if;
-            report "End writeback";
+            --report "End writeback";
             --w.state := readline;
           end if;
         end if;
