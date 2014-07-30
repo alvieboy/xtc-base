@@ -99,7 +99,7 @@ begin
         end if;
       end if;
 
-      if freeze='1' then
+      if freeze='1' or flush='1' then
         r1_en   <= '0';
         r2_en   <= '0';
       else
