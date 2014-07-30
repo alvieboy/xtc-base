@@ -644,6 +644,13 @@ package xtccomppkg is
   end component;
 
 
+  component nodev is
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type
+  );
+  end component;
 
 
 end package;

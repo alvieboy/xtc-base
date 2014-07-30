@@ -66,6 +66,7 @@ begin
       sids        => sids
   );
 
+  nodev0: nodev port map ( syscon => syscon, wbi => swbo(0), wbo => swbi(0) );
 
   myuart: uart
     port map (
@@ -75,6 +76,22 @@ begin
       tx        => txd,
       rx        => rxd
   );
+
+  nodev2: nodev port map ( syscon => syscon, wbi => swbo(2), wbo => swbi(2) );
+  nodev3: nodev port map ( syscon => syscon, wbi => swbo(3), wbo => swbi(3) );
+  nodev4: nodev port map ( syscon => syscon, wbi => swbo(4), wbo => swbi(4) );
+  nodev5: nodev port map ( syscon => syscon, wbi => swbo(5), wbo => swbi(5) );
+  nodev6: nodev port map ( syscon => syscon, wbi => swbo(6), wbo => swbi(6) );
+  nodev7: nodev port map ( syscon => syscon, wbi => swbo(7), wbo => swbi(7) );
+  nodev8: nodev port map ( syscon => syscon, wbi => swbo(8), wbo => swbi(8) );
+  nodev9: nodev port map ( syscon => syscon, wbi => swbo(9), wbo => swbi(9) );
+  nodev10: nodev port map ( syscon => syscon, wbi => swbo(10), wbo => swbi(10) );
+  nodev11: nodev port map ( syscon => syscon, wbi => swbo(11), wbo => swbi(11) );
+  nodev12: nodev port map ( syscon => syscon, wbi => swbo(12), wbo => swbi(12) );
+  nodev13: nodev port map ( syscon => syscon, wbi => swbo(13), wbo => swbi(13) );
+  nodev14: nodev port map ( syscon => syscon, wbi => swbo(14), wbo => swbi(14) );
+  nodev15: nodev port map ( syscon => syscon, wbi => swbo(15), wbo => swbi(15) );
+
 
   -- Reset procedure
   process

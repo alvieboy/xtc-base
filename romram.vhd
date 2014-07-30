@@ -86,6 +86,9 @@ begin
       else
         --if rom_enable='1' then
           romack <= rom_enable;
+          if rom_enable='1' then
+          rom_wb_tag_o <= rom_wb_tag_i;
+          end if;
         --end if;
       end if;
     end if;

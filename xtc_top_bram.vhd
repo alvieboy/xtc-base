@@ -98,7 +98,7 @@ begin
     rom_wb_stall_o  => romwbi.stall
   );
 
-  muxer: wbmux2
+  muxer: xtc_wbmux2
   generic map (
     select_line   => 31,
     address_high  => 31,
@@ -114,7 +114,7 @@ begin
     s0_wbi        => ramwbi,
     s0_wbo        => ramwbo,
 
-    -- Slave 0 signals
+    -- Slave 1 signals
     s1_wbi        => piowbi,
     s1_wbo        => piowbo
   );
