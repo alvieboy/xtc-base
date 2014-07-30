@@ -234,6 +234,7 @@ begin
 
   end generate;
 
+
   co.in_flush <= r.in_flush;
 
   reqcnt_inst: reqcnt
@@ -303,13 +304,17 @@ begin
     if ci.we='0' then
       cmem_wea <= "0000";
     else
-      cmem_wea <= ci.wmask;
+      if ci.accesstype/=ACCESS_NOCACHE then
+        cmem_wea <= ci.wmask;
+      else
+        cmem_wea <= "0000";
+      end if;
     end if;
 
     cmem_web <= "0000";
     cmem_dia <= ci.data;
 
-    cmem_enb <= r.req and not miss; --ci.b_enable;
+    cmem_enb <= r.req;-- and not miss; --ci.b_enable;
 
     --cmem_dia <= (others => DontCareValue); -- No writes on port A
     cmem_dib <= r.req_data;--ci.b_data_in;--(others => DontCareValue);
@@ -447,7 +452,8 @@ begin
           co.stall <= '1';
 
           cmem_enb <= '0';
-
+          cmem_dib <= (others => DontCareValue);
+          cmem_addrb <= (others => DontCareValue);
           w.state := flush;
           w.fill_line_number := (others => '0');
           w.flush_line_number := (others => '0');
@@ -532,6 +538,7 @@ begin
         cmem_enb <= '1';
         cmem_ena <= '1';
         cmem_wea <= (others => '0');
+        cmem_dia <= (others => 'X');
         cmem_web <= (others => mwbi.ack);
         cmem_dib <= mwbi.dat;
 
@@ -671,6 +678,9 @@ begin
         cmem_dib <= r.req_data;
         cmem_web <= r.req_wmask;
         cmem_enb <= '1';
+        cmem_ena <= '0';
+        cmem_dia <= (others => 'X');
+        cmem_wea <= (others => 'X');
 
         co.stall <= '1';
         --b_stall := '1';
@@ -711,7 +721,6 @@ begin
 
         tmem_web<='1';
         tmem_enb<='1';
-        --cmem_ena <= '0';
         cmem_enb <= '0';
         cmem_addra <= (others => DontCareValue);
         cmem_addrb <= (others => DontCareValue);
