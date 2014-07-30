@@ -67,7 +67,7 @@ begin
     enable <= not freeze;
     strobe_i <= not freeze;
 
-    if fr.unaligned_jump='1' and dual='1' then
+    if fr.unaligned_jump='1' and read(15)='1' then --dual='1' then
       fuo.valid <= '0';
     end if;
 
@@ -110,8 +110,11 @@ begin
               --enable <= '0';
               --strobe_i <= '0';
             else
-              if fw.invert_readout='1' then
+              if fr.invert_readout='1' then
                 strobe_i<='0';
+                if fr.unaligned_jump='1' then
+                  --strobe_i<='1';
+                end if;
                 fw.fpc := fr.fpc;
               else
                 strobe_i <='1';
@@ -152,10 +155,25 @@ begin
           strobe_i <= '1';
           enable <= '1';
           --fw.unaligned := fr.unaligned_jump;
+          if fr.unaligned_jump='1' then
+            fw.invert_readout := '1';
+            fw.state := aligning;
+            fw.unaligned_jump:='0';
+          else
           fw.invert_readout := '0';
           fw.state := running;
+          end if;
         end if;
         fuo.valid<='0';
+
+      when aligning =>
+        fuo.valid<='0';
+        if valid='1' then
+          fw.qopc :=  read(15 downto 0);
+          --fw.unaligned := '0';
+          fw.fpc := npc;
+          fw.state := running;
+        end if;
       when others =>
     end case;
 
