@@ -16,7 +16,7 @@ use work.txt_util.all;
 entity dcache is
   generic (
       ADDRESS_HIGH: integer := 31;
-      CACHE_MAX_BITS: integer := 18; -- 8 Kb
+      CACHE_MAX_BITS: integer := 11; -- 8 Kb
       CACHE_LINE_SIZE_BITS: integer := 6 -- 64 bytes
   );
   port (
@@ -370,9 +370,10 @@ begin
           w.fill_tag := address_to_tag(r.req_addr);
           w.fill_line_number := address_to_line_number(r.req_addr);
           w.count := BURSTWORDS;
-          w.fill_offset_w := (others => '0');
           w.fill_r_done := '0';
-
+          w.fill_offset_r := r.req_offset;
+          w.fill_offset_w := r.req_offset;
+ 
           if tmem_doa(VALIDBIT)='1' then
             if tmem_doa(DIRTYBIT)='1' then
               -- Read/Write miss to a dirty line for a different
@@ -395,9 +396,6 @@ begin
             else
               -- Read/Write to a non-dirty line for a different
               -- tag.
-
-              w.fill_offset_r := r.req_offset;--(others => '0');
-              w.fill_offset_w := r.req_offset;--(others => '0');
               w.state := readline;
               will_busy :='1';
             end if;
@@ -408,8 +406,6 @@ begin
               -- It's a write.
               case r.req_accesstype is
                 when ACCESS_WB_WA =>
-                  w.fill_offset_r := r.req_offset;--(others => '0');
-                  w.fill_offset_w := r.req_offset;--(others => '0');
                   w.state := readline;
                 when ACCESS_WB_NA | ACCESS_WT =>
                   -- Non-cacheable access, no allocate or writethrough.
@@ -423,8 +419,6 @@ begin
             else
               -- It's a read.
 
-              w.fill_offset_r := r.req_offset;--(others => '0');
-              w.fill_offset_w := r.req_offset;--(others => '0');
               w.state := readline;
 
             end if;
