@@ -13,6 +13,8 @@ package xtcpkg is
 
   constant INSTRUCTION_CACHE: boolean := true;
   constant DATA_CACHE: boolean := true;
+  constant MMU_ENABLED: boolean := false;
+
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
 

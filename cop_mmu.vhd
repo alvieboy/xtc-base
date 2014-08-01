@@ -73,7 +73,7 @@ begin
               tlbw<='1';
             end if;
           when "0011" =>
-            if ci.wr='1' then
+            if ci.wr='1' and MMU_ENABLED then
               mmuen<=ci.data(0);
             end if;
           when "0100" =>
@@ -82,6 +82,9 @@ begin
               dcache_flush<=ci.data(1);
             end if;
             co.data(1) <= dcache_inflush;
+            if MMU_ENABLED then
+              co.data(0) <= '1';
+            end if;
           when others =>
         end case;
         ack<='1';

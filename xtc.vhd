@@ -174,7 +174,7 @@ begin
     m_wb_stall_i => romwbi.stall
   );
 
-    mmub: if TRUE generate
+    mmub: if MMU_ENABLED generate
     cache_tag <= immu_paddr;
     immuinst: mmu
       port map (
