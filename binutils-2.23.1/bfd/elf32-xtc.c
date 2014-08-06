@@ -1037,7 +1037,7 @@ xtc_elf_relocate_section (bfd *output_bfd,
 		  }
                 else
                 {
-                    (*_bfd_error_handler) ("Relocating here\n");
+//                    (*_bfd_error_handler) ("Relocating here\n");
 		    relocation += addend;
                     if (r_type == R_XTC_32) {
                         bfd_put_32 (input_bfd, relocation, contents + offset);
@@ -1387,7 +1387,7 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
               phys_addr = relocation + rel->r_addend;
           }
 
-          printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+          //printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
           xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset);
 
 
@@ -1902,6 +1902,7 @@ static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
 {
     // Move I8 backwards. It's a 4-5, move to 2-3. The
     // upper 2 bytes will be removed later on.
+#if 0
     printf("E24I8->E8I8: %02x%02x %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -1909,6 +1910,7 @@ static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
            location[3],
            location[4],
            location[5]);
+#endif
     unsigned char savecond = location[2];
 
     location[2] = location[4] |0x80; // Signal extended
@@ -1917,13 +1919,13 @@ static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
     // Move extension forward. modify for IMM
     location[4] = (savecond&0xf) | 0x40;
     location[5] = 0;
-
+#if 0
     printf("%02x%02x %02x%02x\n",
            location[2],
            location[3],
            location[4],
            location[5]);
-
+#endif
     if (value) {
         *value -= 4;
     }
@@ -1939,29 +1941,31 @@ static void xtc_relax_e24_to_e8( unsigned char *location ATTRIBUTE_UNUSED , long
 static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
 {
     // Move i8 forward
+#if 0
     printf("E8I8->I8: %02x%02x %02x%02x to ",
            location[0],
            location[1],
            location[2],
            location[3]);
-
+#endif
     location[2] = location[0] & 0x7f; // Remove extension
     location[3] = location[1];
-
+#if 0
     printf("%02x%02x\n",
            location[2],
            location[3]);
-
+#endif
     if (value) {
         *value -= 2;
     }
 }
 static void xtc_relax_e8_to_none(unsigned  char *location, long *value ATTRIBUTE_UNUSED)
 {
+#if 0
     printf("E8-> -- %02x%02x \n",
            location[0],
            location[1]);
- 
+#endif
     *location++=0xde;
     *location++=0xad;
 }
@@ -1988,7 +1992,7 @@ static bfd_byte *xtc_emit_e24(bfd_byte *dest, long value)
 {
     //unsigned long inst = 0x80006000;
     unsigned long inst = xtc_get32(dest);
-    printf("Emit E24, val %08lx\n", value);
+    //printf("Emit E24, val %08lx\n", value);
     // Lower 15-bits of value go into the opcode itself.
     inst |= (value & 0x7fff)<<16;
     value>>=15;
@@ -2046,9 +2050,9 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 
     case R_XTC_32_E8_I8_R:
     case R_XTC_32_E8_I8:
-        printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
+        //printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
-        printf("%04lx\n", xtc_get16(dest));
+        //printf("%04lx\n", xtc_get16(dest));
         value>>=8;
         dest+=2;
         // Apply extension
@@ -2073,6 +2077,7 @@ static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
 
 static void xtc_relax_e24_e8_to_e8(unsigned char *location, long *value)
 {
+#if 1
     printf("E24E8->E8: %02x%02x %02x%02x %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -2088,6 +2093,7 @@ static void xtc_relax_e24_e8_to_e8(unsigned char *location, long *value)
            location[5],
            location[6],
            location[7]);
+#endif
     if (value) {
         *value -= 4;
     }
@@ -2104,7 +2110,7 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
 
     do {
         retry = FALSE;
-        printf("Loop\n");
+        //printf("Loop\n");
         switch (*rel)
         {
         case R_XTC_32_E24_E8_R:
@@ -2138,7 +2144,7 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
         case R_XTC_32_E8_I8_R:
         case R_XTC_32_E8_I8:
             if (!xtc_can_remove_extension(location+bytes)) {
-                printf("Cannot remove extension\n");
+                //printf("Cannot remove extension\n");
                 break;
             }
             NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2,xtc_relax_e8_i8_to_i8);
@@ -2221,7 +2227,7 @@ xtc_elf_relax_section (bfd *abfd,
     irelend = internal_relocs + sec->reloc_count;
     rel_count = 0;
 
-    printf("Doing relaxation pass....\n");
+    //printf("Doing relaxation pass....\n");
 
     for (irel = internal_relocs; irel < irelend; irel++, rel_count++)
     {
@@ -2300,7 +2306,7 @@ xtc_elf_relax_section (bfd *abfd,
         {
             //isPcrel = 1;
             int offset = xtc_reloc_pcrel_offset(ELF32_R_TYPE( irel->r_info ));
-            printf("Offset for reloc: %d\n",offset);
+          //  printf("Offset for reloc: %d\n",offset);
             symval = symval + irel->r_addend
                 - (irel->r_offset + offset +
                    + sec->output_section->vma
@@ -2315,7 +2321,7 @@ xtc_elf_relax_section (bfd *abfd,
 
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
-        printf("Reloc at 0x%lx (value: %ld)\n",irel->r_offset,value);
+        //printf("Reloc at 0x%lx (value: %ld)\n",irel->r_offset,value);
         deleteBytes = xtc_relax_relocation(&newReloc, value, elf_section_data (sec)->this_hdr.contents + irel->r_offset);
 
         if (deleteBytes) {
