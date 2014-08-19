@@ -730,7 +730,7 @@ begin
         -- only valid in next cycle
         if r.in_flush='1' and tmem_dob(VALIDBIT)='1' and tmem_dob(DIRTYBIT)='1' then
           report "Need to wb" severity note;
-          w.writeback_tag := tmem_dob(tag_type'RANGE);
+          w.writeback_tag := tmem_dob(tag_type'RANGE);   -- NOTE: can we use tmem_doa ?
           --w.fill_is_b := '1';
           tmem_web<='0';
           w.fill_offset_r := (others => '0');
