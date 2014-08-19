@@ -60,6 +60,7 @@ architecture behave of xtc is
   signal dcache_flush:          std_logic;
   signal dcache_inflush:          std_logic;
   signal icache_flush:          std_logic;
+  signal icache_abort:          std_logic;
   signal cache_data:           std_logic_vector(31 downto 0);
   signal cache_address:        std_logic_vector(31 downto 0);
   signal cache_strobe:         std_logic;
@@ -163,6 +164,7 @@ begin
     stall       => cache_stall,
     enable      => cache_enable,
     flush       => icache_flush,
+    abort       => icache_abort,
     tag         => cache_tag,
     tagen       => immu_enabled,
 
@@ -237,6 +239,7 @@ begin
       read      => cache_data,
       enable    => cache_enable,
       strobe    => cache_strobe,
+      abort     => icache_abort,
       nseq      => cache_nseq,
 
       freeze    => decode_freeze,

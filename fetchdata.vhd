@@ -88,10 +88,9 @@ begin
 
       end if;
 
-      if rst='1' then
-        fdw.drq.valid := '0';
-      end if;
+
       fdw.waiting:='0';
+
       if refetch='1' then
         if freeze='0' then
           fdw.drq.valid := '0';
@@ -109,6 +108,10 @@ begin
 
       r1_addr <= dui.r.sra1;
       r2_addr <= dui.r.sra2;
+
+      if rst='1' then
+        fdw.drq.valid := '0';
+      end if;
 
       if rising_edge(clk) then
         fdr <= fdw;

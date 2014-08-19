@@ -89,6 +89,7 @@ package xtccomppkg is
     enable:         in std_logic;
     stall:          out std_logic;
     flush:          in std_logic;
+    abort:          in std_logic;
 
     tag:            in std_logic_vector(31 downto 0);
     tagen:          in std_logic;
@@ -160,6 +161,7 @@ package xtccomppkg is
     read: in     std_logic_vector(31 downto 0);
     enable: out std_logic;
     strobe: out std_logic;
+    abort: out std_logic;
     nseq: out std_logic;
 
     -- Control

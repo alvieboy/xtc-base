@@ -25,6 +25,7 @@ entity icache is
     enable:         in std_logic;
     stall:          out std_logic;
     flush:          in std_logic;
+    abort:          in std_logic;
 
     tag:            in std_logic_vector(31 downto 0);
     tagen:          in std_logic;
@@ -52,6 +53,7 @@ architecture behave of icache is
 -- cache line size: 64 bytes
 -- cache lines: 128
 
+  signal save_addr: std_logic_vector(address'RANGE);
 
 
   alias line: std_logic_vector(CACHE_LINE_ID_BITS-1 downto 0)
@@ -61,7 +63,7 @@ architecture behave of icache is
     is address(CACHE_LINE_SIZE_BITS-1 downto 2);
 
   alias address_tag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0)
-    is address(ADDRESS_HIGH downto CACHE_MAX_BITS);
+    is save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS);
 
   signal ctag: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS+1 downto 0);
 
@@ -77,7 +79,6 @@ architecture behave of icache is
   constant offcnt_full: unsigned(line_offset'HIGH downto 2) := (others => '1');
 
   signal tag_match: std_logic;
-  signal save_addr: std_logic_vector(address'RANGE);
   signal cyc, stb: std_logic;
   signal cache_addr_read,cache_addr_write:
     std_logic_vector(CACHE_MAX_BITS-1 downto 2);
@@ -187,7 +188,7 @@ begin
   stall <= stall_i;
   valid <= ack;
   tag_mem_enable <= access_i and enable;
-  m_wb_dat_o <= (others => DontCareValue);
+  m_wb_dat_o(31 downto 0) <= (others => DontCareValue);
 
   -- Valid mem
 --  process(wb_clk_i)
@@ -260,9 +261,13 @@ begin
         access_q<='0';
       else
         if busy='0' and enable='1' then
-          if strobe='1' then
-          access_q <= access_i;
-          end if;
+          --if strobe='1' then
+            access_q <= access_i;
+          --else
+            --access_q <= '0';
+          --end if;
+        elsif abort='1' then
+          access_q<='0';
         end if;
       end if;
     end if;
@@ -304,30 +309,30 @@ begin
               flushcnt <= (others => '1');
               tag_mem_wen <= '1';
             else
-            if access_q='1' then
-              if miss='1' and enable='1' then
-                ett:=        tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
-
-                exttag_save<=ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
-                -- synthesis translate_off
-                --report str(ADDRESS_HIGH) & " " & hstr(ett);
-                -- synthesis translate_on
-                state <= filling;
-
-                if tagen='1' then
-                  m_wb_adr_o(31 downto CACHE_MAX_BITS) <= ett;
-                else
-                  m_wb_adr_o(31 downto CACHE_MAX_BITS) <= save_addr(31 downto CACHE_MAX_BITS);
+              if access_q='1' and abort='0' then
+                if miss='1' and enable='1' then
+                  ett:=        tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
+  
+                  exttag_save<=ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
+                  -- synthesis translate_off
+                  --report str(ADDRESS_HIGH) & " " & hstr(ett);
+                  -- synthesis translate_on
+                  state <= filling;
+  
+                  if tagen='1' then
+                    m_wb_adr_o(31 downto CACHE_MAX_BITS) <= ett;
+                  else
+                    m_wb_adr_o(31 downto CACHE_MAX_BITS) <= save_addr(31 downto CACHE_MAX_BITS);
+                  end if;
+  
+                  offcnt <= (others => '0');
+                  offcnt_write <= (others => '0');
+                  cyc <= '1';
+                  stb <= '1';
+                  --fill_success<='1';
+                  busy <= '1';
                 end if;
-
-                offcnt <= (others => '0');
-                offcnt_write <= (others => '0');
-                cyc <= '1';
-                stb <= '1';
-                --fill_success<='1';
-                busy <= '1';
               end if;
-            end if;
             end if;
           when filling =>
             busy<='1';
@@ -401,7 +406,7 @@ begin
 
   access_i <= strobe;
 
-  hit <= '1' when tag_match='1' and valid_i='1' and access_q='1' else '0';
+  hit <= '1' when tag_match='1' and valid_i='1' else '0';--and access_q='1' else '0';
 
   miss <= not hit;
 
@@ -431,5 +436,6 @@ begin
 
   m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
   m_wb_adr_o(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
+  m_wb_adr_o(1 downto 0)<="00";
 
 end behave;
