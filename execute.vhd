@@ -116,8 +116,13 @@ begin
     ew := er;
 
     ew.valid := fdui.valid;
-    ew.jump := '0';
-    ew.jumpaddr := (others => 'X');
+    -- Note: with delay slots, we must only reset JUMP when
+    -- we finished executing the slot.
+    if fdui.valid='1' then
+      ew.jump := '0';
+      ew.jumpaddr := (others => 'X');
+    end if;
+
     can_interrupt := true;
     do_interrupt := false;
 
@@ -286,7 +291,7 @@ begin
 
     else
       -- Instruction is not being processed.
-      ew.jumpaddr := (others => 'X');
+      --ew.jumpaddr := (others => 'X');
 
     end if;
 
@@ -353,6 +358,7 @@ begin
       ew.psr(0) := '1'; -- Supervisor
       ew.psr(4) := '0'; -- Interrupts disabled
       ew.trapvector := (others => '0');
+      ew.jump := '0';
     end if;
 
     if rising_edge(clk) then
@@ -365,5 +371,7 @@ begin
     dbg_do_interrupt <= do_interrupt;
     -- synthesis translate_on
   end process;
+
+  euo.jump <= er.jump and fdui.valid;
 
 end behave;
