@@ -70,9 +70,9 @@ begin
             end case;
           when '1' =>
             -- No/R
-            case opcode(10) is
-              when '0' => op := O_SEXTB;
-              when '1' => op := O_SEXTS;
+            case opcode(9) is
+              when '0' => op := O_SEXTB;      -- 38
+              when '1' => op := O_SEXTS;      -- 3a
               when others =>
             end case;
             --op := O_ABORT;
