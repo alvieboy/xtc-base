@@ -243,7 +243,7 @@ begin
       nseq      => cache_nseq,
 
       freeze    => decode_freeze,
-      jump      => euo.r.jump,
+      jump      => euo.jump,
       jumpaddr  => euo.r.jumpaddr,
       dual      => dual,
 
@@ -262,8 +262,8 @@ begin
       busy    => decode_freeze,
       freeze  => freeze_decoder,
       dual    => dual,
-      flush   => euo.r.jump, -- DELAY SLOT when fetchdata is passthrough
-      jump    => euo.r.jump,
+      flush   => euo.jump, -- DELAY SLOT when fetchdata is passthrough
+      jump    => euo.jump,
       jumpmsb => euo.r.jumpaddr(1)
     );
 
@@ -282,7 +282,7 @@ begin
 
 
       freeze     => execute_busy,
-      flush      => euo.r.jump,-- euo.jump, -- DELAY SLOT
+      flush      => euo.jump,-- euo.jump, -- DELAY SLOT
       refetch    => notallvalid, --refetch_registers,--execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
@@ -322,7 +322,7 @@ begin
       if wb_syscon.rst='1' then
         tq <= (others => '1');
       else
-        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.r.jump='0' and allvalid='1' then
+        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.jump='0' and allvalid='1' then
           tq(c1) <= '0';
         end if;
         -- Memory reads clear flags.

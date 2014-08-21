@@ -343,7 +343,7 @@ package xtcpkg is
     data_writeenable: std_logic;
 
     cop:     std_logic_vector(31 downto 0);
-
+    jump:     std_logic;
 
   end record;
 
