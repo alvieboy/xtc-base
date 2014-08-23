@@ -165,7 +165,7 @@ begin
     d.condition   := CONDITION_UNCONDITIONAL;
     d.imflag      := '0';
     d.enable_alu  := '0';
-    d.use_carry   := 'X';
+    d.use_carry   := '0';
     d.cop_en      := '0';
     d.cop_wr      := 'X';
 
