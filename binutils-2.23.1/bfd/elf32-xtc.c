@@ -2005,7 +2005,9 @@ static bfd_byte *xtc_emit_e24(bfd_byte *dest, long value)
 {
     //unsigned long inst = 0x80006000;
     unsigned long inst = xtc_get32(dest);
-    //printf("Emit E24, val %08lx\n", value);
+    // Clean up inst first
+    inst &= ~0x0FFF00FF;
+    //printf("Emit E24, val %08lx - inst is %08lx\n", value, inst);
     // Lower 15-bits of value go into the opcode itself.
     inst |= (value & 0x7fff)<<16;
     value>>=15;
