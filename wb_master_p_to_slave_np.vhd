@@ -33,7 +33,7 @@ begin
     if syscon.rst='1' then
       state <= idle;
       mwbo.stall <= '0';
-
+      wo.cyc<='0';
     else
       case state is
         when idle =>
