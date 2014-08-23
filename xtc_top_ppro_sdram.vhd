@@ -49,16 +49,11 @@ end entity xtc_top_ppro_sdram;
 
 architecture behave of xtc_top_ppro_sdram is
 
-  component spirom is
+  component bootrom is
   port (
     syscon:     in wb_syscon_type;
     wbi:        in wb_mosi_type;
-    wbo:        out wb_miso_type;
-
-    mosi:     out std_logic;
-    miso:     in  std_logic;
-    sck:      out std_logic;
-    ncs:      out std_logic
+    wbo:        out wb_miso_type
   );
   end component;
 
@@ -119,6 +114,19 @@ architecture behave of xtc_top_ppro_sdram is
   );
   end component;
 
+  component xtc_serialreset is
+  generic (
+    SYSTEM_CLOCK_MHZ: integer := 100
+  );
+  port (
+    clk:      in std_logic;
+    rx:       in std_logic;
+    rstin:    in std_logic;
+    rstout:   out std_logic
+  );
+  end component;
+
+
   signal clk_off_3ns: std_ulogic;
 
   signal wbi: wb_mosi_type;
@@ -156,6 +164,10 @@ begin
   );
   DRAM_ADDR(12)<='0';
 
+  mosi <= '0';
+  ncs  <= '1';
+  sck <= '1';
+
 
   ioctrl: xtc_ioctrl
     port map (
@@ -168,16 +180,11 @@ begin
     );
 
 
-  myrom: spirom
+  myrom: bootrom
     port map (
       syscon      => syscon,
       wbi         => swbo(0),
-      wbo         => swbi(0),
-
-      miso        => miso,
-      mosi        => mosi,
-      sck         => sck,
-      ncs         => ncs
+      wbo         => swbi(0)
   );
 
   myuart: uart
@@ -186,31 +193,31 @@ begin
       wbi         => swbo(1),
       wbo         => swbi(1),
 
-      tx          => open,
-      rx          => 'X'
+      tx          => TXD,
+      rx          => RXD
   );
 
   wb_clk_i <= sysclk;
   wb_rst_i <= sysrst;
 
---  rstgen: zpuino_serialreset
---    generic map (
---      SYSTEM_CLOCK_MHZ  => 96
---    )
---    port map (
---      clk       => sysclk,
---      rx        => rx,
---      rstin     => clkgen_rst,
---      rstout    => sysrst
---    );
-  sysrst <= clkgen_rst;
+  rstgen: xtc_serialreset
+    generic map (
+      SYSTEM_CLOCK_MHZ  => 96
+    )
+    port map (
+      clk       => sysclk,
+      rx        => RXD,
+      rstin     => clkgen_rst,
+      rstout    => sysrst
+    );
+  --sysrst <= clkgen_rst;
 
   clkgen_inst: clkgen
   port map (
     clkin   => clk,
     rstin   => '0'  ,
     clkout  => sysclk,
-    clkout2  => clk_off_3ns,
+    clkout1  => clk_off_3ns,
     rstout  => clkgen_rst
   );
 
