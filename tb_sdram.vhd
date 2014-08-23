@@ -135,6 +135,14 @@ architecture sim of tb_sdram_flash is
   );
   end component;
 
+  component bootrom is
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type
+  );
+  end component;
+
   
   component uart is
   generic (
@@ -336,16 +344,11 @@ begin
     );
 
 
-  myrom: spirom
+  myrom: bootrom
     port map (
       syscon      => syscon,
       wbi         => swbo(0),
-      wbo         => swbi(0),
-
-      miso        => miso,
-      mosi        => mosi,
-      sck         => sck,
-      ncs         => sel
+      wbo         => swbi(0)
   );
 
   myuart: uart
@@ -379,6 +382,10 @@ begin
     w_rst<='1';
     wait for period;
     w_rst<='0';
+    --wait for 10 us;
+    --w_rst<='1';
+    --wait for period;
+    --w_rst<='0';
     wait;
   end process;
 
