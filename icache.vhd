@@ -280,7 +280,7 @@ begin
     if rising_edge(wb_clk_i) then
       if wb_rst_i='1' then
         state <= flushing;
-        busy <= '0';
+        busy <= '1';
         fill_success <='0';
         offcnt <= (others => '0');
         flushcnt <= (others => '1');
