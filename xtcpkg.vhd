@@ -23,7 +23,7 @@ package xtcpkg is
   constant ENABLE_SHIFTER: boolean := true;
 
   constant TRACECLOCK: boolean := false;
-  constant RESETADDRESS: unsigned(31 downto 0) := x"00000000";
+  constant RESETADDRESS: unsigned(31 downto 0) := x"80000000";
 
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
