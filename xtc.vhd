@@ -106,7 +106,6 @@ architecture behave of xtc is
   signal immu_tlbw: std_logic:='0';
   signal immu_tlbv: tlb_entry_type;
   signal immu_tlba: std_logic_vector(3 downto 0):="0000";
-
   signal immu_context: std_logic_vector(5 downto 0):=(others => '0');
   signal immu_paddr: std_logic_vector(31 downto 0);
   signal immu_valid: std_logic;
