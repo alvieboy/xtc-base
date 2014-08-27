@@ -257,7 +257,7 @@ begin
 
 
   process(r,syscon.clk,syscon.rst, ci, mwbi, tmem_doa,
-          tmem_doa, tmem_dob, line_number, cmem_doa, cmem_dob)
+          tmem_doa, tmem_dob, line_number, cmem_doa, cmem_dob,req_last)
     variable w: regs_type;
     variable have_request: std_logic;
     variable will_busy: std_logic;

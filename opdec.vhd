@@ -70,10 +70,21 @@ begin
             end case;
           when '1' =>
             -- No/R
+            case opcode(10) is
+            when '0' =>
             case opcode(9) is
               when '0' => op := O_SEXTB;      -- 38
               when '1' => op := O_SEXTS;      -- 3a
               when others =>
+            end case;
+            when '1' =>
+            case opcode(9) is
+              when '0' => op := O_RSPR;      -- 38
+              when '1' => op := O_WSPR;      -- 3a
+              when others =>
+            end case;
+
+            when others =>
             end case;
             --op := O_ABORT;
           when others =>
@@ -122,7 +133,7 @@ begin
   end process;
 
 
-  process(opcode, decoded_op, mtype, opcode_low, is_extended_opcode)
+  process(opcode, decoded_op, mtype, opcode_low, opcode_high, is_extended_opcode)
     -- synthesis translate_off
     variable targetstr: string(1 to 2);
     variable sourcestr: string(1 to 5);
@@ -172,6 +183,7 @@ begin
     d.cop_id      := opcode(9 downto 8);
     d.cop_reg     := opcode(7 downto 4);
 
+    d.priv        := '0';
 
     -- ALU operations are directly extracted from
     -- the opcode.
@@ -310,21 +322,31 @@ begin
         d.is_jump := true;
         d.jump := JUMP_I_PCREL;
 
-      when O_JMP | O_JMPE =>
+      when O_JMP =>
         -- Swap register...
         d.sreg1 := opcode(7 downto 4);
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_pcnext;
         d.is_jump := true;
         d.jump := JUMP_RI_ABS;
 
+      when O_JMPE =>
+        -- Swap register...
+        d.sreg1 := opcode(7 downto 4);
+        d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=false;
+        d.is_jump := true;
+        d.jump := JUMP_RI_ABS;
+        d.except_return:=true;
+
       when O_COPR =>
         d.cop_en := '1';
         d.cop_wr := '0';
+        d.priv   := '1';
         d.blocks := '0';
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
 
       when O_COPW =>
         d.cop_en := '1';
+        d.priv   := '1';
         d.cop_wr := '1';
         d.blocks := '0';
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
@@ -356,6 +378,21 @@ begin
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         d.enable_alu := '1';
           d.sreg1 := opcode(7 downto 4);
+
+      when O_RSPR =>
+        --d.alu_source := alu_source_;
+        --d.alu_op := ALU_SEXTB;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_spr;
+        d.enable_alu := '1';
+        d.priv := '1';
+
+      when O_WSPR =>
+        --d.alu_source := alu_source_;
+        --d.alu_op := ALU_SEXTB;
+        d.modify_spr:=true;
+        d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=false;
+        d.enable_alu := '1';
+        d.priv := '1';
 
 
       when others =>

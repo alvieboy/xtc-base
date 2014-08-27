@@ -56,19 +56,17 @@ get_field_spr (long instr)
     int spr = (instr & SPR_MASK)>>SPR_LOW;
     switch (spr) {
     case 0:
-        sprintf(tmpstr,"pc"); break;
-    case 1:
-        sprintf(tmpstr,"br"); break;
-    case 2:
         sprintf(tmpstr,"y"); break;
-    case 3:
+    case 1:
         sprintf(tmpstr,"psr"); break;
-    case 4:
+    case 2:
         sprintf(tmpstr,"spsr"); break;
+    case 3:
+        sprintf(tmpstr,"tr"); break;
+    case 4:
+        sprintf(tmpstr,"tpc"); break;
     case 5:
-        sprintf(tmpstr,"sbr"); break;
-    case 6:
-        sprintf(tmpstr,"ttr"); break;
+        sprintf(tmpstr,"sr0"); break;
     default:
         sprintf(tmpstr,"<error>"); break;
     }
@@ -234,8 +232,11 @@ print_insn_xtc (bfd_vma memaddr, struct disassemble_info * info)
         }
         switch (op->inst_type)
 	{
-        case INST_TYPE_SR:
+        case INST_TYPE_WSPR:
           print_func (stream, "\t%s, %s", get_field_r1(inst), get_field_spr (inst));
+          break;
+        case INST_TYPE_RSPR:
+          print_func (stream, "\t%s, %s",  get_field_spr (inst), get_field_r1(inst));
           break;
         case INST_TYPE_R1_R2:
         case INST_TYPE_R1_R2_IMM:

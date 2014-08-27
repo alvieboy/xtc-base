@@ -114,6 +114,7 @@ architecture behave of xtc is
 
   signal cache_tag: std_logic_vector(31 downto 0);
   signal dcache_accesstype: std_logic_vector(1 downto 0);
+  signal flushfd: std_logic;
 
 begin
 
@@ -264,10 +265,13 @@ begin
       dual    => dual,
       flush   => euo.jump, -- DELAY SLOT when fetchdata is passthrough
       jump    => euo.jump,
-      jumpmsb => euo.r.jumpaddr(1)
+      jumpmsb => euo.r.jumpaddr(1),
+      imreg   => euo.load_imreg,
+      imregwr => euo.load_imregwr
     );
 
   freeze_decoder <= execute_busy or notallvalid;
+  flushfd <= euo.jump or euo.trap;
 
   fetchdata_unit: fetchdata
     port map (
@@ -282,7 +286,7 @@ begin
 
 
       freeze     => execute_busy,
-      flush      => euo.jump,-- euo.jump, -- DELAY SLOT
+      flush      => flushfd,-- euo.jump, -- DELAY SLOT
       refetch    => notallvalid, --refetch_registers,--execute_busy,-- TEST TEST: was refetch,
       w_addr     => w_addr,
       w_en       => w_en,
@@ -329,6 +333,7 @@ begin
         if muo.mregwe='1' then
           tq(s1) <= '1';
         end if;
+        
       end if;
 
       retryfetch <= not (v1 and v2);
@@ -367,7 +372,7 @@ begin
       mem_busy  => memory_busy,
       wb_busy   => wb_busy,
       refetch   => refetch,
-      int       => '0',--wb_inta_i,
+      int       => wbi.int,
       intline   => x"00",
       -- Input from fetchdata unit
       fdui      => fduo,

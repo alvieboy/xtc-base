@@ -40,7 +40,7 @@ end entity execute;
 architecture behave of execute is
 
   signal alu_a_a, alu_a_b: std_logic_vector(31 downto 0);
-  signal alu_a_r: unsigned(31 downto 0);
+  signal alu_a_r, alu_a_y: unsigned(31 downto 0);
   --signal alu_b_a, alu_b_b: std_logic_vector(31 downto 0);
   --signal alu_b_r: unsigned(31 downto 0);
   signal alu1_ci, alu1_co, alu1_busy, alu1_ovf, alu1_sign, alu1_zero: std_logic;
@@ -53,6 +53,7 @@ architecture behave of execute is
   signal lhs,rhs: std_logic_vector(31 downto 0);
 
   signal cop_busy, cop_en: std_logic;
+  signal do_trap: std_logic;
 
 begin
 
@@ -77,6 +78,7 @@ begin
       a     => unsigned(alu_a_a),
       b     => unsigned(alu_a_b),
       o     => alu_a_r,
+      y     => alu_a_y,
       en    => enable_alu,   -- Check...
       op    => fdui.r.drq.alu_op,
       ci    => er.psr(30),
@@ -94,8 +96,7 @@ begin
 
   process(clk,fdui,er,rst,alu_a_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
-          mui,
-          mem_busy,wb_busy,int,cop_busy)
+          mem_busy,wb_busy,int,cop_busy,lhs,alu1_busy,ci,rhs)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
     constant reg_zero: unsigned(31 downto 0) := (others => '0');
@@ -111,7 +112,10 @@ begin
     alias psr_sign:   std_logic   is  er.psr(31);
     alias psr_ovf:    std_logic   is  er.psr(28);
     alias psr_zero:   std_logic   is  er.psr(29);
+    variable trap:  boolean;
 
+    variable do_fault: boolean;
+    variable fault_address: unsigned(3 downto 0);
   begin
     ew := er;
 
@@ -125,6 +129,9 @@ begin
 
     can_interrupt := true;
     do_interrupt := false;
+    do_fault := false;
+    fault_address:=(others => 'X');
+    trap:=false;
 
     if wb_busy='0' then
       ew.regwe := '0';
@@ -151,17 +158,6 @@ begin
       when CONDITION_UL =>             passes_condition := er.psr(30);
       when others =>                   passes_condition := 'X';
     end case;
-
-
-
-    if fdui.r.drq.imflag='0' then
-      can_interrupt := true;
-    end if;
-
-    --if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and fdui.r.drq.jump_clause=JUMP_NONE
-    --    and er.jump='0' then
-    --  do_interrupt := true;
-    --end if;
 
     if mem_busy='1' or alu1_busy='1' or cop_busy='1' then
       busy_int := '1';
@@ -191,6 +187,7 @@ begin
 
     euo.reg_source  <= fdui.r.drq.reg_source;
     euo.dreg         <= fdui.r.drq.dreg;
+    euo.load_imregwr  <= '0';
 
 --    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
 --      euo.regwe        <= fdui.r.drq.regwe;
@@ -201,14 +198,6 @@ begin
     dbgo.valid <= false;
     dbgo.executed <= false;
     euo.executed <= false;
-
-    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
-      dbgo.valid <= true;
-      if passes_condition='1' then
-        dbgo.executed <= true;
-        euo.executed <= true;
-      end if;
-    end if;
 
     dbgo.dual <= fdui.r.drq.dual;
     dbgo.opcode1 <= fdui.r.drq.opcode_low;
@@ -225,17 +214,60 @@ begin
     co.id <= fdui.r.drq.cop_id;
     co.data <= lhs;
 
-    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+
+    -- Traps and interrupts.
+
+    -- Note: if this happens in a delay slot.... the result is
+    -- undefined.
+
+    if fdui.valid='1' and fdui.r.drq.priv='1' and er.psr(0)='0' then
+      trap:=true;
+      do_fault:=true;
+      can_interrupt:=false;
+      fault_address:=x"1";
+    end if;
+
+    if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and er.jump='0' then
+      do_interrupt := true;
+      do_fault:=true;
+      fault_address:=x"0";
+    end if;
+
+    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
+      dbgo.valid <= true;
+      if passes_condition='1' then
+        dbgo.executed <= true;
+        euo.executed <= true;
+      end if;
+    end if;
+
+
+    do_trap<='0';
+    ew.trapq:='0';
+    if do_fault then
+      passes_condition := '0';
+      do_trap<='1';
+      ew.trapq := '1';
+
+      dbgo.valid <= false;
+    end if;
+
+
+
+    if fdui.valid='1' and passes_condition='1' then
       cop_en <= fdui.r.drq.cop_en;
       co.wr <= fdui.r.drq.cop_wr;
     end if;
 
-    if fdui.valid='1' and busy_int='0' and er.intjmp=false and passes_condition='1' then
+    if fdui.valid='1' and passes_condition='0' and fdui.r.drq.blocks='1' then
+      euo.clrreg    <= '1';
+    else
+      euo.clrreg    <= '0';
+    end if;
+
+    if fdui.valid='1' and busy_int='0' and passes_condition='1' then
 
       ew.alur := alu_a_r(31 downto 0);
-
-      --ew.alufwa := fdui.r.alufwa;
-      --ew.alufwb := fdui.r.alufwb;
 
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
 
@@ -251,8 +283,7 @@ begin
       ew.dreg        := fdui.r.drq.dreg;
       ew.npc         := fdui.r.drq.fpc;
 
-
-      if fdui.r.drq.is_jump and passes_condition='1' then
+      if fdui.r.drq.is_jump then
         ew.jump:='1';
       else
         ew.jump:='0';
@@ -271,14 +302,21 @@ begin
       end if;
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
-        case fdui.r.drq.sra2(1 downto 0) is
-          when "00" => -- Y
-          when "01" => -- PSR
+        case fdui.r.drq.sra2(2 downto 0) is
+          when "000" => -- Y
+            ew.y := unsigned(lhs);
+          when "001" => -- PSR
             ew.psr := unsigned(lhs);
-          when "10" => -- SPSR
+          when "010" => -- SPSR
             ew.spsr := unsigned(lhs);
-          when "11" => -- TTR
+          when "011" => -- TTR
             ew.trapvector := unsigned(lhs);
+          when "100" => -- TPC
+            ew.trappc := unsigned(lhs);
+          when "101" => -- SR
+            ew.scratch := unsigned(lhs);
+          when "110" => -- SR
+            ew.save_imreg := unsigned(lhs);
 
           when others =>
         end case;
@@ -287,24 +325,26 @@ begin
       if ew.jump='1' and fdui.r.drq.except_return then
         -- Restore PSR, BR
         ew.psr := er.spsr;
+        ew.psr(1) := '0';
+        ew.jumpaddr := er.trappc;
+        euo.load_imregwr  <= er.spsr(1);
+
       end if;
 
     else
       -- Instruction is not being processed.
-      --ew.jumpaddr := (others => 'X');
-
+      enable_alu<='0';
     end if;
 
-    ew.intjmp := false;
-
-    if busy_int='0' and do_interrupt then
-      ew.jump := '1';
-      ew.intjmp := true;
-      ew.jumpaddr(31 downto 2) := er.trapvector(31 downto 2);
-      ew.jumpaddr(1 downto 0) := "00";
+    if do_fault then
+      --ew.jump:='1';
+      ew.jumpaddr(31 downto 8):=er.trapvector(31 downto 8);
+      ew.jumpaddr(7 downto 4) := fault_address;
+      ew.jumpaddr(3 downto 0) := x"0";
+      ew.spsr := ew.psr; -- Save PSR
       ew.psr(4) := '0'; -- Interrupt enable
       ew.psr(0) := '1'; -- Supervisor mode
-      ew.spsr := er.psr; -- Save PSR
+      ew.trappc := fdui.r.drq.pc;
     end if;
 
     busy <= busy_int;
@@ -314,20 +354,24 @@ begin
 
     -- SPRVAL...
 
-    case fdui.r.drq.sra2(1 downto 0) is
-      when "00" => ew.sprval := er.y;
-      when "01" => ew.sprval := er.psr;
-      when "10" => ew.sprval := er.spsr;
-      when "11" => ew.sprval := er.trapvector;
+    case fdui.r.drq.sra2(2 downto 0) is
+      when "000" => ew.sprval := er.y;
+      when "001" => ew.sprval := er.psr;
+      when "010" => ew.sprval := er.spsr;
+      when "011" => ew.sprval := er.trapvector;  
+      when "100" => ew.sprval := er.trappc;
+      when "101" => ew.sprval := er.scratch;
+      when "110" => ew.sprval := er.save_imreg;
       when others => ew.sprval := (others => 'X');
     end case;
 
-    euo.sprval <= ew.sprval;
+    euo.sprval      <= ew.sprval;
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;
     euo.cop         <= ci.data;
 
+    euo.load_imreg  <= er.save_imreg;
     -- Memory lines
 
     euo.sprwe     <= fdui.r.drq.sprwe;
@@ -335,17 +379,7 @@ begin
     euo.sr        <= fdui.r.drq.sr;
     euo.macc      <= fdui.r.drq.macc;
     euo.npc       <= fdui.r.drq.fpc;  -- NOTE: This is due to delay slot
-
-    euo.data_write <= (others => 'X');
-
-    case fdui.r.drq.macc is
-     -- when M_SPR | M_SPR_POSTINC =>
-        -- TODO: add missing SPRs
-
-      when others =>
-        euo.data_write <= rhs; -- Memory always go through Alu2
-    end case;
-
+    euo.data_write <= rhs; -- Memory always go through Alu2
     euo.data_address      <= std_logic_vector(reg_add_immed);
     euo.data_access       <= fdui.r.drq.memory_access;
     euo.data_writeenable  <= fdui.r.drq.memory_write;
@@ -354,16 +388,21 @@ begin
       euo.data_access <= '0';
     end if;
 
+
+
     if rst='1' then
       ew.psr(0) := '1'; -- Supervisor
       ew.psr(4) := '0'; -- Interrupts disabled
-      ew.trapvector := (others => '0');
+      ew.trapvector := RESETADDRESS;--others => '0');
       ew.jump := '0';
     end if;
 
     if rising_edge(clk) then
       if invalid_instr then
         report "Invalid instruction" severity failure;
+      end if;
+      if trap then
+        report "TRAP";
       end if;
       er <= ew;
     end if;
@@ -372,6 +411,7 @@ begin
     -- synthesis translate_on
   end process;
 
-  euo.jump <= er.jump and fdui.valid;
+  euo.jump <= (er.jump and fdui.valid) or (er.trapq);
+  euo.trap <= do_trap;
 
 end behave;

@@ -119,6 +119,8 @@ begin
     s1_wbo        => piowbo
   );
 
+  ramwbi.int <= iowbi.int;
+
   maccarb: wbarb2_1
   port map (
     wb_syscon     => wb_syscon,

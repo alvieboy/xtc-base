@@ -83,6 +83,8 @@ package xtcpkg is
     -- COP
     O_COPR,
     O_COPW,
+    O_RSPR,
+    O_WSPR,
     -- Errors
     O_ABORT
   );
@@ -177,6 +179,7 @@ package xtcpkg is
     cop_wr:         std_logic;
     cop_id:         std_logic_vector(1 downto 0);
     cop_reg:        std_logic_vector(3 downto 0);
+    priv:           std_logic;
   end record;
 
 
@@ -260,6 +263,7 @@ package xtcpkg is
     cop_id:         std_logic_vector(1 downto 0);
     cop_reg:        std_logic_vector(3 downto 0);
 
+    priv:           std_logic;
 -- synthesis translate_off
     strasm:     string(1 to 50);
 -- synthesis translate_on
@@ -313,10 +317,14 @@ package xtcpkg is
     jump:           std_logic;
     jumpaddr:       word_type;
     trapvector:     word_type;
+    trappc:         word_type;
+    scratch:        word_type;
     y:              word_type;
     intjmp:         boolean;
     npc:  word_type;
     sprval: word_type;
+    save_imreg: word_type;
+    trapq: std_logic;
   end record;
 
   type execute_output_type is record
@@ -344,7 +352,10 @@ package xtcpkg is
 
     cop:     std_logic_vector(31 downto 0);
     jump:     std_logic;
-
+    trap:     std_logic;
+    load_imreg:    word_type;
+    load_imregwr:  std_logic;
+    clrreg:   std_logic;
   end record;
 
   type memory_state_type is (

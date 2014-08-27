@@ -49,7 +49,7 @@ begin
 
   syncfetch: if FETCHDATA_STAGE generate
 
-    process(dui,clk,rst,fdr,flush,freeze, refetch)
+    process(dui,clk,rst,fdr,flush,freeze, refetch, executed)
       variable fdw: fetchdata_regs_type;
     begin
       fdw := fdr;

@@ -94,6 +94,8 @@ enum xtc_instr
     jmpe,
     copr,
     copw,
+    rspr,
+    wspr,
 
     invalid_inst
 };
@@ -103,18 +105,17 @@ enum xtc_instr
 #define MIN_REGNUM 0
 #define MAX_REGNUM 31
 
-#define REG_PC  16 /* PC.  */
-#define REG_BR  17 /* BR  */
-#define REG_Y   18 /* Y  */
-#define REG_PSR   19
-#define REG_SPSR   20
-#define REG_SBR   21
-#define REG_TTR   22
+#define REG_Y     16 /* Y  */
+#define REG_PSR   17
+#define REG_SPSR  18
+#define REG_TR    19
+#define REG_TPC    20
+#define REG_SR0    21
+
 /* Alternate names for gen purpose regs.  */
 #define REG_SP  15 /* stack pointer.  */
 
 /* Assembler Register - Used in Delay Slot Optimization.  */
-#define REG_AS    18
 #define REG_ZERO  0
  
 #define RA_LOW  0 /* Low bit for RA.  */

@@ -20,7 +20,9 @@ entity decode is
     flush: in std_logic;
     jump:  in std_logic;
     dual:   out std_logic;
-    jumpmsb:  in std_logic
+    jumpmsb:  in std_logic;
+    imreg:  in word_type;
+    imregwr:in std_logic
   );
 end entity decode;
 
@@ -48,7 +50,7 @@ begin
         dec           => dec
       );
 
-    process(fui, dr, clk, rst, dec, freeze, jump, jumpmsb, flush)
+    process(fui, dr, clk, rst, dec, freeze, jump, jumpmsb, flush, opcode_high,opcode_low,imregwr,imreg)
       variable dw: decode_regs_type;
       --variable op: decoded_opcode_type;
       variable opc1,opc2:       std_logic_vector(15 downto 0);
@@ -243,7 +245,7 @@ begin
         --dw.reg_source1 := reg_source1;
         dw.regwe       := regwe;
         --dw.regwe1      := regwe1;
-
+        dw.priv         := dec.priv;
         dw.jump         := jump;
         --dw.jump_clause  := jump_clause;
         dw.except_return:= except_return;
@@ -277,6 +279,12 @@ begin
         --dw.except_return := false;
         --dw.extended := dec.extended;
 
+      end if;
+
+      if imregwr='1' then
+        dw.imreg := imreg;
+        -- What about imflag ?
+        dw.imflag := '1';
       end if;
 
       if dec.extended then

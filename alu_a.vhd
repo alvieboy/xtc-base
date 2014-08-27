@@ -12,7 +12,7 @@ entity alu is
     a:  in unsigned(31 downto 0);
     b:  in unsigned(31 downto 0);
     o: out unsigned(31 downto 0);
-
+    y: out unsigned(31 downto 0);
     op: in alu_op_type;
     en: in std_logic;
 
@@ -109,7 +109,7 @@ begin
 
   mult_en <= '1' when op=ALU_MUL and en='1' else '0';
 
-  process(alu_add_r, carryext, alu_a, alu_b, alu_sub_r, op, mult_valid, mult_r,shift_out)
+  process(alu_add_r, carryext, alu_a, alu_b, alu_sub_r, op, mult_valid, mult_r,shift_out,mult_y)
   begin
 
     shift_left <= 'X';
@@ -155,7 +155,7 @@ begin
     end if;
 
   end process;
-
+  y <= unsigned(mult_y);
   co    <= alu_r(32);
   sign  <= alu_r(31);
   o     <= alu_r(31 downto 0);

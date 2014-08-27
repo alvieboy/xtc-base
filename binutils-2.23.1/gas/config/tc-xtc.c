@@ -73,7 +73,7 @@ const relax_typeS md_relax_table[] =
 
 static bfd_boolean check_gpr_reg (unsigned *p)
 {
-    if ((*p)<REG_PC)
+    if ((*p)<REG_Y)
         return 1;
     return 0;
 }
@@ -345,20 +345,10 @@ parse_reg (char * s, unsigned * reg)
   while (ISSPACE (* s))
     ++ s;
 
-  if (strncasecmp (s, "pc", 2) == 0)
-    {
-      *reg = REG_PC;
-      return s + 2;
-    }
-  else if (strncasecmp (s, "y", 1) == 0)
+  if (strncasecmp (s, "y", 1) == 0)
     {
       *reg = REG_Y;
       return s + 1;
-    }
-  else if (strncasecmp (s, "br", 2) == 0)
-    {
-      *reg = REG_BR;
-      return s + 2;
     }
   else if (strncasecmp (s, "psr", 2) == 0)
     {
@@ -370,14 +360,19 @@ parse_reg (char * s, unsigned * reg)
       *reg = REG_SPSR;
       return s + 4;
     }
-  else if (strncasecmp (s, "sbr", 2) == 0)
+  else if (strncasecmp (s, "tr", 2) == 0)
     {
-      *reg = REG_SBR;
+      *reg = REG_TR;
+      return s + 2;
+    }
+  else if (strncasecmp (s, "tpc", 3) == 0)
+    {
+      *reg = REG_TPC;
       return s + 3;
     }
-  else if (strncasecmp (s, "ttr", 2) == 0)
+  else if (strncasecmp (s, "sr0", 3) == 0)
     {
-      *reg = REG_TTR;
+      *reg = REG_SR0;
       return s + 3;
     }
   else
@@ -1161,23 +1156,41 @@ md_assemble (char * str)
     switch (opcode->inst_type)
     {
 
-    case INST_TYPE_SR:
-
-        if (strcmp (op_end, ""))
-            op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
-        else
-        {
-            as_fatal (_("Error in statement syntax"));
-            reg1 = 0;
+    case INST_TYPE_RSPR:
+        isLoad=1;
+    case INST_TYPE_WSPR:
+        if (isLoad) {
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg2);  /* Get r1.  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg1 = 0;
+            }
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg1);  /* Get r2  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg2 = 0;
+            }
+        } else {
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg1);  /* Get r1.  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg2 = 0;
+            }
+            if (strcmp (op_end, ""))
+                op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
+            else
+            {
+                as_fatal (_("Error in statement syntax"));
+                reg1 = 0;
+            }
         }
-        if (strcmp (op_end, ""))
-            op_end = parse_reg (op_end + 1, &reg2);  /* Get r2  */
-        else
-        {
-            as_fatal (_("Error in statement syntax"));
-            reg2 = 0;
-        }
-        /* Check for spl registers.  */
+        /* Check for spr registers.  */
         if (!check_gpr_reg (& reg1))
             as_fatal (_("Cannot use special register with this instruction"));
 
@@ -1185,7 +1198,7 @@ md_assemble (char * str)
             as_fatal (_("Cannot use GPR register with this instruction"));
 
         inst |= (reg1 << RA_LOW) & RA_MASK;
-        inst |= ((reg2-REG_PC) << SPR_LOW) & SPR_MASK;
+        inst |= ((reg2-REG_Y) << SPR_LOW) & SPR_MASK;
 
         output = frag_more (isize);
         break;

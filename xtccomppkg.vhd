@@ -135,7 +135,7 @@ package xtccomppkg is
     a:  in unsigned(31 downto 0);
     b:  in unsigned(31 downto 0);
     o: out unsigned(31 downto 0);
-
+    y: out unsigned(31 downto 0);
     op: in alu_op_type;
     en: in std_logic;
 
@@ -190,7 +190,9 @@ package xtccomppkg is
     flush:  in std_logic;
     jump:   in std_logic;
     jumpmsb: in std_logic;
-    dual: out std_logic
+    dual: out std_logic;
+    imreg:  in word_type;
+    imregwr:in std_logic
   );
   end component;
 

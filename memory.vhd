@@ -151,15 +151,23 @@ begin
 
       muo.mdata <= mdata;
       muo.mreg <= wb_tag_i(3 downto 0);
+
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
       refetch <= wb_ack_i and wb_tag_i(4);
+
+      if queue_request and eui.clrreg='1' then
+        muo.mregwe<='1';
+        muo.mreg<=eui.mwreg;
+      end if;
+
+
 
       if req_pending='1' then
         wb_cyc_o <= '1';
       else
         wb_cyc_o <= mr.wb_cyc;
-
       end if;
+
 
       if rising_edge(clk) then
         mr<=mw;

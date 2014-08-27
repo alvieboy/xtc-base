@@ -34,7 +34,6 @@
 #define INST_TYPE_MEM_LOAD 6
 #define INST_TYPE_NOARGS 7
 #define INST_TYPE_MEM_INDIRECT 8
-#define INST_TYPE_SR 9
 #define INST_TYPE_MEM_IMM8_R 10
 #define INST_TYPE_R 11
 #define INST_TYPE_MEM_LOAD_S 12
@@ -42,6 +41,8 @@
 #define INST_TYPE_MEM_STORE 14
 #define INST_TYPE_MEM_STORE_S 15
 #define INST_TYPE_COP 16
+#define INST_TYPE_RSPR 17
+#define INST_TYPE_WSPR 18
 
 /* Instructions where the label address is resolved as a PC offset
    (for branch label).  */
@@ -149,6 +150,9 @@ const struct op_code_struct
     {"jmpe",   NO_EXT,       NO_IMM, INST_TYPE_R1_R2, 0x3400, OPCODE_MASK_ARITH, INST_NO_OFFSET, jmpe },
     {"sextb", CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x3800, OPCODE_MASK_ARITH, INST_NO_OFFSET, sextb },
     {"sexts", CAN_EXT_ALL, NO_IMM, INST_TYPE_R1_R2, 0x3A00, OPCODE_MASK_ARITH, INST_NO_OFFSET, sexts },
+
+    {"rspr", NO_EXT, NO_IMM, INST_TYPE_RSPR, 0x3C00, OPCODE_MASK_ARITH, INST_NO_OFFSET, rspr },
+    {"wspr", NO_EXT, NO_IMM, INST_TYPE_WSPR, 0x3E00, OPCODE_MASK_ARITH, INST_NO_OFFSET, wspr },
 
 
     {"nop",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x3810, 0x7fff, INST_NO_OFFSET, nop },

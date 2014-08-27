@@ -362,17 +362,17 @@ begin
   );
 
   
-  flash: M25P16
-    PORT map (
-		  VCC   => vcc,
-		  C     => sck,
-      D     => mosi,
-      S     => sel,
-      W     => '1',
-      HOLD  => '1',
-		  Q     => miso);
+--  flash: M25P16
+--    PORT map (
+--		  VCC   => vcc,
+--		  C     => sck,
+--      D     => mosi,
+--      S     => sel,
+--      W     => '1',
+--      HOLD  => '1',
+--		  Q     => miso);
 
-  vcc<=3.3 after 10 ns;
+--  vcc<=3.3 after 10 ns;
 
   -- Reset procedure
   process
@@ -382,10 +382,6 @@ begin
     w_rst<='1';
     wait for period;
     w_rst<='0';
-    --wait for 10 us;
-    --w_rst<='1';
-    --wait for period;
-    --w_rst<='0';
     wait;
   end process;
 
@@ -393,9 +389,9 @@ begin
   process
   begin
     wait for 310 ns;
---    wb_int <= '1';
+    wbo.int <= '1';
     wait for 50 ns;
-  --  wb_int <= '0';
+    wbo.int <= '0';
 
   end process;
 
