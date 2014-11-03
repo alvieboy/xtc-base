@@ -685,10 +685,10 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
   entry = _bfd_elf_link_hash_newfunc (entry, table, string);
   if (entry != NULL)
     {
-      //struct elf32_mb_link_hash_entry *eh;
+      struct elf32_xtc_link_hash_entry *eh;
 
-      //eh = (struct elf32_mb_link_hash_entry *) entry;
-      //eh->dyn_relocs = NULL;
+      eh = (struct elf32_xtc_link_hash_entry *) entry;
+      eh->dyn_relocs = NULL;
     }
 
   return entry;
@@ -2090,9 +2090,9 @@ static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
     return (insn & 0x2f00)==0; // Either CC or DREG
 }
 
-static void xtc_relax_e24_e8_to_e8(unsigned char *location, long *value)
+static void xtc_relax_e24_e8_to_e8(unsigned char *location ATTRIBUTE_UNUSED, long *value)
 {
-#if 1
+#if 0
     printf("E24E8->E8: %02x%02x %02x%02x %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -2118,8 +2118,9 @@ static void xtc_relax_e24_e8_to_e8(unsigned char *location, long *value)
 static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
 {
 #define NEW_RELOC_IF(bits,newrel,removedbytes, algo) \
-    if (xtc_fits_imm(value,bits)) { (*rel)=(newrel); retry=TRUE; algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); bytes+=removedbytes; break; } \
-    else { printf("Imm %ld does not fit %d bits\n", value,bits); }
+    if (xtc_fits_imm(value,bits)) { (*rel)=(newrel); retry=TRUE; algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); bytes+=removedbytes; break; }
+
+    //else { printf("Imm %ld does not fit %d bits\n", value,bits); }
     int bytes = 0;
     bfd_boolean retry;
 
@@ -2789,10 +2790,11 @@ xtc_elf_finish_dynamic_symbol (bfd *output_bfd ATTRIBUTE_UNUSED,
                                struct elf_link_hash_entry *h ATTRIBUTE_UNUSED,
                                Elf_Internal_Sym *sym ATTRIBUTE_UNUSED)
 {
-  
-  return FALSE;
-}
 
+
+    return FALSE;
+
+}
 
 /* Finish up the dynamic sections.  */
 
@@ -2800,8 +2802,100 @@ static bfd_boolean
 xtc_elf_finish_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
                                  struct bfd_link_info *info ATTRIBUTE_UNUSED)
 {
-  return FALSE;
+
+    bfd *dynobj;
+    asection *sdyn;
+    //asection *sgot;
+    struct elf32_xtc_link_hash_table *htab;
+
+    htab = elf32_xtc_hash_table (info);
+    if (htab == NULL)
+        return FALSE;
+
+    dynobj = htab->elf.dynobj;
+
+    sdyn = bfd_get_linker_section (dynobj, ".dynamic");
+
+    if (htab->elf.dynamic_sections_created)
+    {
+        asection *splt;
+        Elf32_External_Dyn *dyncon, *dynconend;
+
+        splt = bfd_get_linker_section (dynobj, ".plt");
+        BFD_ASSERT (splt != NULL && sdyn != NULL);
+
+        dyncon = (Elf32_External_Dyn *) sdyn->contents;
+        dynconend = (Elf32_External_Dyn *) (sdyn->contents + sdyn->size);
+        for (; dyncon < dynconend; dyncon++)
+        {
+            Elf_Internal_Dyn dyn;
+            const char *name;
+            bfd_boolean size;
+
+            bfd_elf32_swap_dyn_in (dynobj, dyncon, &dyn);
+
+            switch (dyn.d_tag)
+            {
+                //case DT_PLTGOT:   name = ".got.plt"; size = FALSE; break;
+                // case DT_PLTRELSZ: name = ".rela.plt"; size = TRUE; break;
+                // case DT_JMPREL:   name = ".rela.plt"; size = FALSE; break;
+            case DT_RELA:     name = ".rela.dyn"; size = FALSE; break;
+            case DT_RELASZ:   name = ".rela.dyn"; size = TRUE; break;
+            default:	  name = NULL; size = FALSE; break;
+            }
+
+            if (name != NULL)
+            {
+                asection *s;
+
+                s = bfd_get_section_by_name (output_bfd, name);
+                if (s == NULL)
+                    dyn.d_un.d_val = 0;
+                else
+                {
+                    if (! size)
+                        dyn.d_un.d_ptr = s->vma;
+                    else
+                        dyn.d_un.d_val = s->size;
+                }
+                bfd_elf32_swap_dyn_out (output_bfd, &dyn, dyncon);
+            }
+        }
+
+        /* Clear the first entry in the procedure linkage table,
+         and put a nop in the last four bytes.  */
+        if (splt->size > 0)
+        {
+            memset (splt->contents, 0, PLT_ENTRY_SIZE);
+            bfd_put_32 (output_bfd, (bfd_vma) 0x80000000 /* nop.  */,
+                        splt->contents + splt->size - 4);
+        }
+
+        elf_section_data (splt->output_section)->this_hdr.sh_entsize = 4;
+    }
+#if 0
+    /* Set the first entry in the global offset table to the address of
+     the dynamic section.  */
+    sgot = bfd_get_linker_section (dynobj, ".got.plt");
+    if (sgot && sgot->size > 0)
+    {
+        if (sdyn == NULL)
+            bfd_put_32 (output_bfd, (bfd_vma) 0, sgot->contents);
+        else
+            bfd_put_32 (output_bfd,
+                        sdyn->output_section->vma + sdyn->output_offset,
+                        sgot->contents);
+        elf_section_data (sgot->output_section)->this_hdr.sh_entsize = 4;
+    }
+
+    if (htab->sgot && htab->sgot->size > 0)
+        elf_section_data (htab->sgot->output_section)->this_hdr.sh_entsize = 4;
+#endif
+
+    return TRUE;
 }
+
+
 
 
 

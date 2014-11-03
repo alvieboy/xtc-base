@@ -154,6 +154,8 @@ const struct op_code_struct
     {"rspr", NO_EXT, NO_IMM, INST_TYPE_RSPR, 0x3C00, OPCODE_MASK_ARITH, INST_NO_OFFSET, rspr },
     {"wspr", NO_EXT, NO_IMM, INST_TYPE_WSPR, 0x3E00, OPCODE_MASK_ARITH, INST_NO_OFFSET, wspr },
 
+    {"swi",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x2800, OPCODE_MASK_ARITH, INST_NO_OFFSET, nop },
+
 
     {"nop",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x3810, 0x7fff, INST_NO_OFFSET, nop },
     { NULL, 0, 0, 0, 0, 0, 0, 0},

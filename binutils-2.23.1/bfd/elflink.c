@@ -10930,8 +10930,9 @@ bfd_elf_final_link (bfd *abfd, struct bfd_link_info *info)
 
   if (flinfo.filesym_count > 1
       && !elf_link_output_sym (&flinfo, NULL, &elfsym,
-			       bfd_und_section_ptr, NULL))
-    return FALSE;
+                               bfd_und_section_ptr, NULL)) {
+      return FALSE;
+  }
 
   /* Output any global symbols that got converted to local in a
      version script or due to symbol visibility.  We do this in a
