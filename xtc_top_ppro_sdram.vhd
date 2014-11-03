@@ -71,6 +71,21 @@ architecture behave of xtc_top_ppro_sdram is
   );
   end component;
 
+  component spi is
+  generic (
+    INTERNAL_SPI: boolean := false
+  );
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
+    mosi:     out std_logic;
+    miso:     in std_logic;
+    sck:      out std_logic;
+    cs:       out std_logic;
+    enabled:  out std_logic
+  );
+  end component spi;
 
   component clkgen is
   port (
@@ -164,11 +179,6 @@ begin
   );
   DRAM_ADDR(12)<='0';
 
-  mosi <= '0';
-  ncs  <= '1';
-  sck <= '1';
-
-
   ioctrl: xtc_ioctrl
     port map (
       syscon      => syscon,
@@ -195,6 +205,20 @@ begin
 
       tx          => TXD,
       rx          => RXD
+  );
+
+  flashspi: spi
+    generic map (
+      INTERNAL_SPI => true
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(2),
+      wbo       => swbi(2),
+      mosi      => MOSI,
+      miso      => MISO,
+      sck       => SCK,
+      cs        => NCS
   );
 
   wb_clk_i <= sysclk;

@@ -18,25 +18,70 @@ end entity opdec;
 
 architecture behave of opdec is
 
-  signal decoded_op: decoded_opcode_type;
-  signal mtype: memory_access_type;
-  signal opcode: std_logic_vector(15 downto 0);
-  signal is_extended_opcode: boolean;
+--  signal decoded_op: decoded_opcode_type;
+--  signal mtype: memory_access_type;
+  --signal opcode: std_logic_vector(15 downto 0);
+  --signal is_extended_opcode: boolean;
+
+  function loadimm2str(i: in loadimmtype) return string is
+    variable r: string(1 to 2);
+  begin
+    case i is
+      when LOADNONE => r:= "N ";
+      when LOAD8    => r:= "8 ";
+      when LOAD16   => r:= "16";
+      when LOAD24   => r:= "24";
+      when LOAD0    => r:= "0 ";
+      when others   => r:= "??";
+    end case;
+    return r;
+  end function;
 
 begin
 
   -- Insn opcode depends on whether we have an extention opcode or
   -- not.
 
-  is_extended_opcode <= true when opcode_high(15)='1' else false;
-
-  opcode <= opcode_high;
-
-
-  -- Top level instruction decoder.
-  process(opcode, is_extended_opcode, opcode_low)
+  process(opcode_low, opcode_high)
+    -- synthesis translate_off
+    variable targetstr: string(1 to 2);
+    variable sourcestr: string(1 to 5);
+    variable opstr: string(1 to 7);
+    variable rnum:  string(1 to 1);
+    -- synthesis translate_on
+    variable d: opdec_type;
+    variable subloadimm: loadimmtype;
+    variable subloadimm2: loadimmtype;
     variable op: decoded_opcode_type;
+    variable force_flags: boolean;
+    variable mtype: memory_access_type;
+    variable opcode: std_logic_vector(15 downto 0);
+    variable is_extended_opcode: boolean;
+
   begin
+
+    if opcode_high(15)='1' then
+      is_extended_opcode := true;
+    else
+      is_extended_opcode := false;
+    end if;
+
+    opcode := opcode_high;
+
+
+  -- Decode memory access type, if applicable
+    case opcode(10 downto 8) is
+      when "000" => mtype := M_WORD;
+      when "001" => mtype := M_HWORD;
+      when "010" => mtype := M_BYTE;
+      when "011" => mtype := M_SPR;
+
+      when "100" => mtype := M_WORD_POSTINC;
+      when "101" => mtype := M_HWORD_POSTINC;
+      when "110" => mtype := M_BYTE_POSTINC;
+      when "111" => mtype := M_SPR_POSTINC;
+      when others =>
+    end case;
     
     case opcode(14 downto 12) is
       when "000" => -- ALU
@@ -52,12 +97,17 @@ begin
 
       when "010" =>
         -- Cop instructions
-        case opcode(10) is
-          when '0' => op := O_COPR;
-          when '1' => op := O_COPW;
+        case opcode(11) is
+          when '0' =>
+            case opcode(10) is
+              when '0' => op := O_COPR;
+              when '1' => op := O_COPW;
+              when others =>
+            end case;
+          when '1' =>
+            op := O_SWI;
           when others =>
         end case;
-
       when "011" =>
         -- Single R/NoR.
         case opcode(11) is
@@ -72,17 +122,17 @@ begin
             -- No/R
             case opcode(10) is
             when '0' =>
-            case opcode(9) is
-              when '0' => op := O_SEXTB;      -- 38
-              when '1' => op := O_SEXTS;      -- 3a
-              when others =>
-            end case;
+              case opcode(9) is
+                when '0' => op := O_SEXTB;      -- 38
+                when '1' => op := O_SEXTS;      -- 3a
+                when others =>
+              end case;
             when '1' =>
-            case opcode(9) is
-              when '0' => op := O_RSPR;      -- 38
-              when '1' => op := O_WSPR;      -- 3a
-              when others =>
-            end case;
+              case opcode(9) is
+                when '0' => op := O_RSPR;      -- 38
+                when '1' => op := O_WSPR;      -- 3a
+                when others =>
+              end case;
 
             when others =>
             end case;
@@ -111,40 +161,8 @@ begin
       end if;
     end if;
 
-    decoded_op <= op;
+    --decoded_op := op;
 
-  end process;
-
-  -- Decode memory access type, if applicable
-  process(opcode)
-  begin
-    case opcode(10 downto 8) is
-      when "000" => mtype <= M_WORD;
-      when "001" => mtype <= M_HWORD;
-      when "010" => mtype <= M_BYTE;
-      when "011" => mtype <= M_SPR;
-
-      when "100" => mtype <= M_WORD_POSTINC;
-      when "101" => mtype <= M_HWORD_POSTINC;
-      when "110" => mtype <= M_BYTE_POSTINC;
-      when "111" => mtype <= M_SPR_POSTINC;
-      when others =>
-    end case;
-  end process;
-
-
-  process(opcode, decoded_op, mtype, opcode_low, opcode_high, is_extended_opcode)
-    -- synthesis translate_off
-    variable targetstr: string(1 to 2);
-    variable sourcestr: string(1 to 5);
-    variable opstr: string(1 to 7);
-    variable rnum:  string(1 to 1);
-    -- synthesis translate_on
-    variable d: opdec_type;
-    variable subloadimm: loadimmtype;
-    variable force_flags: boolean;
-  begin
-    --d := dec;
     d.opcode := opcode;
     d.sreg1 := opcode(3 downto 0);
     d.sreg2 := opcode(7 downto 4);
@@ -164,7 +182,7 @@ begin
 
     -- Default values
     d.modify_gpr  := false;
-    d.op          := decoded_op;
+    d.op          := op;
     d.macc        := mtype;
     d.reg_source  := reg_source_alu;
     d.modify_flags:= false;
@@ -231,7 +249,11 @@ begin
 
 
 
-    case decoded_op is
+
+        
+
+
+    case op is
 
       when O_IM =>
         subloadimm := LOAD24;
@@ -394,16 +416,52 @@ begin
         d.enable_alu := '1';
         d.priv := '1';
 
+      when O_SWI =>
+        
 
       when others =>
     end case;
 
     d.imm8l(7 downto 0) := opcode(11 downto 4);
-    --d.imm8l(3 downto 0) := opcode(3 downto 0);
-
     d.imm8h(7 downto 0) := opcode_low(7 downto 0);
-
     d.imm24 := opcode_low(12) & opcode_low(7 downto 0) & opcode_high(14 downto 0);
+
+  test: if true then
+    -- subloadimm comes directly from opcode.
+      case opcode(14 downto 12) is
+        when "000" => -- R/R
+          subloadimm2 := LOADNONE;
+        when "001" => -- Memory
+          subloadimm2 := LOADNONE;
+        when "010" => -- Cop instructions
+          subloadimm2 := LOADNONE;
+        when "011" => -- No/R instructions
+          subloadimm2 := LOADNONE;
+        when "100" | "101" | "110" | "111" => -- I8 instructions
+          subloadimm2 := LOAD8;
+        when others =>
+      end case;
+
+      if is_extended_opcode and opcode_low(14 downto 13)="11" then
+        subloadimm2 := LOAD24;
+      end if;
+      
+    -- synthesis translate_off
+    if subloadimm/=subloadimm2 then
+      if is_extended_opcode then
+        report "While checking extended opcode ";
+      else
+        report "While checking normal opcode ";
+      end if;
+      report "Opcode low + high: " & hstr(opcode_low) & " " &hstr(opcode_high);
+      report "Mismatch " & hstr(opcode) & ": " & loadimm2str(subloadimm) & " vs " & loadimm2str(subloadimm2)
+        severity failure;
+    end if;
+    -- synthesis translate_on
+
+  end if;
+-- 332
+  --subloadimm := subloadimm2;
 
     if is_extended_opcode then
       case subloadimm is
@@ -462,7 +520,7 @@ begin
         d.dreg := opcode_low(3 downto 0);
       end if;
 
-      if decoded_op=O_ALU and opcode_low(14 downto 12)="100" then
+      if op=O_ALU and opcode_low(14 downto 12)="100" then
         d.alu_source := alu_source_immed;
         d.sreg1 := opcode(7 downto 4);
       end if;

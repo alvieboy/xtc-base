@@ -168,7 +168,7 @@ begin
     -- synthesis translate_off
     if DEBUG_OPCODES then
       if rising_edge(clk) then
-        if fdui.valid='1' and busy_int='0' and er.intjmp=false then
+        if fdui.valid='1' and busy_int='0' then
           if fdui.r.drq.dual then
             report hstr(std_logic_vector(fdui.r.drq.pc)) & " " & hstr(fdui.r.drq.opcode)&hstr(fdui.r.drq.opcode_low);
           else
@@ -187,13 +187,6 @@ begin
 
     euo.reg_source  <= fdui.r.drq.reg_source;
     euo.dreg         <= fdui.r.drq.dreg;
-    euo.load_imregwr  <= '0';
-
---    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
---      euo.regwe        <= fdui.r.drq.regwe;
---    else
---      euo.regwe        <= '0';
---    end if;
 
     dbgo.valid <= false;
     dbgo.executed <= false;
@@ -204,7 +197,7 @@ begin
     dbgo.opcode2 <= fdui.r.drq.opcode;
     dbgo.pc <= fdui.r.drq.pc;
 
-    if fdui.valid='1' and er.intjmp=false and passes_condition='1' then
+    if fdui.valid='1' and passes_condition='1' then
       enable_alu <= fdui.r.drq.enable_alu;
     end if;
 
@@ -215,7 +208,6 @@ begin
     co.data <= lhs;
 
 
-    -- Traps and interrupts.
 
     -- Note: if this happens in a delay slot.... the result is
     -- undefined.
@@ -227,13 +219,22 @@ begin
       fault_address:=x"1";
     end if;
 
-    if can_interrupt and int='1' and er.psr(4)='1' and fdui.valid='1' and er.jump='0' then
+    -- Traps and interrupts.
+
+    if can_interrupt and fdui.valid='1' and fdui.r.drq.decoded=O_SWI then
+      do_interrupt := true;
+      do_fault:=true;
+      fault_address:=x"2";
+    end if;
+
+
+    if can_interrupt and int='1' and er.psr(1)='1' and fdui.valid='1' and er.jump='0' then
       do_interrupt := true;
       do_fault:=true;
       fault_address:=x"0";
     end if;
 
-    if fdui.valid='1' and busy_int='0' and er.intjmp=false then
+    if fdui.valid='1' and busy_int='0' then
       dbgo.valid <= true;
       if passes_condition='1' then
         dbgo.executed <= true;
@@ -306,17 +307,17 @@ begin
           when "000" => -- Y
             ew.y := unsigned(lhs);
           when "001" => -- PSR
-            ew.psr := unsigned(lhs);
+            ew.psr(7 downto 0) := unsigned(lhs(7 downto 0));
+            ew.psr(31 downto 28) := unsigned(lhs(31 downto 28));
           when "010" => -- SPSR
-            ew.spsr := unsigned(lhs);
+            ew.spsr(7 downto 0) := unsigned(lhs(7 downto 0));
+            ew.spsr(31 downto 28) := unsigned(lhs(31 downto 28));
           when "011" => -- TTR
             ew.trapvector := unsigned(lhs);
           when "100" => -- TPC
             ew.trappc := unsigned(lhs);
           when "101" => -- SR
             ew.scratch := unsigned(lhs);
-          when "110" => -- SR
-            ew.save_imreg := unsigned(lhs);
 
           when others =>
         end case;
@@ -324,11 +325,9 @@ begin
 
       if ew.jump='1' and fdui.r.drq.except_return then
         -- Restore PSR, BR
-        ew.psr := er.spsr;
-        ew.psr(1) := '0';
+        ew.psr(7 downto 0) := er.spsr(7 downto 0);
+        ew.psr(31 downto 28) := er.spsr(31 downto 28);
         ew.jumpaddr := er.trappc;
-        euo.load_imregwr  <= er.spsr(1);
-
       end if;
 
     else
@@ -342,9 +341,12 @@ begin
       ew.jumpaddr(7 downto 4) := fault_address;
       ew.jumpaddr(3 downto 0) := x"0";
       ew.spsr := ew.psr; -- Save PSR
-      ew.psr(4) := '0'; -- Interrupt enable
+      ew.psr(1) := '0'; -- Interrupt enable
       ew.psr(0) := '1'; -- Supervisor mode
-      ew.trappc := fdui.r.drq.pc;
+      ew.psr(7 downto 4) := fault_address;
+
+      --ew.psr(1) := fdui.r.drq.imflag;
+      ew.trappc := fdui.r.drq.tpc;
     end if;
 
     busy <= busy_int;
@@ -356,12 +358,18 @@ begin
 
     case fdui.r.drq.sra2(2 downto 0) is
       when "000" => ew.sprval := er.y;
-      when "001" => ew.sprval := er.psr;
-      when "010" => ew.sprval := er.spsr;
+      when "001" =>
+        ew.sprval(7 downto 0) := er.psr(7 downto 0);
+        ew.sprval(27 downto 8) := (others => '0');
+        ew.sprval(31 downto 28) := er.psr(31 downto 28);
+      when "010" =>
+        ew.sprval(7 downto 0) := er.spsr(7 downto 0);
+        ew.sprval(27 downto 8) := (others => '0');
+        ew.sprval(31 downto 28) := er.spsr(31 downto 28);
+
       when "011" => ew.sprval := er.trapvector;  
       when "100" => ew.sprval := er.trappc;
       when "101" => ew.sprval := er.scratch;
-      when "110" => ew.sprval := er.save_imreg;
       when others => ew.sprval := (others => 'X');
     end case;
 
@@ -371,7 +379,6 @@ begin
     euo.sr          <= ew.sr;
     euo.cop         <= ci.data;
 
-    euo.load_imreg  <= er.save_imreg;
     -- Memory lines
 
     euo.sprwe     <= fdui.r.drq.sprwe;
@@ -392,7 +399,7 @@ begin
 
     if rst='1' then
       ew.psr(0) := '1'; -- Supervisor
-      ew.psr(4) := '0'; -- Interrupts disabled
+      ew.psr(31 downto 1) := (others =>'0'); -- Interrupts disabled
       ew.trapvector := RESETADDRESS;--others => '0');
       ew.jump := '0';
     end if;

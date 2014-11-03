@@ -105,7 +105,7 @@ architecture behave of xtc is
 
   signal immu_tlbw: std_logic:='0';
   signal immu_tlbv: tlb_entry_type;
-  signal immu_tlba: std_logic_vector(3 downto 0):="0000";
+  signal immu_tlba: std_logic_vector(2 downto 0):="000";
   signal immu_context: std_logic_vector(5 downto 0):=(others => '0');
   signal immu_paddr: std_logic_vector(31 downto 0);
   signal immu_valid: std_logic;
@@ -264,9 +264,7 @@ begin
       dual    => dual,
       flush   => euo.jump, -- DELAY SLOT when fetchdata is passthrough
       jump    => euo.jump,
-      jumpmsb => euo.r.jumpaddr(1),
-      imreg   => euo.load_imreg,
-      imregwr => euo.load_imregwr
+      jumpmsb => euo.r.jumpaddr(1)
     );
 
   freeze_decoder <= execute_busy or notallvalid;
@@ -325,7 +323,7 @@ begin
       if wb_syscon.rst='1' then
         tq <= (others => '1');
       else
-        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.jump='0' and allvalid='1' then
+        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.jump='0' and allvalid='1' and euo.trap='0' then
           tq(c1) <= '0';
         end if;
         -- Memory reads clear flags.
@@ -395,7 +393,7 @@ begin
        rst:    in std_logic;
    
        tlbw:   out std_logic;
-       tlba:   out std_logic_vector(3 downto 0);
+       tlba:   out std_logic_vector(2 downto 0);
        tlbv:   out tlb_entry_type;
        mmuen: out std_logic;
        icache_flush: out std_logic;

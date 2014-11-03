@@ -70,7 +70,7 @@ architecture behave of generic_dp_ram_r is
   subtype RAM_WORD is STD_LOGIC_VECTOR (32-1 downto 0);
 
   type RAM_TABLE is array (0 to (2**address_bits) - 1) of RAM_WORD;
-  shared variable RAM: RAM_TABLE;
+  shared variable RAM: RAM_TABLE := (others => (others => '0'));
 
 begin
 

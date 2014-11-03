@@ -85,7 +85,7 @@ architecture behave of dcache is
     ack_q_q:            std_logic;
     flush_req:        std_logic;
     in_flush:         std_logic;
-    count:            integer;-- range 0 to BURSTWORDS;
+    count:            integer range 0 to BURSTWORDS;
   end record;
 
   function address_to_tag(a: in address_type) return tag_type is
@@ -175,6 +175,10 @@ architecture behave of dcache is
   signal dbg_valid: std_logic;
   signal dbg_dirty: std_logic;
   signal dbg_miss: std_logic;
+
+  signal dbg_tag_address: tag_type;
+  signal dbg_tag_stored: tag_type;
+
   signal req_in_progess: std_logic;
   signal req_last: std_logic;
   signal wb_stb, wb_cyc: std_logic;
@@ -334,6 +338,12 @@ begin
 
     w.ack_q_q := '0';
     w.ack_q := '0';
+
+    -- synopsys translate_off
+    dbg_tag_address<=address_to_tag(r.req_addr);
+    dbg_tag_stored<=tmem_doa(tag_type'RANGE);
+
+    -- synopsys translate_on
 
     case r.state is
 

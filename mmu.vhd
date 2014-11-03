@@ -5,16 +5,21 @@ library work;
 use work.xtcpkg.all;
 
 entity mmu is
+  generic (
+    TLB_ENTRY_BITS: natural := 3;
+    CONTEXT_SIZE_BITS: natural := 1;
+    SIMPLIFIED: boolean := true
+  );
   port (
     clk:    in std_logic;
     rst:    in std_logic;
 
     addr:   in std_logic_vector(31 downto 0);
-    ctx:    in std_logic_vector(5 downto 0);
+    ctx:    in std_logic_vector(CONTEXT_SIZE_BITS-1 downto 0);
     en:     in std_logic;
 
     tlbw:   in std_logic;
-    tlba:   in std_logic_vector(3 downto 0);
+    tlba:   in std_logic_vector(TLB_ENTRY_BITS-1 downto 0);
     tlbv:   in tlb_entry_type;
     
     paddr:  out std_logic_vector(31 downto 0);
@@ -30,7 +35,7 @@ end entity mmu;
 architecture behave of mmu is
 
 
-  constant TLB_ENTRIES: integer := 8;
+  constant TLB_ENTRIES: integer := 2**TLB_ENTRY_BITS;
 
   constant PAGE_4K:       std_logic_vector(1 downto 0) := "00";
   constant PAGE_256K:     std_logic_vector(1 downto 0) := "01";
@@ -72,35 +77,44 @@ begin
       if (e.vaddr(17 downto 12) = addr(17 downto 12)) then
         match_4k  := '1';
       end if;
-      if (e.vaddr(19 downto 18) = addr(19 downto 18)) then
-        match_256k  := '1';
+
+      if SIMPLIFIED then
+        match_1m := '1';
+        match_16m := '1';
+        match_256k := '1';
+      else
+        if (e.vaddr(19 downto 18) = addr(19 downto 18)) then
+          match_256k  := '1';
+        end if;
+        if (e.vaddr(23 downto 20) = addr(23 downto 20)) then
+          match_1m    := '1';
+        end if;
+        if (e.vaddr(31 downto 24) = addr(31 downto 24)) then
+          match_16m   := '1';
+        end if;
       end if;
-      if (e.vaddr(23 downto 20) = addr(23 downto 20)) then
-        match_1m    := '1';
+
+      if SIMPLIFIED then
+        tlbmatch(n) <= match_ctx and match_16m and match_1m and match_256k and match_4k;
+        physaddr(n) <= e.paddr(31 downto 12) & addr(11 downto 0);
+      else
+        case (e.pagesize) is
+          when PAGE_4K =>
+            tlbmatch(n) <= match_ctx and match_16m and match_1m and match_256k and match_4k;
+            physaddr(n) <= e.paddr(31 downto 12) & addr(11 downto 0);
+          when PAGE_256K =>
+            tlbmatch(n) <= match_ctx and match_16m and match_1m and match_256k;
+            physaddr(n) <= e.paddr(31 downto 18) & addr(17 downto 0);
+          when PAGE_1M =>
+            tlbmatch(n) <= match_ctx and match_16m and match_1m;
+            physaddr(n) <= e.paddr(31 downto 20) & addr(19 downto 0);
+          when PAGE_16M =>
+            tlbmatch(n) <= match_ctx and match_16m;
+            physaddr(n) <= e.paddr(31 downto 24) & addr(23 downto 0);
+          when others =>
+            tlbmatch(n) <= '0';
+        end case;
       end if;
-      if (e.vaddr(31 downto 24) = addr(31 downto 24)) then
-        match_16m   := '1';
-      end if;
-
-
-      case (e.pagesize) is
-        when PAGE_4K =>
-          tlbmatch(n) <= match_ctx and match_16m and match_1m and match_256k and match_4k;
-          physaddr(n) <= e.paddr(31 downto 12) & addr(11 downto 0);
-        when PAGE_256K =>
-          tlbmatch(n) <= match_ctx and match_16m and match_1m and match_256k;
-          physaddr(n) <= e.paddr(31 downto 18) & addr(17 downto 0);
-        when PAGE_1M =>
-          tlbmatch(n) <= match_ctx and match_16m and match_1m;
-          physaddr(n) <= e.paddr(31 downto 20) & addr(19 downto 0);
-        when PAGE_16M =>
-          tlbmatch(n) <= match_ctx and match_16m;
-          physaddr(n) <= e.paddr(31 downto 24) & addr(23 downto 0);
-        when others =>
-          tlbmatch(n) <= '0';
-
-      end case;
-
     end process;
   end generate;
 

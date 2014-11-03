@@ -14,6 +14,7 @@ package xtcpkg is
   constant INSTRUCTION_CACHE: boolean := true;
   constant DATA_CACHE: boolean := true;
   constant MMU_ENABLED: boolean := false;
+  constant MULT_ENABLED: boolean := false;
 
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
@@ -85,6 +86,8 @@ package xtcpkg is
     O_COPW,
     O_RSPR,
     O_WSPR,
+    -- Misc
+    O_SWI,
     -- Errors
     O_ABORT
   );
@@ -240,6 +243,7 @@ package xtcpkg is
     npc:            word_type;
     fpc:            word_type;
     pc:             word_type;
+    tpc:            word_type; -- Trap PC. Might point to the IMM instruction
     condition_clause: condition_type;
     alu_source:     alu_source_type;
     -- IMMediate helpers
@@ -323,7 +327,6 @@ package xtcpkg is
     intjmp:         boolean;
     npc:  word_type;
     sprval: word_type;
-    save_imreg: word_type;
     trapq: std_logic;
   end record;
 
@@ -353,8 +356,6 @@ package xtcpkg is
     cop:     std_logic_vector(31 downto 0);
     jump:     std_logic;
     trap:     std_logic;
-    load_imreg:    word_type;
-    load_imregwr:  std_logic;
     clrreg:   std_logic;
   end record;
 
@@ -400,7 +401,7 @@ package xtcpkg is
 
   type tlb_entry_type is record
     pagesize:   std_logic_vector(1 downto 0);
-    ctx:        std_logic_vector(5 downto 0);
+    ctx:        std_logic_vector(0 downto 0);
     paddr:      std_logic_vector(31 downto 12);
     vaddr:      std_logic_vector(31 downto 12);
     flags:      std_logic_vector(3 downto 0);

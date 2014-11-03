@@ -285,12 +285,15 @@ begin
         offcnt <= (others => '0');
         flushcnt <= (others => '1');
         tag_mem_wen <= '1';
+        cyc <= '0';
+        stb <= '0';
       else
         busy <= '0';
         cyc <= '0';
         stb <= '0';
         tag_mem_wen <= '0';
         fill_success <='0';
+        flushcnt <= (others => 'X');
 
         case state is
 
@@ -300,7 +303,7 @@ begin
             tag_mem_wen<='1';
             if flushcnt=0 then
               tag_mem_wen<='0';
-             state <= running;
+              state <= running;
             end if;
 
           when running =>

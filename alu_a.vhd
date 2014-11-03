@@ -73,6 +73,8 @@ architecture behave of alu is
   signal shift_left: std_logic;
 begin
 
+  mulen: if MULT_ENABLED generate
+
   multiplier: mult
   port map (
     clk   => clk,
@@ -85,6 +87,17 @@ begin
     valid => mult_valid,
     comp  => mult_busy
   );
+
+  end generate;
+
+  muldis: if not MULT_ENABLED generate
+
+    mult_r <= (others => 'X');
+    mult_y <= (others => 'X');
+    mult_valid <= '0';
+    mult_busy  <= '0';
+
+  end generate;
 
   shifter_inst: shifter
     port map (

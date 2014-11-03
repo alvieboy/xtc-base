@@ -189,6 +189,7 @@ begin
       fw.unaligned_jump := '0';
       fw.invert_readout := '0';
       fw.state := running;
+      fuo.valid<='0';
     end if;
 
     if rising_edge(clk) then

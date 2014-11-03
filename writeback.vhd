@@ -54,8 +54,8 @@ begin
 
       wdata0 := (others => DontCareValue);
       wdata1 := (others => DontCareValue);
-      r0_en <= '1';
       r0_we <= '0';
+      r0_en <= '0';
       r0_addr <= (others => DontCareValue);
       r1_en <= '0';
       r1_we <= '0';
@@ -94,6 +94,7 @@ begin
 
           wdata0 := unsigned(mui.mdata);
           r0_we <= '1';
+          r0_en <= '1';
           r0_addr <= mui.mreg;
 
         --case eui.regwe is
@@ -127,6 +128,7 @@ begin
           end case;
 
           r0_we <=  eui.r.regwe;
+          r0_en <=  eui.r.regwe;
           r0_addr <= eui.r.dreg;
 
           --r1_we <=  eui.regwe1;

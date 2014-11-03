@@ -267,6 +267,22 @@ architecture sim of tb_sdram_flash is
 		  Q : OUT std_logic);
   end component;
 
+  component spi is
+  generic (
+    INTERNAL_SPI: boolean := false
+  );
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
+    mosi:     out std_logic;
+    miso:     in std_logic;
+    sck:      out std_logic;
+    cs:       out std_logic;
+    enabled:  out std_logic
+  );
+  end component spi;
+
   signal txd, rxd: std_logic;
   signal w_clk_3ns: std_logic;
 
@@ -361,18 +377,33 @@ begin
       rx          => 'X'
   );
 
-  
---  flash: M25P16
---    PORT map (
---		  VCC   => vcc,
---		  C     => sck,
---      D     => mosi,
---      S     => sel,
---      W     => '1',
---      HOLD  => '1',
---		  Q     => miso);
+    flashspi: spi
+    generic map (
+      INTERNAL_SPI => true
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(2),
+      wbo       => swbi(2),
+      mosi      => mosi,
+      miso      => miso,
+      sck       => sck,
+      cs        => sel
+  );
 
---  vcc<=3.3 after 10 ns;
+
+  
+  flash: M25P16
+    PORT map (
+		  VCC   => vcc,
+		  C     => sck,
+      D     => mosi,
+      S     => sel,
+      W     => '1',
+      HOLD  => '1',
+		  Q     => miso);
+
+  vcc<=3.3 after 10 ns;
 
   -- Reset procedure
   process
@@ -388,11 +419,11 @@ begin
   -- Interrupt test
   process
   begin
-    wait for 310 ns;
-    wbo.int <= '1';
-    wait for 50 ns;
     wbo.int <= '0';
-
+    wait for 2060 ns;
+    --wbo.int <= '1';
+    wait for 150 ns;
+    wbo.int <= '0';
   end process;
 
 end sim;

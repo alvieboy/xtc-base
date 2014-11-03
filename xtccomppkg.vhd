@@ -190,9 +190,7 @@ package xtccomppkg is
     flush:  in std_logic;
     jump:   in std_logic;
     jumpmsb: in std_logic;
-    dual: out std_logic;
-    imreg:  in word_type;
-    imregwr:in std_logic
+    dual: out std_logic
   );
   end component;
 
@@ -589,18 +587,23 @@ package xtccomppkg is
   end component xtc_ioctrl;
 
   component mmu is
+  generic (
+    TLB_ENTRY_BITS: natural := 3;
+    CONTEXT_SIZE_BITS: natural := 6;
+    SIMPLIFIED: boolean := true
+  );
   port (
     clk:    in std_logic;
     rst:    in std_logic;
 
     addr:   in std_logic_vector(31 downto 0);
-    ctx:    in std_logic_vector(5 downto 0);
+    ctx:    in std_logic_vector(CONTEXT_SIZE_BITS-1 downto 0);
     en:     in std_logic;
 
     tlbw:   in std_logic;
-    tlba:   in std_logic_vector(3 downto 0);
+    tlba:   in std_logic_vector(TLB_ENTRY_BITS-1 downto 0);
     tlbv:   in tlb_entry_type;
-
+    
     paddr:  out std_logic_vector(31 downto 0);
     valid:  out std_logic;
     pw:     out std_logic; -- Write permission

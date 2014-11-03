@@ -30,6 +30,22 @@ architecture sim of tb is
   );
   end component;
 
+  component spi is
+  generic (
+    INTERNAL_SPI: boolean := false
+  );
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
+    mosi:     out std_logic;
+    miso:     in std_logic;
+    sck:      out std_logic;
+    cs:       out std_logic;
+    enabled:  out std_logic
+  );
+  end component spi;
+
   signal txd, rxd: std_logic;
 
   signal wbi: wb_mosi_type;
@@ -77,7 +93,23 @@ begin
       rx        => rxd
   );
 
-  nodev2: nodev port map ( syscon => syscon, wbi => swbo(2), wbo => swbi(2) );
+  flashspi: spi
+    generic map (
+      INTERNAL_SPI => true
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(2),
+      wbo       => swbi(2),
+      mosi      => open,
+      miso      => '1',
+      sck       => open,
+      cs        => open
+  );
+
+
+
+--  nodev2: nodev port map ( syscon => syscon, wbi => swbo(2), wbo => swbi(2) );
   nodev3: nodev port map ( syscon => syscon, wbi => swbo(3), wbo => swbi(3) );
   nodev4: nodev port map ( syscon => syscon, wbi => swbo(4), wbo => swbi(4) );
   nodev5: nodev port map ( syscon => syscon, wbi => swbo(5), wbo => swbi(5) );
