@@ -108,6 +108,8 @@ begin
 
       r1_addr <= dui.r.sra1;
       r2_addr <= dui.r.sra2;
+      w_addr <= dui.r.dreg;
+      w_en   <= dui.r.regwe;
 
       if rst='1' then
         fdw.drq.valid := '0';

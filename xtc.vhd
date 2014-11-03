@@ -6,6 +6,9 @@ library work;
 use work.xtcpkg.all;
 use work.xtccomppkg.all;
 use work.wishbonepkg.all;
+-- synthesis translate_off
+use work.txt_util.all;
+-- synthesis translate_on
 
 entity xtc is
   port (
@@ -296,49 +299,49 @@ begin
 
   busycheck: block
 
-    constant COUNT: integer :=16;
-    signal tq: std_logic_vector(COUNT-1 downto 0);
-  
-    signal i1,i2:       integer range 0 to COUNT-1;
-    signal s1:          integer range 0 to COUNT-1;
-    signal c1:          integer range 0 to COUNT-1;
+    signal dirtyReg:    regaddress_type;
+    signal dirty:       std_logic;
     signal v1,v2,v3:    std_logic;
-  begin
-  
-    i1 <= to_integer(unsigned(rb1_addr));
-    i2 <= to_integer(unsigned(rb2_addr));
-  
-    s1 <= to_integer(unsigned(muo.mreg));
-    c1 <= to_integer(unsigned(duo.r.sra2));
-  
-  
-    v1<='1' when rb1_en='0' else tq(i1);
-    v2<='1' when rb2_en='0' else tq(i2);
-    v3<='1';-- when w_en='0' else tq(s1);
 
+  begin
+
+    v1 <= '0' when dirty='1' and rb1_en='1' and rb1_addr=dirtyReg else '1';
+    v2 <= '0' when dirty='1' and rb2_en='1' and rb2_addr=dirtyReg else '1';
+    -- This must come from prefetch... fix...
+    v3 <= '0' when dirty='1' and w_en='1' and w_addr=dirtyReg else '1';
 
     process(wb_syscon.clk)
     begin
     if rising_edge(wb_syscon.clk) then
       if wb_syscon.rst='1' then
-        tq <= (others => '1');
+        dirty <= '0';
+        dirtyReg <= (others => 'X');
       else
         if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.jump='0' and allvalid='1' and euo.trap='0' then
-          tq(c1) <= '0';
+          dirty <= '1';
+          dirtyReg <= duo.r.sra2;
         end if;
         -- Memory reads clear flags.
-        if muo.mregwe='1' then
-          tq(s1) <= '1';
+        if muo.mregwe='1' and dirty='1' then
+          -- TODO here: why not use only the memory wb, rather than all wb ?
+          if (dirtyReg=muo.mreg) then
+            dirty <= '0';
+            dirtyReg <= (others => 'X');
+          --if (dirtyReg /= muo.mreg) then
+          --  report "Omg.. clearing reg " &hstr(muo.mreg) & ", but dirty register is "&hstr(dirtyReg) severity failure;
+          end if;
         end if;
         
       end if;
 
-      retryfetch <= not (v1 and v2);
-
+      retryfetch <= not (v1 and v2 and v3);
+      --retryfetch<=dirty;
     end if;
   end process;
 
-    allvalid <= v1 and v2;-- and v3;
+    -- allvalid <= not dirty;
+    allvalid <= v1 and v2 and v3;
+
     notallvalid <= not allvalid;
 
   end block;
