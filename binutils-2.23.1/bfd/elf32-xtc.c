@@ -8,6 +8,8 @@
 
 #define INST_WORD_SIZE 2
 
+#undef DEBUG_RELAX
+
 static void xtc_emit_relocation(int rel, long value, bfd_byte *dest);
 static int xtc_reloc_pcrel_offset(int rel);
 
@@ -1397,8 +1399,9 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
               reserved = 0;
               phys_addr = relocation + rel->r_addend;
           }
-
-          //printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+#ifdef DEBUG_RELAX
+          printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+#endif
           xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset);
 
 
@@ -1904,18 +1907,17 @@ static bfd_boolean xtc_fits_imm(long imm, int bitsize)
     if (bitsize==0) {
         return imm==0;
     }
-    long max = 1<<(bitsize-1);
-    if (imm<0) {
-        imm=-1 - imm;
-    }
-    return imm<max;
+
+    return imm >= -(1LL << (bitsize - 1))
+        && imm < (1LL << (bitsize - 1));
+
 }
 
 static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
 {
     // Move I8 backwards. It's a 4-5, move to 2-3. The
     // upper 2 bytes will be removed later on.
-#if 0
+#ifdef DEBUG_RELAX
     printf("E24I8->E8I8: %02x%02x %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -1932,7 +1934,7 @@ static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
     // Move extension forward. modify for IMM
     location[4] = (savecond&0xf) | 0x40;
     location[5] = 0;
-#if 0
+#ifdef DEBUG_RELAX
     printf("%02x%02x %02x%02x\n",
            location[2],
            location[3],
@@ -1954,7 +1956,7 @@ static void xtc_relax_e24_to_e8( unsigned char *location ATTRIBUTE_UNUSED , long
 static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
 {
     // Move i8 forward
-#if 0
+#ifdef DEBUG_RELAX
     printf("E8I8->I8: %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -1963,7 +1965,7 @@ static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
 #endif
     location[2] = location[0] & 0x7f; // Remove extension
     location[3] = location[1];
-#if 0
+#ifdef DEBUG_RELAX
     printf("%02x%02x\n",
            location[2],
            location[3]);
@@ -1974,7 +1976,7 @@ static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
 }
 static void xtc_relax_e8_to_none(unsigned  char *location, long *value ATTRIBUTE_UNUSED)
 {
-#if 0
+#ifdef DEBUG_RELAX
     printf("E8-> -- %02x%02x \n",
            location[0],
            location[1]);
@@ -2031,6 +2033,8 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E24_E8_R:
     case R_XTC_32_E24_E8:
 
+        BFD_ASSERT( xtc_fits_imm(value,32) );
+
         dest = xtc_emit_e24(dest,value>>8);
 
         xtc_put16( (xtc_get16(dest+2) & 0xFF00) | ((value)&0xff), dest+2 );
@@ -2040,6 +2044,8 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E24_I8_R:
     case R_XTC_32_E24_I8:
         // First, emit E24
+        BFD_ASSERT( xtc_fits_imm(value,32) );
+
         dest = xtc_emit_e24(dest,value>>8);
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
         break;
@@ -2058,6 +2064,7 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E8:
         dest+=2;
         // Apply extension
+        BFD_ASSERT( xtc_fits_imm(value,8) );
         xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
 
         //abort();
@@ -2065,6 +2072,7 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 
     case R_XTC_32_E8_I8_R:
     case R_XTC_32_E8_I8:
+        BFD_ASSERT( xtc_fits_imm(value,16) );
         //printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
         //printf("%04lx\n", xtc_get16(dest));
@@ -2072,11 +2080,14 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
         dest+=2;
         // Apply extension
         xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+        //printf("Final: %04lx\n", xtc_get16(dest));
         //abort();
         break;
 
     case R_XTC_32_I8_R:
     case R_XTC_32_I8:
+        BFD_ASSERT( xtc_fits_imm(value,8) );
+
         //printf("Insn: %04lx ", xtc_get16(dest));
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
         //printf("Emit for instruction 0x%04lx, immed is %ld\n",xtc_get16(dest),value);
@@ -2092,7 +2103,7 @@ static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
 
 static void xtc_relax_e24_e8_to_e8(unsigned char *location ATTRIBUTE_UNUSED, long *value)
 {
-#if 0
+#ifdef DEBUG_RELAX
     printf("E24E8->E8: %02x%02x %02x%02x %02x%02x %02x%02x to ",
            location[0],
            location[1],
@@ -2123,6 +2134,10 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
     //else { printf("Imm %ld does not fit %d bits\n", value,bits); }
     int bytes = 0;
     bfd_boolean retry;
+
+#ifdef DEBUG_RELAX
+    printf("Relaxing value of %ld, current relocation is %d\n", value,*rel);
+#endif
 
     do {
         retry = FALSE;
@@ -2163,6 +2178,8 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
                 //printf("Cannot remove extension\n");
                 break;
             }
+            break;
+
             NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2,xtc_relax_e8_i8_to_i8);
             break;
 
@@ -2197,7 +2214,7 @@ xtc_elf_relax_section (bfd *abfd,
     //asection *o;
     //struct elf_link_hash_entry *sym_hash;
     Elf_Internal_Sym *isymbuf;//, *isymend;
-    Elf_Internal_Sym *isym;
+    Elf_Internal_Sym *isym = NULL;
     int symcount;
     //int offset;
     //bfd_vma src, dest;
@@ -2209,6 +2226,7 @@ xtc_elf_relax_section (bfd *abfd,
     /* Only do this for a text section.  */
     if (link_info->relocatable
         || (sec->flags & SEC_RELOC) == 0
+        || (sec->flags & SEC_CODE) == 0
         || (sec->reloc_count == 0))
         return TRUE;
 
@@ -2242,8 +2260,10 @@ xtc_elf_relax_section (bfd *abfd,
 
     irelend = internal_relocs + sec->reloc_count;
     rel_count = 0;
+#ifdef DEBUG_RELAX
 
-    //printf("Doing relaxation pass....\n");
+    printf("Doing relaxation pass for section '%s'\n", sec->name);
+#endif
 
     for (irel = internal_relocs; irel < irelend; irel++, rel_count++)
     {
@@ -2294,13 +2314,41 @@ xtc_elf_relax_section (bfd *abfd,
             else
                 sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
 
+            symval = isym->st_value;
+
+            if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
+                symval += irel->r_addend;
+
+            if ((sym_sec->flags & SEC_MERGE)
+                && sym_sec->sec_info_type == SEC_INFO_TYPE_MERGE)
+                symval = _bfd_merged_section_offset (abfd, &sym_sec,
+                                                     elf_section_data (sym_sec)->sec_info,
+                                                     symval);
+
+
+#if 0
             symval = _bfd_elf_rela_local_sym (abfd, isym, &sym_sec, irel);
+#else
+            symval += sym_sec->output_section->vma + sym_sec->output_offset;
+#endif
+#ifdef DEBUG_RELAX
+            printf("Relaxing local symbol '%s' section '%s' at VMA 0x%08x\n"
+                   "Value: 0x%08x (%d), section offset %d\n",
+                   bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                    isym->st_name),
+                   sym_sec->output_section->name,
+                   (int)sym_sec->output_section->vma,
+                   (int)isym->st_value,
+                   (int)isym->st_value,
+                   (int)sym_sec->output_offset
+                  );
+#endif
         }
         else
         {
             unsigned long indx;
             struct elf_link_hash_entry *h;
-
+            isym = isymbuf + ELF32_R_SYM (irel->r_info);
             indx = ELF32_R_SYM (irel->r_info) - symtab_hdr->sh_info;
             h = elf_sym_hashes (abfd)[indx];
             BFD_ASSERT (h != NULL);
@@ -2311,18 +2359,21 @@ xtc_elf_relax_section (bfd *abfd,
                  symbol.  Just ignore it--it will be caught by the
                  regular reloc processing.  */
                 continue;
+#ifdef DEBUG_RELAX
+            printf("Relaxing global symbol '%s'\n",
+                   bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                    isym->st_name)
+                  );
+#endif
 
             symval = (h->root.u.def.value
                       + h->root.u.def.section->output_section->vma
                       + h->root.u.def.section->output_offset);
         }
-        //int isPcrel = 0;
 
         if (xtc_reloc_pcrel( ELF32_R_TYPE( irel->r_info )))
         {
-            //isPcrel = 1;
             int offset = xtc_reloc_pcrel_offset(ELF32_R_TYPE( irel->r_info ));
-          //  printf("Offset for reloc: %d\n",offset);
             symval = symval + irel->r_addend
                 - (irel->r_offset + offset +
                    + sec->output_section->vma
@@ -2338,7 +2389,28 @@ xtc_elf_relax_section (bfd *abfd,
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
         //printf("Reloc at 0x%lx (value: %ld)\n",irel->r_offset,value);
-        deleteBytes = xtc_relax_relocation(&newReloc, value, elf_section_data (sec)->this_hdr.contents + irel->r_offset);
+#if 0
+        xtc_get_relocation_value (input_bfd, info, input_section,
+                                  local_sections, local_syms,
+                                  rel, &name, &relocation);
+
+#endif
+        deleteBytes = xtc_relax_relocation(&newReloc, value,
+                                           elf_section_data (sec)->this_hdr.contents +
+                                           irel->r_offset);
+
+#ifdef DEBUG_RELAX
+        if (isym) {
+        printf("Relaxed global symbol '%s': old reloc %ld, new reloc %d, value %08lx (%ld)\n",
+               bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                isym->st_name),
+               ELF32_R_TYPE(irel->r_info),
+               newReloc,
+               value,
+               value
+              );
+        }
+#endif
 
         if (deleteBytes) {
 
