@@ -49,6 +49,7 @@ architecture behave of dcache is
   type state_type is (
     idle,
     readline,
+    preparewb,
     writeback,
     recover,
     write_after_fill,
@@ -389,17 +390,20 @@ begin
               -- Read/Write miss to a dirty line for a different
               -- tag.
               w.writeback_tag := tmem_doa(tag_type'RANGE);
-              if r.req_we='1' then
-                --- Oops, we wrote to the wrong line.
-                w.state := recover; -- was writeback
-              else
+
                 -- TODO: if this is a direct access, no need to writeback.
                 w.rvalid := '0';
                 --w.fill_r_done := '0';
 
                 w.fill_offset_r := (others => '0');
                 w.fill_offset_w := (others => '0');
-                w.state := writeback;
+
+              if r.req_we='1' then
+                --- Oops, we wrote to the wrong line.
+                w.state := recover; -- was writeback
+              else
+
+                w.state := preparewb;
               end if;
               will_busy :='1';
 
@@ -600,80 +604,63 @@ begin
         cmem_dib <= cmem_doa;
 
         -- synthesis translate_off
-        report "Recover write";
+        --report "Recover write";
         -- synthesis translate_on
 
         w.rvalid := '0';
         w.fill_r_done := '0';
-        w.state := writeback;
+        w.state := preparewb;
 
       when writeback =>
 
         co.stall <= '1';
         w.rvalid := '1';
 
-        mwbo.adr<=(others => '0');
+        mwbo.adr  <=(others => '0');
         mwbo.adr(ADDRESS_HIGH downto 2) <= r.writeback_tag & r.fill_line_number & r.fill_offset_w;
-        wb_cyc<=r.rvalid ; --'1';
-        wb_stb<=r.rvalid and not r.fill_r_done;--not r.fill_r_done;
-        mwbo.we<=r.rvalid; --1';
-        mwbo.sel<= (others => '1');
+        wb_cyc    <= '1';--r.rvalid ; --'1';
+        wb_stb    <= not r.fill_r_done;
+        mwbo.we   <= '1';--r.rvalid; --1';
+        mwbo.sel  <= (others => '1');
 
-        if mwbi.stall='0' then
-          w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
-          w.fill_offset_w := r.fill_offset_r;
-        end if;
-
-        if mwbi.stall='0' and r.rvalid='1' and r.fill_r_done='0' then
-          if r.fill_offset_r = offset_all_ones then
+        if mwbi.stall='0' and r.fill_r_done='0' then
+          if w.count=0 then
             w.fill_r_done := '1';
+          else
+            w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
+            w.fill_offset_w := r.fill_offset_r;
+            w.count := w.count - 1;
           end if;
         end if;
 
-        --if (mwbi.stall='0' or r.rvalid='0') and r.fill_r_done='0' then
-        if (mwbi.ack='1') then
-          --w.fill_offset_w := std_logic_vector(unsigned(r.fill_offset_w) + 1);
-          --if r.fill_offset_w=offset_all_ones then
-          if req_last='1' then
-            --w.fill_offset_r := (others => '0');
-            --w.fill_offset_w := (others => '0');
-            --w.fill_r_done := '1';
-            if r.in_flush='1' then
-              w.state := flush;
-              w.in_flush:='0';
-            else
-              w.fill_offset_r := r.req_offset;--(others => '0');
-              w.fill_offset_w := r.req_offset;--(others => '0');
-              w.fill_r_done := '0';
-              w.state := readline;
-            end if;
-            --report "End writeback";
-            --w.state := readline;
+        if req_last='1' then
+          if r.in_flush='1' then
+            w.state := flush;
+            w.in_flush:='0';
+          else
+            w.fill_offset_r := r.req_offset;--(others => '0');
+            w.fill_offset_w := r.req_offset;--(others => '0');
+            w.fill_r_done := '0';
+            w.count := BURSTWORDS;
+            w.state := readline;
           end if;
         end if;
 
-        --if r.fill_is_b='1' then
-          mwbo.dat <= cmem_dob;
+        mwbo.dat    <= cmem_dob;
+        cmem_addrb  <= (r.fill_line_number & r.fill_offset_r) ;
+        cmem_enb    <= not mwbi.stall;-- or not r.rvalid;
+        cmem_addra  <= (others => DontCareValue);
+        cmem_web    <= (others=>'0');
 
-          cmem_addrb <= (r.fill_line_number & r.fill_offset_r) ;
-          cmem_enb <= not mwbi.stall or not r.rvalid;
-          --cmem_ena <= '0';
-          cmem_addra <= (others => DontCareValue);
-          cmem_web <= (others=>'0');
-
-        --else
-        --  mwbo.dat <= cmem_doa;
-        --  cmem_addra <= r.fill_line_number & r.fill_offset_w;
-        --  cmem_ena <= not mwbi.stall or not r.rvalid;
-        --  cmem_enb <= '0';
-        --  cmem_addrb <= (others => DontCareValue);
-        --  cmem_wea <= (others=>'0');
-        --end if;
-
-
-
-
-
+      when preparewb =>
+        co.stall    <= '1';
+        mwbo.dat    <= cmem_dob;
+        cmem_addrb  <= (r.fill_line_number & r.fill_offset_r) ;
+        cmem_enb    <= '1';
+        cmem_addra  <= (others => DontCareValue);
+        cmem_web    <= (others=>'0');
+        w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
+        w.state     := writeback;
 
       when write_after_fill =>
 
@@ -739,7 +726,7 @@ begin
 
         -- only valid in next cycle
         if r.in_flush='1' and tmem_dob(VALIDBIT)='1' and tmem_dob(DIRTYBIT)='1' then
-          report "Need to wb" severity note;
+         -- report "Need to wb" severity note;
           w.writeback_tag := tmem_dob(tag_type'RANGE);   -- NOTE: can we use tmem_doa ?
           --w.fill_is_b := '1';
           tmem_web<='0';
@@ -747,7 +734,7 @@ begin
           w.flush_line_number := r.flush_line_number;
           w.fill_r_done := '0';
           w.rvalid := '1';
-          w.state := writeback;
+          w.state := preparewb;
         else
           w.fill_line_number := r.flush_line_number;
 
