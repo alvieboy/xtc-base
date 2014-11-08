@@ -85,7 +85,6 @@ architecture behave of xtc is
 
   signal allvalid:            std_logic;
   signal notallvalid:         std_logic;
-  signal retryfetch:          std_logic;
   signal e_busy:  std_logic;
   signal refetch_registers:   std_logic;
   signal freeze_decoder:      std_logic;
@@ -117,7 +116,7 @@ architecture behave of xtc is
   signal cache_tag: std_logic_vector(31 downto 0);
   signal dcache_accesstype: std_logic_vector(1 downto 0);
   signal flushfd: std_logic;
-
+  signal clrhold: std_logic;
 begin
 
   -- synthesis translate_off
@@ -291,6 +290,7 @@ begin
       w_addr     => w_addr,
       w_en       => w_en,
       executed  => executed,
+      clrhold   => euo.clrhold,
       -- Input from decode unit
       dui       => duo,
       -- Outputs for next stages
@@ -302,13 +302,18 @@ begin
     signal dirtyReg:    regaddress_type;
     signal dirty:       std_logic;
     signal v1,v2,v3:    std_logic;
-
+    signal isBlocking:  std_logic;
+    signal canProceed:  std_logic;
   begin
 
     v1 <= '0' when dirty='1' and rb1_en='1' and rb1_addr=dirtyReg else '1';
     v2 <= '0' when dirty='1' and rb2_en='1' and rb2_addr=dirtyReg else '1';
-    -- This must come from prefetch... fix...
     v3 <= '0' when dirty='1' and w_en='1' and w_addr=dirtyReg else '1';
+
+    isBlocking <= '1' when duo.r.valid='1' and ( duo.r.blocks='1' )
+              and execute_busy='0' and euo.jump='0'
+              and allvalid='1' and euo.trap='0'
+        else '0';
 
     process(wb_syscon.clk)
     begin
@@ -317,7 +322,7 @@ begin
         dirty <= '0';
         dirtyReg <= (others => 'X');
       else
-        if duo.r.valid='1' and ( duo.r.blocks='1' ) and execute_busy='0' and euo.jump='0' and allvalid='1' and euo.trap='0' then
+        if isBlocking='1' and dirty='0' then
           dirty <= '1';
           dirtyReg <= duo.r.sra2;
         end if;
@@ -334,34 +339,17 @@ begin
         
       end if;
 
-      retryfetch <= not (v1 and v2 and v3);
-      --retryfetch<=dirty;
     end if;
   end process;
 
-    -- allvalid <= not dirty;
-    allvalid <= v1 and v2 and v3;
+    canProceed <= '0' when (dirty='1' and duo.r.valid='1' and duo.r.blocks='1') else '1';
+    allvalid <= v1 and v2 and v3 and canProceed;
 
     notallvalid <= not allvalid;
 
   end block;
 
-
-  process(e_busy,retryfetch)
-  begin
-    ----refetch_registers<='0';
-    --if allvalid='1' then
-      execute_busy<=e_busy;
-    --else
-      --if e_busy='1' or retryfetch='1' then
-      --  execute_busy<='1';
-      --  refetch_registers<=retryfetch;
-      --else
-      --  execute_busy<='0';
-      --end if;
-   -- end if;
-  end process;
-  --execute_busy <= retryfetch or e_busy;-- or (not allvalid);
+  execute_busy <= e_busy;
   executed <= euo.executed;
 
   execute_unit: execute

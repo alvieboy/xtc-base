@@ -14,7 +14,7 @@ package xtcpkg is
   constant INSTRUCTION_CACHE: boolean := true;
   constant DATA_CACHE: boolean := true;
   constant MMU_ENABLED: boolean := false;
-  constant MULT_ENABLED: boolean := false;
+  constant MULT_ENABLED: boolean := true;
 
   constant EXTRA_PIPELINE: boolean := false;
   constant FETCHDATA_STAGE: boolean := true;
@@ -163,6 +163,7 @@ package xtcpkg is
     enable_alu:     std_logic;
     imflag:         std_logic;
     blocks:         std_logic;
+    ismult:         std_logic;
     extended:       boolean;
     alu_source:     alu_source_type;
     use_carry:      std_logic;
@@ -246,6 +247,8 @@ package xtcpkg is
     tpc:            word_type; -- Trap PC. Might point to the IMM instruction
     condition_clause: condition_type;
     alu_source:     alu_source_type;
+    ismult:         std_logic;
+
     -- IMMediate helpers
     --imm12:          std_logic_vector(11 downto 0);
     --imm8:           std_logic_vector(7 downto 0);
@@ -288,7 +291,7 @@ package xtcpkg is
     waiting:        std_logic;
     alufwa:         std_logic;
     alufwb:         std_logic;
-
+    hold:           std_logic;
     dreg:           regaddress_type;
   end record;
 
@@ -357,6 +360,7 @@ package xtcpkg is
     jump:     std_logic;
     trap:     std_logic;
     clrreg:   std_logic;
+    clrhold:  std_logic;
   end record;
 
   type memory_state_type is (

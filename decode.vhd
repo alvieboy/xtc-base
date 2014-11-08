@@ -222,6 +222,7 @@ begin
 
         dw.imflag := imflag;
         dw.enable_alu := dec.enable_alu;
+        dw.ismult := dec.ismult;
 
         dw.alu_op := alu_op;
         dw.alu_source := dec.alu_source;

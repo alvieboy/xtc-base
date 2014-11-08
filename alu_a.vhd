@@ -20,6 +20,7 @@ entity alu is
     cen:  in std_logic; -- Carry enable
 
     busy: out std_logic;
+    valid: out std_logic;
     co: out std_logic;
     zero: out std_logic;
     ovf:   out std_logic;
@@ -49,6 +50,7 @@ architecture behave of alu is
   );
   end component;
 
+
   component shifter is
   port (
     a:  in unsigned(31 downto 0);
@@ -74,6 +76,8 @@ architecture behave of alu is
 begin
 
   mulen: if MULT_ENABLED generate
+
+  valid <= mult_valid;
 
   multiplier: mult
   port map (

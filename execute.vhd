@@ -17,7 +17,7 @@ entity execute is
     busy: out std_logic;
     refetch: in std_logic;
     wb_busy: in std_logic;
-
+  
     int:  in std_logic;
     intline: in std_logic_vector(7 downto 0);
 
@@ -54,6 +54,8 @@ architecture behave of execute is
 
   signal cop_busy, cop_en: std_logic;
   signal do_trap: std_logic;
+  signal mult_valid: std_logic;
+  signal dbg_passes_condition: std_logic;
 
 begin
 
@@ -84,6 +86,7 @@ begin
       ci    => er.psr(30),
       cen   => fdui.r.drq.use_carry,
       busy  => alu1_busy,
+      valid => mult_valid,
       co    => alu1_co,
       zero  => alu1_zero,
       ovf   => alu1_ovf,
@@ -159,7 +162,7 @@ begin
       when others =>                   passes_condition := 'X';
     end case;
 
-    if mem_busy='1' or alu1_busy='1' or cop_busy='1' then
+    if mem_busy='1' or cop_busy='1' then
       busy_int := '1';
     else
       busy_int := wb_busy;
@@ -349,7 +352,7 @@ begin
       ew.trappc := fdui.r.drq.tpc;
     end if;
 
-    busy <= busy_int;
+    busy <= busy_int or (fdui.r.hold and not mult_valid);
 
     -- Fast writeback
     euo.alur <= alu_a_r(31 downto 0);
@@ -415,10 +418,12 @@ begin
     end if;
     -- synthesis translate_off
     dbg_do_interrupt <= do_interrupt;
+    dbg_passes_condition <= passes_condition;
     -- synthesis translate_on
   end process;
 
   euo.jump <= (er.jump and fdui.valid) or (er.trapq);
   euo.trap <= do_trap;
+  euo.clrhold <= mult_valid or (er.jump and fdui.valid) or (er.trapq) ;
 
 end behave;

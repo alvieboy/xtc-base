@@ -142,6 +142,7 @@ package xtccomppkg is
     ci: in std_logic;
     cen:in std_logic;
     busy: out std_logic;
+    valid: out std_logic;
     co: out std_logic;
     zero: out std_logic;
     ovf:   out std_logic;
@@ -210,11 +211,14 @@ package xtccomppkg is
     w_addr: out regaddress_type;
     w_en:     out std_logic;
     -- Input for previous stages
-    dui:  in decode_output_type;
-    freeze: in std_logic;
-    flush: in std_logic;
-    refetch: in std_logic;
-    executed:in boolean;
+    dui:          in decode_output_type;
+    freeze:       in std_logic;
+    flush:        in std_logic;
+    refetch:      in std_logic;
+    executed:     in boolean;
+
+    clrhold:      in std_logic;
+
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );

@@ -27,7 +27,8 @@ entity fetchdata is
     flush:  in std_logic;
     refetch: in std_logic;
 
-    executed: in boolean;
+    clrhold:    in std_logic;
+    executed:   in boolean;
     -- Output for next stages
     fduo:  out fetchdata_output_type
   );
@@ -59,6 +60,9 @@ begin
         fdw.drq     := dui.r;
         fdw.rd1q    := dui.r.rd1;
         fdw.rd2q    := dui.r.rd2;
+        if dui.r.valid='1' then
+          fdw.hold    := dui.r.ismult;
+        end if;
 
         -- Forwarding control
 
@@ -111,9 +115,24 @@ begin
       w_addr <= dui.r.dreg;
       w_en   <= dui.r.regwe;
 
+      if clrhold='1' then
+        fdw.hold := '0';
+
+        if dui.r.valid='1' then
+          fdw.hold    := dui.r.ismult;
+        end if;
+        -- REMOVE ME.....
+        --fdw.drq.enable_alu := '0';
+      end if;
+      if flush='1' then
+        fdw.hold := '0';
+      end if;
+
       if rst='1' then
         fdw.drq.valid := '0';
+        fdw.hold := '0';
       end if;
+
 
       if rising_edge(clk) then
         fdr <= fdw;

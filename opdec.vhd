@@ -202,7 +202,7 @@ begin
     d.cop_reg     := opcode(7 downto 4);
 
     d.priv        := '0';
-
+    d.ismult      := '0';
     -- ALU operations are directly extracted from
     -- the opcode.
 
@@ -303,6 +303,9 @@ begin
           d.use_carry := '1';
           d.alu_op := ALU_SUB;
         end if;
+        if d.alu_op=ALU_MUL then
+          d.ismult := '1';
+        end if;
 
         d.rd1:='1'; d.rd2:='1';
         d.reg_source:=reg_source_alu;
@@ -363,14 +366,12 @@ begin
         d.cop_en := '1';
         d.cop_wr := '0';
         d.priv   := '1';
-        d.blocks := '0';
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
 
       when O_COPW =>
         d.cop_en := '1';
         d.priv   := '1';
         d.cop_wr := '1';
-        d.blocks := '0';
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_cop;
 
       when O_ST =>
