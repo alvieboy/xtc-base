@@ -122,6 +122,7 @@ architecture behave of icache is
   constant dignore32: std_logic_vector(31 downto 0) := (others => DontCareValue);
 
   signal ctag_address: std_logic_vector(address_tag'RANGE);
+  signal loadsave: std_logic;
 begin
 
   ctag_address<=ctag(address_tag'HIGH downto address_tag'LOW);
@@ -221,7 +222,7 @@ begin
         --fill_end_q<='0';
         --fill_end_q_q<='0';
       --else
-        if stall_i='0' and enable='1' and strobe='1' then
+        if (stall_i='0' and enable='1' and strobe='1') or (loadsave='1'and enable='1' and strobe='1') then
         --if busy='0' and enable='1' and strobe='1' then
           save_addr <= address;
         end if;
@@ -383,6 +384,8 @@ begin
       end if;
     end if;
   end process;
+
+  loadsave<='1' when state=ending else '0';
 
   process(fill_success, busy, hit)
   begin
