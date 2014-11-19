@@ -50,7 +50,7 @@ begin
 
   syncfetch: if FETCHDATA_STAGE generate
 
-    process(dui,clk,rst,fdr,flush,freeze, refetch, executed)
+    process(dui,clk,rst,fdr,flush,freeze, refetch, executed, clrhold)
       variable fdw: fetchdata_regs_type;
     begin
       fdw := fdr;
@@ -124,7 +124,7 @@ begin
         -- REMOVE ME.....
         --fdw.drq.enable_alu := '0';
       end if;
-      if flush='1' then
+      if flush='1' or refetch='1' then
         fdw.hold := '0';
       end if;
 
