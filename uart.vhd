@@ -130,13 +130,18 @@ architecture behave of uart is
   signal int_enabled: std_logic;
   signal ack: std_logic;
   signal tsc: unsigned(31 downto 0);
+  signal millis: unsigned(31 downto 0);
+
+  constant FREQKHZ: integer := 96000; -- TODO
+  signal milliscount: integer range 0 to FREQKHZ-1;
 
 begin
 
   --enabled <= enabled_q;
   wbo.int<= do_interrupt;
   wbo.ack <= ack;
-  
+  wbo.err <= '0';
+
   rx_inst: uart_rx
     port map(
       clk     => syscon.clk,
@@ -237,9 +242,28 @@ begin
         wbo.dat(7 downto 0) <= fifo_data;
       when "11" =>
         wbo.dat <= std_logic_vector(tsc);
+      when "10" =>
+        wbo.dat <= std_logic_vector(millis);
       when others =>
         wbo.dat <= (others => 'X');
     end case;
+    end if;
+  end process;
+
+  process(syscon.clk)
+  begin
+    if rising_edge(syscon.clk) then
+      if syscon.rst='1' then
+        tsc <= (others => '0');
+        milliscount<=FREQKHZ-1;
+      else
+        if milliscount=0 then
+          milliscount<=FREQKHZ-1;
+          tsc<=tsc+1;
+        else
+          milliscount<=milliscount-1;
+        end if;
+      end if;
     end if;
   end process;
 
@@ -251,9 +275,7 @@ begin
         int_enabled <= '0';
         do_interrupt<='0';
         ack<='0';
-        tsc <= (others => '0');
       else
-        tsc <= tsc + 1;
         ack <='0';
         uart_write<='0';
 

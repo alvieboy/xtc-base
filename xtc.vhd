@@ -21,9 +21,13 @@ entity xtc is
     romwbo:         out wb_mosi_type;
     romwbi:         in  wb_miso_type;
 
-    isnmi:          in std_logic;
+    nmi:            in std_logic;
+    nmiack:         out std_logic;
     break:          out std_logic;
-    intack:         out std_logic
+    intack:         out std_logic;
+    rstreq:         out std_logic;
+
+    edbg:           in memory_debug_type
   );
 end xtc;
 
@@ -51,13 +55,7 @@ architecture behave of xtc is
   signal rb2_addr: regaddress_type;
   signal rb2_en:   std_logic;
   signal rb2_rd:   std_logic_vector(31 downto 0);
-  signal rb3_addr: regaddress_type;
-  signal rb3_en:   std_logic;
-  signal rb3_rd:   std_logic_vector(31 downto 0);
-  signal rb4_addr: regaddress_type;
-  signal rb4_en:   std_logic;
-  signal rb4_rd:   std_logic_vector(31 downto 0);
-
+  
   signal jumpaddr:   word_type;
   signal cache_valid:          std_logic;
   signal dcache_flush:          std_logic;
@@ -86,7 +84,7 @@ architecture behave of xtc is
   signal allvalid:            std_logic;
   signal notallvalid:         std_logic;
   signal e_busy:  std_logic;
-  signal refetch_registers:   std_logic;
+  --signal refetch_registers:   std_logic;
   signal freeze_decoder:      std_logic;
   signal executed:            boolean;
 
@@ -98,6 +96,7 @@ architecture behave of xtc is
   end component tracer;
 
   signal dbg:   execute_debug_type;
+  signal mdbg:  memory_debug_type;
   signal co: copo;
   signal ci: copi;
 
@@ -117,8 +116,39 @@ architecture behave of xtc is
   signal dcache_accesstype: std_logic_vector(1 downto 0);
   signal flushfd: std_logic;
   signal clrhold: std_logic;
+
+  signal internalfault: std_logic;
+  signal pipeline_internalfault: std_logic;
+  signal busycnt: unsigned (31 downto 0);
+
+  signal proten: std_logic;
+  signal protw: std_logic_vector(31 downto 0);
+  signal rstreq_i: std_logic;
+  signal fflags: std_logic_vector(31 downto 0);
 begin
 
+    process(wb_syscon.clk)
+  begin
+    if rising_edge(wb_syscon.clk) then
+      if pipeline_internalfault='1' then
+        fflags(0) <= execute_busy;
+        fflags(1) <= notallvalid;
+        fflags(2) <= freeze_decoder;
+        fflags(3) <= wb_busy;
+        fflags(4) <= memory_busy;
+        fflags(5) <= dbg.hold;
+        fflags(6) <= dbg.multvalid;
+        fflags(7) <= dbg.trap;
+        fflags(8) <= co.en;
+        fflags(9) <= ci.valid;
+      end if;
+    end if;
+  end process;
+
+  rstreq_i<= pipeline_internalfault ;
+  rstreq <= rstreq_i;
+
+  --rstreq<='0';
   -- synthesis translate_off
   trc: tracer
     port map (
@@ -320,9 +350,9 @@ begin
     if rising_edge(wb_syscon.clk) then
       if wb_syscon.rst='1' then
         dirty <= '0';
-        dirtyReg <= (others => 'X');
+        dirtyReg <= (others => '0'); -- X
       else
-        if isBlocking='1' and dirty='0' then
+        if isBlocking='1' and dirty='0' then -- and duo.r.sra2/="0000"
           dirty <= '1';
           dirtyReg <= duo.r.sra2;
         end if;
@@ -335,6 +365,10 @@ begin
           --if (dirtyReg /= muo.mreg) then
           --  report "Omg.. clearing reg " &hstr(muo.mreg) & ", but dirty register is "&hstr(dirtyReg) severity failure;
           end if;
+        end if;
+
+        if muo.fault='1' then
+          dirty <= '0';
         end if;
         
       end if;
@@ -361,6 +395,8 @@ begin
       wb_busy   => wb_busy,
       refetch   => refetch,
       int       => wbi.int,
+      nmi       => nmi,
+      nmiack    => nmiack,
       intline   => x"00",
       -- Input from fetchdata unit
       fdui      => fduo,
@@ -390,6 +426,11 @@ begin
        icache_flush: out std_logic;
        dcache_flush: out std_logic;
        dcache_inflush: in std_logic;
+       proten: out std_logic;
+        protw: out std_logic_vector(31 downto 0);
+        fflags: in std_logic_vector(31 downto 0);
+       dbgi:  in execute_debug_type;
+       mdbgi:  in memory_debug_type;
        ci:     in copo;
        co:     out copi
      );
@@ -409,6 +450,11 @@ begin
         icache_flush => icache_flush,
         dcache_flush => dcache_flush,
         dcache_inflush => dcache_inflush,
+        proten => proten,
+        protw  => protw,
+        dbgi  => dbg,
+        mdbgi  => mdbg,--edbg,
+        fflags => fflags,
         ci    => co,
         co    => ci
     );
@@ -461,6 +507,7 @@ begin
     rst             => wb_syscon.rst,
     -- Memory interface
     wb_ack_i        => mwbi.ack,
+    wb_err_i        => mwbi.err,
     wb_dat_i        => mwbi.dat,
     wb_dat_o        => mwbo.dat,
     wb_adr_o        => mwbo.adr,
@@ -471,9 +518,11 @@ begin
     wb_tag_i        => mwbi.tag,
     wb_we_o         => mwbo.we,
     wb_stall_i      => mwbi.stall,
-
+    dbgo            => mdbg,
     refetch         => refetch,
     busy            => memory_busy,
+    proten          => proten,
+    protw           => protw,
     -- Input for previous stages
     eui             => euo,
     -- Output for next stages
@@ -499,6 +548,24 @@ begin
       eui       => euo -- for fast register write
     );
 
+  -- Internal faiult...
+  process(wb_syscon.clk)
+  begin
+    if rising_edge(wb_syscon.clk) then
+      if wb_syscon.rst='1' then
+        busycnt<=(others =>'0');
+      else
+        if execute_busy='1' or notallvalid='1' or freeze_decoder='1' then
+          busycnt<=busycnt+1;
+        else
+          busycnt<=(others =>'0');
+        end if;
+
+      end if;
+    end if;
+  end process;
+
+  pipeline_internalfault<='1' when busycnt > 65535 else '0';
 
 end behave;
 

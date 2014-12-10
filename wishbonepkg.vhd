@@ -14,6 +14,7 @@ type wb_miso_type is record
     dat:   std_logic_vector(31 downto 0);
     tag:   std_logic_vector(31 downto 0);
     int:   std_logic;
+    err:   std_logic;
     stall: std_logic;
 end record;
 

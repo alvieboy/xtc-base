@@ -1226,8 +1226,9 @@ BEGIN
 --		    Rows_Load := recaddr(23 downto 11);
 --		    Cols_Load := recaddr(10 downto 2);
 		    Bank_Load := recaddr(23 downto 22);
-		    Rows_Load := recaddr(21 downto 9);
+		    Rows_Load := recaddr(21 downto 9);  -- 11:0
 		    Cols_Load := recaddr(8 downto 2) & '0';
+
                     Init_Mem (Bank_Load, To_Integer(Rows_Load));
  --                   report "Bank " & str(To_Integer(Bank_Load)) & " Row " & str(To_Integer(Rows_Load)) & " Col " & str(To_Integer(Cols_Load));
                     IF Bank_Load = "00" THEN

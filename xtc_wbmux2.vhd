@@ -46,9 +46,10 @@ architecture behave of xtc_wbmux2 is
   --signal trcnt0, trcnt1: unsigned(3 downto 0);
   signal t0,t1: std_logic;
   signal qdat,qtag: std_logic_vector(31 downto 0);
-  signal queue, queued: std_logic;
+  signal queue, queued, qerr: std_logic;
   signal internal_stall:std_logic;
   signal req0,req1: std_logic;
+  signal endt0,endt1: std_logic;
 begin
 
 select_zero<='1' when m_wbi.adr(select_line)='0' else '0';
@@ -76,9 +77,11 @@ cnt0: reqcnt port map (
   stb =>  req0,
   cyc =>  m_wbi.cyc,
   stall => s0_wbi.stall,
-  ack   => s0_wbi.ack,
+  ack   => endt0,
   req   => t0
   );
+
+  endt0<=s0_wbi.ack or s0_wbi.err;
 
 cnt1: reqcnt port map (
   clk =>  wb_syscon.clk,
@@ -86,9 +89,10 @@ cnt1: reqcnt port map (
   stb =>  req1,
   cyc =>  m_wbi.cyc,
   stall => s1_wbi.stall,
-  ack   => s1_wbi.ack,
+  ack   => endt1,
   req   => t1
   );
+  endt1 <= s1_wbi.ack or s1_wbi.err;
 
 process(m_wbi.cyc,select_zero,m_wbi.stb,t0,t1)
 begin
@@ -101,7 +105,7 @@ begin
   end if;
 end process;
 
-process(t0,t1,m_wbi.stb,m_wbi.cyc)
+process(t0,t1,m_wbi.stb,m_wbi.cyc,select_zero)
 begin
   internal_stall<='0';
   if m_wbi.stb='1' and m_wbi.cyc='1' then
@@ -128,35 +132,44 @@ end process;
 -- Process responses from both slaves.
 -- USE ONLY IN SIMULATION FOR NOW!!!!!
 
-process(s0_wbi,s1_wbi)
+process(s0_wbi,s1_wbi,queued,qdat,qtag)
   variable sel: std_logic_vector(1 downto 0);
 begin
-  sel := s1_wbi.ack & s0_wbi.ack;
+
+  sel(0) := s0_wbi.ack or s0_wbi.err;
+  sel(1) := s1_wbi.ack or s1_wbi.err;
+
   queue <= '0';
   case sel is
     when "00" =>
       if queued='0' then
       m_wbo.ack<='0';
+      m_wbo.err<='0';
       m_wbo.dat<=(others => 'X');
       m_wbo.tag<=(others => 'X');
       else
         m_wbo.ack<='1';
         m_wbo.dat<=qdat;
+        m_wbo.err<=qerr;
         m_wbo.tag<=qtag;
       end if;
     when "01" =>
       m_wbo.ack<='1';
       m_wbo.dat<=s0_wbi.dat;
+      m_wbo.err<=s0_wbi.err;
       m_wbo.tag<=s0_wbi.tag;
     when "10" =>
       m_wbo.ack<='1';
       m_wbo.dat<=s1_wbi.dat;
+      m_wbo.err<=s1_wbi.err;
       m_wbo.tag<=s1_wbi.tag;
     when others =>
       queue <= '1'; -- Queue S1 request.
       m_wbo.ack<='1';
       m_wbo.dat<=s0_wbi.dat;
+      m_wbo.err<=s0_wbi.err;
       m_wbo.tag<=s0_wbi.tag;
+
   end case;
 end process;
 
@@ -169,9 +182,11 @@ begin
       queued<='0';
 
       if queue='1' and queued='0' then
-        qdat <= s1_wbi.dat;
-        qtag <= s1_wbi.tag;
         queued<='1';
+          qdat <= s1_wbi.dat;
+          qtag <= s1_wbi.tag;
+          qerr <= s1_wbi.err;
+
       end if;
     end if;
   end if;

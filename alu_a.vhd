@@ -162,20 +162,23 @@ begin
         shift_arith<='0';
         shift_left<='0';
         alu_r <= 'X' & shift_out;
+      when ALU_MUL =>
+        alu_r <= mult_y(31) & unsigned(mult_r);
 
       when others => alu_r <= (others =>'X');
 
     end case;
 
-    if mult_valid='1' then
-      alu_r <= mult_y(31) & unsigned(mult_r);
-    end if;
+--    if mult_valid='1' then
+--      alu_r <= mult_y(31) & unsigned(mult_r);
+--    end if;
 
   end process;
   y <= unsigned(mult_y);
-  co    <= alu_r(32);
-  sign  <= alu_r(31);
-  o     <= alu_r(31 downto 0);
-  zero  <= '1' when alu_r(31 downto 0)=x"00000000" else '0';
+  o <= alu_r(31 downto 0);
+
+  co    <= alu_sub_r(32);
+  sign  <= alu_sub_r(31);
+  zero  <= '1' when alu_sub_r(31 downto 0)=x"00000000" else '0';
 
 end behave;

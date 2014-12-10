@@ -68,9 +68,12 @@ package xtccomppkg is
     romwbo:         out wb_mosi_type;
     romwbi:         in  wb_miso_type;
 
-    isnmi:          in std_logic;
+    nmi:            in std_logic;
+    nmiack:         out std_logic;
+    rstreq:         out std_logic;
     break:          out std_logic;
-    intack:         out std_logic
+    intack:         out std_logic;
+    edbg:           in memory_debug_type
   );
   end component;
 
@@ -234,6 +237,8 @@ package xtccomppkg is
     wb_busy: in std_logic;
     int:  in std_logic;
     intline: in std_logic_vector(7 downto 0);
+    nmi:  in std_logic;
+    nmiack:  out std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
     -- Output for next stages
@@ -255,6 +260,7 @@ package xtccomppkg is
     rst:  in std_logic;
     -- Memory interface
     wb_ack_i:       in std_logic;
+    wb_err_i:       in std_logic;
     wb_dat_i:       in std_logic_vector(31 downto 0);
     wb_dat_o:       out std_logic_vector(31 downto 0);
     wb_adr_o:       out std_logic_vector(31 downto 0);
@@ -266,9 +272,12 @@ package xtccomppkg is
     wb_we_o:        out std_logic;
     wb_stall_i:     in  std_logic;
 
+    protw:          in std_logic_vector(31 downto 0);
+    proten:         in std_logic;
+
     busy:           out std_logic;
     refetch:        out std_logic;
-
+    dbgo:           out memory_debug_type;
     -- Input for previous stages
     eui:  in execute_output_type;
     -- Output for next stages
@@ -465,7 +474,9 @@ package xtccomppkg is
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
     iowbi:           in wb_miso_type;
-
+    nmi:              in std_logic;
+    nmiack:           out std_logic;
+    rstreq:           out std_logic;
     -- extra clocking
     clk_off_3ns: in std_logic;
 

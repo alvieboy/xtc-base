@@ -18,6 +18,7 @@ entity memory is
     wb_adr_o:       out std_logic_vector(31 downto 0);
     wb_tag_o:       out std_logic_vector(31 downto 0);
     wb_tag_i:       in std_logic_vector(31 downto 0);
+    wb_err_i:       in std_logic;
     wb_cyc_o:       out std_logic;
     wb_stb_o:       out std_logic;
     wb_sel_o:       out std_logic_vector(3 downto 0);
@@ -26,6 +27,11 @@ entity memory is
 
     busy:           out std_logic;
     refetch:        out std_logic;
+  
+    dbgo:           out memory_debug_type;
+
+    protw:          in std_logic_vector(31 downto 0);
+    proten:         in std_logic;
 
     -- Input for previous stages
     eui:  in execute_output_type;
@@ -36,9 +42,7 @@ end entity memory;
 
 architecture behave of memory is
   signal mr: memory_regs_type;
-  signal m_trans: std_logic;
   signal mreg_q: regaddress_type;
-  signal mregwe: std_logic;
   signal wb_ack_i_q: std_logic;
 
   component reqcnt is
@@ -57,12 +61,19 @@ architecture behave of memory is
   end component;
 
   signal req_pending: std_logic;
+  signal endcycle:    std_logic;
+    -- debug only
+  signal busycnt: unsigned(31 downto 0);
+
+  signal faultw: std_logic;
 
 begin
 
     muo.r <= mr;
+    muo.fault <= mr.fault;
 
-    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i, wb_tag_i)
+    process(eui,mr,clk,rst,wb_ack_i, wb_ack_i_q, wb_dat_i, wb_stall_i, wb_tag_i, wb_err_i,
+            req_pending)
       variable mw: memory_regs_type;
       variable wmask: std_logic_vector(3 downto 0);
       variable wdata: std_logic_vector(31 downto 0);
@@ -76,6 +87,8 @@ begin
       wdata     := (others => DontCareValue);
       wmask     := (others => DontCareValue);
       mdata     := (others => '0');
+
+      mw.fault  := '0';
 
       case eui.macc is
         when M_BYTE | M_BYTE_POSTINC =>
@@ -99,7 +112,7 @@ begin
           wdata := eui.data_write; wmask:="1111"; mrsel := "111";
       end case;
 
-      queue_request := false;
+     -- queue_request := false;
 
       muo.mregwe <= '0';
       muo.msprwe <= '0';
@@ -142,17 +155,28 @@ begin
         mw.sprwe   := eui.sprwe and not eui.data_writeenable;
         mw.regwe   := (not eui.sprwe) and not eui.data_writeenable;
         mw.dreg    := eui.mwreg;
+        mw.pc      := eui.npc;
+
+        if proten='1' then
+          if eui.data_writeenable='1' and eui.data_access='1' then
+            if (unsigned(eui.data_address)<unsigned(protw)) then
+              mw.fault := '1';
+              mw.wb_stb := '0';
+              --mw.wb_cyc := '0';
+              mw.faddr := std_logic_vector(eui.npc);
+            end if;
+          end if;
+        end if;
+
       end if;
 
-      if rst='1' then
-        mw.wb_cyc := '0';
-        mw.wb_stb := '0';
-      end if;
 
       muo.mdata <= mdata;
+
       muo.mreg <= wb_tag_i(3 downto 0);
 
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
+
       refetch <= wb_ack_i and wb_tag_i(4);
 
       if queue_request and eui.clrreg='1' then
@@ -160,6 +184,9 @@ begin
         muo.mreg<=eui.mwreg;
       end if;
 
+      if wb_err_i='1' then
+        mw.fault := '1';
+      end if;
 
 
       if req_pending='1' then
@@ -168,6 +195,11 @@ begin
         wb_cyc_o <= mr.wb_cyc;
       end if;
 
+      if rst='1' then
+        mw.wb_cyc := '0';
+        mw.wb_stb := '0';
+        mw.fault  := '0';
+      end if;
 
       if rising_edge(clk) then
         mr<=mw;
@@ -175,7 +207,19 @@ begin
 
     end process;
 
+
+    -- debug
+        dbgo.strobe <= mr.wb_stb and not wb_stall_i;
+        dbgo.write  <= mr.wb_we;
+        dbgo.address  <= unsigned(mr.wb_adr);
+        dbgo.data  <= unsigned(mr.wb_dat);
+        dbgo.pc  <= unsigned(mr.pc);
+        dbgo.faddr <= unsigned(mr.faddr);
   -- Counter
+
+  endcycle <= wb_ack_i or wb_err_i;
+
+
 
   cnt0: reqcnt port map (
   clk =>  clk,
@@ -183,7 +227,7 @@ begin
   stb =>  mr.wb_stb,
   cyc => '1',
   stall => wb_stall_i,
-  ack   => wb_ack_i,
+  ack   => endcycle,
   req   => req_pending,
   count => open
   );
@@ -195,5 +239,24 @@ begin
   wb_sel_o <= mr.wb_sel;
 
   wb_tag_o <= mr.wb_tago;
+
+  -- Internal faiult...
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      if rst='1' then
+        busycnt<=(others =>'0');
+      else
+        if mr.wb_cyc='1' and endcycle='0' then
+          busycnt<=busycnt+1;
+        else
+          busycnt<=(others =>'0');
+        end if;
+
+      end if;
+    end if;
+  end process;
+
+  muo.internalfault<='1' when busycnt > 65535 else '0';
 
 end behave;

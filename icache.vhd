@@ -126,6 +126,8 @@ architecture behave of icache is
 begin
 
   ctag_address<=ctag(address_tag'HIGH downto address_tag'LOW);
+  m_wb_we_o <= '0';
+  m_wb_dat_o <= (others => 'X');
 
   tagmem: generic_dp_ram
   generic map (
@@ -188,7 +190,7 @@ begin
 
   stall <= stall_i;
   valid <= ack;
-  tag_mem_enable <= access_i and enable;
+  tag_mem_enable <= access_i;-- and enable;
   m_wb_dat_o(31 downto 0) <= (others => DontCareValue);
 
   -- Valid mem
@@ -285,7 +287,7 @@ begin
         fill_success <='0';
         offcnt <= (others => '0');
         flushcnt <= (others => '1');
-        tag_mem_wen <= '1';
+        tag_mem_wen <= '1'; -- this needed ??
         cyc <= '0';
         stb <= '0';
       else

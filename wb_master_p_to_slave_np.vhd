@@ -43,7 +43,7 @@ begin
             mwbo.stall <= '1';
           end if;
         when wait_for_ack =>
-          if swbi.ack='1' then
+          if swbi.ack='1' or swbi.err='1' then
             wo.cyc <= '0';
             wo.stb <= '0';
             mwbo.stall <= '0';
@@ -68,6 +68,7 @@ swbo.cyc <= wo.cyc;
 
 mwbo.dat <= swbi.dat;
 mwbo.ack <= swbi.ack;
+mwbo.err <= swbi.err;
 mwbo.tag <= swbi.tag;
 
 

@@ -267,13 +267,13 @@ begin
     variable have_request: std_logic;
     variable will_busy: std_logic;
     variable valid: std_logic;
-    variable stall: std_logic;
+    --variable stall: std_logic;
     variable miss: std_logic;
 
   begin
     w := r;
     valid :='0';
-    stall:='0';
+    --stall:='0';
     miss := DontCareValue;
     will_busy := '0';
     co.valid<='0';
@@ -373,6 +373,11 @@ begin
 
         -- Miss handling
         if miss='1' then
+          -- Invalidate any potential write in cachemem from
+          -- a netx request.
+          --cmem_wea<="0000";
+          cmem_ena<='0';
+
          if r.req_accesstype/=ACCESS_NOCACHE then
           co.stall <= '1';
           valid := '0';
@@ -543,7 +548,9 @@ begin
 
         cmem_addrb <= mwbi.tag(cmem_addrb'LENGTH-1 downto 0);--r.fill_line_number & r.fill_offset_w;
         cmem_addra <= r.req_addr(CACHE_MAX_BITS-1 downto 2);--r.req_offset;--(others => DontCareValue);
-        cmem_enb <= '1';
+        --cmem_enb <= '1';
+        cmem_enb <= mwbi.tag(cmem_addrb'LENGTH);-- <= '1';
+
         cmem_ena <= '1';
         cmem_wea <= (others => '0');
         cmem_dia <= (others => 'X');
@@ -586,6 +593,7 @@ begin
         end if;
 
         -- Validate read for IWF
+        if true then
         if r.ack_q_q='1' then
           if r.finished_w=r.req_offset then
             co.valid<='1';
@@ -593,7 +601,7 @@ begin
             w.req :='0';
           end if;
         end if;
-
+        end if;
 
       when recover =>
         -- Recover lost data on the content memory
@@ -602,6 +610,7 @@ begin
         cmem_enb <= '1';
         cmem_web <= "1111";
         cmem_dib <= cmem_doa;
+        cmem_wea<="0000"; -- Don't allow writes.
 
         -- synthesis translate_off
         --report "Recover write";
@@ -622,6 +631,8 @@ begin
         wb_stb    <= not r.fill_r_done;
         mwbo.we   <= '1';--r.rvalid; --1';
         mwbo.sel  <= (others => '1');
+        mwbo.tag(cmem_addrb'LENGTH) <= '0';
+
 
         if mwbi.stall='0' and r.fill_r_done='0' then
           if w.count=0 then
@@ -633,7 +644,7 @@ begin
           end if;
         end if;
 
-        if req_last='1' then
+        if req_last='1' and r.count=0 then
           if r.in_flush='1' then
             w.state := flush;
             w.in_flush:='0';
@@ -651,7 +662,8 @@ begin
         cmem_enb    <= not mwbi.stall;-- or not r.rvalid;
         cmem_addra  <= (others => DontCareValue);
         cmem_web    <= (others=>'0');
-
+        --cmem_wea<="0000"; -- Don't allow writes.
+        cmem_ena <= '0';
       when preparewb =>
         co.stall    <= '1';
         mwbo.dat    <= cmem_dob;
@@ -659,8 +671,12 @@ begin
         cmem_enb    <= '1';
         cmem_addra  <= (others => DontCareValue);
         cmem_web    <= (others=>'0');
+        cmem_ena <= '0';
+
         w.fill_offset_r := std_logic_vector(unsigned(r.fill_offset_r) + 1);
+        w.count := BURSTWORDS;
         w.state     := writeback;
+        --cmem_wea<="0000"; -- Don't allow writes.
 
       when write_after_fill =>
 
@@ -699,7 +715,7 @@ begin
 
       when flush =>
 
-        stall:='1';
+        co.stall<='1';
         valid:='0';
 
         tmem_addrb <= r.flush_line_number;
@@ -717,12 +733,16 @@ begin
         cmem_addrb <= (others => DontCareValue);
         cmem_dia <= (others => DontCareValue);
         cmem_dib <= (others => DontCareValue);
+        cmem_ena <= '0';
         
         w.flush_line_number := r.flush_line_number+1;
 
         w.fill_offset_r := (others => '0');
         w.in_flush := '1';
         w.flush_req := '0';
+        --                w.fill_offset_r := (others => '0');
+        w.fill_offset_w := (others => '0');
+
 
         -- only valid in next cycle
         if r.in_flush='1' and tmem_dob(VALIDBIT)='1' and tmem_dob(DIRTYBIT)='1' then

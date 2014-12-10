@@ -78,18 +78,22 @@ begin
   case sel is
     when "00" =>
       m_wbo.ack<='0';
+      m_wbo.err<='0';
       m_wbo.dat<=(others => 'X');
       m_wbo.tag<=(others => 'X');
     when "01" =>
       m_wbo.ack<='1';
+      m_wbo.err<=s0_wbi.err;
       m_wbo.dat<=s0_wbi.dat;
       m_wbo.tag<=s0_wbi.tag;
     when "10" =>
       m_wbo.ack<='1';
       m_wbo.dat<=s1_wbi.dat;
+      m_wbo.err<=s1_wbi.err;
       m_wbo.tag<=s1_wbi.tag;
     when others =>
-      m_wbo.ack<='U';
+      m_wbo.ack<='1';
+      m_wbo.err<='1';
       m_wbo.dat<=(others => 'X');
       m_wbo.tag<=(others => 'X');
   end case;

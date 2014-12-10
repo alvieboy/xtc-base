@@ -51,7 +51,7 @@ begin
     -- synthesis translate_on
     variable d: opdec_type;
     variable subloadimm: loadimmtype;
-    variable subloadimm2: loadimmtype;
+    --variable subloadimm2: loadimmtype;
     variable op: decoded_opcode_type;
     variable force_flags: boolean;
     variable mtype: memory_access_type;
@@ -423,46 +423,15 @@ begin
       when others =>
     end case;
 
+      --- HAAAAACK
+      if opcode=x"0000" then
+        op:= O_SWI;
+      end if;
+
     d.imm8l(7 downto 0) := opcode(11 downto 4);
     d.imm8h(7 downto 0) := opcode_low(7 downto 0);
     d.imm24 := opcode_low(12) & opcode_low(7 downto 0) & opcode_high(14 downto 0);
 
-  test: if true then
-    -- subloadimm comes directly from opcode.
-      case opcode(14 downto 12) is
-        when "000" => -- R/R
-          subloadimm2 := LOADNONE;
-        when "001" => -- Memory
-          subloadimm2 := LOADNONE;
-        when "010" => -- Cop instructions
-          subloadimm2 := LOADNONE;
-        when "011" => -- No/R instructions
-          subloadimm2 := LOADNONE;
-        when "100" | "101" | "110" | "111" => -- I8 instructions
-          subloadimm2 := LOAD8;
-        when others =>
-      end case;
-
-      if is_extended_opcode and opcode_low(14 downto 13)="11" then
-        subloadimm2 := LOAD24;
-      end if;
-      
-    -- synthesis translate_off
-    if subloadimm/=subloadimm2 then
-      if is_extended_opcode then
-        report "While checking extended opcode ";
-      else
-        report "While checking normal opcode ";
-      end if;
-      report "Opcode low + high: " & hstr(opcode_low) & " " &hstr(opcode_high);
-      report "Mismatch " & hstr(opcode) & ": " & loadimm2str(subloadimm) & " vs " & loadimm2str(subloadimm2)
-        severity failure;
-    end if;
-    -- synthesis translate_on
-
-  end if;
--- 332
-  --subloadimm := subloadimm2;
 
     if is_extended_opcode then
       case subloadimm is

@@ -13,6 +13,9 @@ entity xtc_top_sdram is
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
     iowbi:           in wb_miso_type;
+    nmi:              in std_logic;
+    nmiack:           out std_logic;
+    rstreq:           out std_logic;
     -- SDRAM signals
     -- extra clocking
     clk_off_3ns: in std_logic;
@@ -46,8 +49,12 @@ architecture behave of xtc_top_sdram is
   signal wb_ack:        std_logic;
   signal wb_stall:      std_logic;
 
+  --signal rstreq:        std_logic;
 
   component sdram_ctrl is
+  generic (
+    HIGH_BIT: integer := 24
+  );
   port (
     wb_clk_i: in std_logic;
 	 	wb_rst_i: in std_logic;
@@ -64,6 +71,7 @@ architecture behave of xtc_top_sdram is
     wb_ack_o: out std_logic;
     wb_stall_o: out std_logic;
 
+    dbg:      out memory_debug_type;
     -- extra clocking
     clk_off_3ns: in std_logic;
 
@@ -83,8 +91,12 @@ architecture behave of xtc_top_sdram is
 
   signal wbo,romwbo,ramwbo,piowbo,sdram_wbo: wb_mosi_type;
   signal wbi,romwbi,ramwbi,piowbi,sdram_wbi: wb_miso_type;
+  signal edbg: memory_debug_type;
 
 begin
+
+  sdram_wbi.err <= '0';
+  sdram_wbi.int <= '0';
 
   cpu: xtc
   port map (
@@ -95,7 +107,10 @@ begin
     -- ROM wb interface
     romwbo          => romwbo,
     romwbi          => romwbi,
-    isnmi           => '0'
+    nmi             => nmi,
+    nmiack          => nmiack,
+    rstreq          => rstreq,
+    edbg            => edbg
   );
 
   muxer: xtc_wbmux2
@@ -147,6 +162,9 @@ begin
   );
 
   sdramcrtl_inst: sdram_ctrl
+  generic map (
+    HIGH_BIT => 22
+  )
   port map (
     wb_clk_i    => wb_syscon.clk,
 	 	wb_rst_i    => wb_syscon.rst,
@@ -162,6 +180,8 @@ begin
     wb_ack_o    => sdram_wbi.ack,
     wb_stall_o  => sdram_wbi.stall,
     wb_tag_o    => sdram_wbi.tag,
+
+    dbg => edbg,
 
     -- extra clocking
     clk_off_3ns => clk_off_3ns,

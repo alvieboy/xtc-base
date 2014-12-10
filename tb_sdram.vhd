@@ -158,7 +158,7 @@ architecture sim of tb_sdram_flash is
   end component;
 
  -- SDRAM signals
-  signal DRAM_ADDR   :    STD_LOGIC_VECTOR (12 downto 0);
+  signal DRAM_ADDR   :    STD_LOGIC_VECTOR (11 downto 0);
   signal DRAM_BA      :   STD_LOGIC_VECTOR (1 downto 0);
   signal DRAM_CAS_N   :    STD_LOGIC;
   signal DRAM_CKE      :    STD_LOGIC;
@@ -293,8 +293,9 @@ architecture sim of tb_sdram_flash is
   signal syscon: wb_syscon_type;
   signal swbi: slot_wbi;
   signal swbo: slot_wbo;
-  signal sids: slot_ids
-  ;
+  signal sids: slot_ids;
+  signal nmi, nmiack: std_logic;
+  
 begin
 
   rxd <= '1';
@@ -312,6 +313,8 @@ begin
     -- Master wishbone interface
     iowbi           => wbo,
     iowbo           => wbi,
+    nmi             => nmi,
+    nmiack          => nmiack,
 
     clk_off_3ns     => w_clk_3ns,
 
@@ -391,6 +394,30 @@ begin
       cs        => sel
   );
 
+    sdspi: spi
+    generic map (
+      INTERNAL_SPI => false
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(3),
+      wbo       => swbi(3),
+      mosi      => open,
+      miso      => '0',
+      sck       => open,
+      cs        => open
+  );
+
+
+  emptyslots: for N in 4 to 15 generate
+    eslot: nodev
+      port map (
+        syscon    => syscon,
+        wbi       => swbo(N),
+        wbo       => swbi(N)
+     );
+  end generate;
+
 
   
   flash: M25P16
@@ -424,6 +451,25 @@ begin
     --wbo.int <= '1';
     wait for 150 ns;
     wbo.int <= '0';
+  end process;
+
+  process
+  begin
+    wait;
+    nmi<='0';
+    wait for 8000 ns;
+    wait until rising_edge(w_clk);
+    nmi<='1';
+    wait until nmiack='1';
+    wait until rising_edge(w_clk);
+    nmi<='0';
+    wait for 10000 ns;
+    nmi<='1';
+    wait until nmiack='1';
+    wait until rising_edge(w_clk);
+    nmi<='0';
+
+    wait;
   end process;
 
 end sim;

@@ -5,6 +5,7 @@ use ieee.std_logic_unsigned.all;
 
 library work;
 use work.wishbonepkg.all;
+use work.xtcpkg.all;
 
 library unisim;
 use unisim.vcomponents.all;
@@ -28,7 +29,7 @@ entity sdram_ctrl is
     wb_sel_i: in std_logic_vector(3 downto 0);
     wb_ack_o: out std_logic;
     wb_stall_o: out std_logic;
-
+    dbg: out memory_debug_type;
     -- extra clocking
     clk_off_3ns: in std_logic;
 
@@ -52,16 +53,18 @@ architecture behave of sdram_ctrl is
 
   component sdram_controller is
   generic (
-    HIGH_BIT: integer := 24
+    HIGH_BIT: integer := 24;
+    MHZ: integer := 96;
+    REFRESH_CYCLES: integer := 4096;
+    ADDRESS_BITS: integer := 13
   );
-
    PORT (
       clock_100:  in std_logic;
       clock_100_delayed_3ns: in std_logic;
       rst: in std_logic;
 
    -- Signals to/from the SDRAM chip
-   DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (11 downto 0);
+   DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (ADDRESS_BITS-1 downto 0);
    DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
    DRAM_CAS_N   : OUT   STD_LOGIC;
    DRAM_CKE      : OUT   STD_LOGIC;
@@ -100,7 +103,8 @@ begin
 
   ctrl: sdram_controller
     generic map (
-      HIGH_BIT => HIGH_BIT
+      HIGH_BIT => HIGH_BIT,
+      ADDRESS_BITS => 12
    )
    port map (
     clock_100   => wb_clk_i,
@@ -144,11 +148,21 @@ begin
   process(wb_clk_i)
   begin
     if rising_edge(wb_clk_i) then
-
-     wb_ack_o <= sdr_data_out_valid;
+     if wb_rst_i='1' then
+       wb_ack_o <= '0';
+     else
+       wb_ack_o <= sdr_data_out_valid;
+     end if;
      wb_dat_o <= sdr_data_out;
     end if;
   end process;
+
+  dbg.strobe <= ( not pending ) and wb_stb_i and wb_cyc_i;
+  dbg.write  <= wb_we_i;
+  dbg.address  <= unsigned(wb_adr_i);
+  dbg.data  <= unsigned(wb_dat_i);
+  dbg.pc  <= x"deadbeef";
+
 
 end behave;
 

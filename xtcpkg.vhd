@@ -143,11 +143,11 @@ package xtcpkg is
 
   type opdec_type is record
     modify_gpr:     boolean; -- Modifies GPR
-    modify_mem:     boolean; -- Modifies memory (write)
+    --modify_mem:     boolean; -- Modifies memory (write)
     modify_spr:     boolean; -- Modifies (loads) SPR
     alu_op:         alu_op_type; -- ALU1 operation
     opcode:         opcode_type;  -- The fetched opcode
-    opcode_ext:     boolean; -- Extended opcode
+    --opcode_ext:     boolean; -- Extended opcode
     sreg1:          regaddress_type; -- Source GPR
     sreg2:          regaddress_type; -- Source GPR
     dreg:           regaddress_type; -- Destination GPR
@@ -204,6 +204,7 @@ package xtcpkg is
     valid:    std_logic;
     bothvalid:std_logic;
     inverted: std_logic;
+    internalfault: std_logic;
   end record;
 
 
@@ -235,10 +236,10 @@ package xtcpkg is
     alu_op:         alu_op_type;
     use_carry:      std_logic;
     enable_alu:     std_logic;
-    swap_target_reg:std_logic;
+    --swap_target_reg:std_logic;
     memory_write:   std_logic;
     memory_access:  std_logic;
-    la_offset:      unsigned(31 downto 0);
+    --la_offset:      unsigned(31 downto 0);
     macc:           memory_access_type;
     wb_is_data_address: std_logic; -- Writeback is data pointer, not alu result
     npc:            word_type;
@@ -257,7 +258,7 @@ package xtcpkg is
     jump:           std_logic_vector(1 downto 0);
     --jump_clause:    jumpcond_type;
     except_return:  boolean;
-    delay_slot:     boolean;
+    --delay_slot:     boolean;
     --extended:       boolean;
     imreg:          unsigned(31 downto 0);
     imflag:         std_logic;
@@ -312,14 +313,9 @@ package xtcpkg is
     alur:           unsigned(31 downto 0);
     sr:             std_logic_vector(2 downto 0);
 
-    dreg:           regaddress_type; -- Destination reg 0
-    --dreg1:          regaddress_type; -- Destination reg 1
-    regwe:          std_logic; -- Write-enable for destination reg 0
-    --regwe1:         std_logic; -- Write-enable for destination reg 1
-    reg_source:     reg_source_type; -- Source for destination reg 0
-    --reg_source1:    reg_source_type; -- Source for destination reg 1
-    alufwa:                std_logic;
-    alufwb:                std_logic;
+    dreg:           regaddress_type;
+    regwe:          std_logic;
+    reg_source:     reg_source_type;
 
     jump:           std_logic;
     jumpaddr:       word_type;
@@ -327,10 +323,10 @@ package xtcpkg is
     trappc:         word_type;
     scratch:        word_type;
     y:              word_type;
-    intjmp:         boolean;
-    npc:  word_type;
-    sprval: word_type;
-    trapq: std_logic;
+    npc:            word_type;
+    sprval:         word_type;
+    trapq:          std_logic;
+    innmi:          std_logic;
   end record;
 
   type execute_output_type is record
@@ -381,6 +377,9 @@ package xtcpkg is
     wb_stb:     std_logic;
     wb_tago:    std_logic_vector(31 downto 0);
     wb_sel:     std_logic_vector(3 downto 0);
+    fault:      std_logic;
+    pc:         word_type;
+    faddr:      std_logic_vector(31 downto 0);
     nreq:       unsigned(2 downto 0); --  Number of outstanding requests
   end record;
 
@@ -390,6 +389,8 @@ package xtcpkg is
     mreg:     regaddress_type;
     mregwe:   std_logic;
     msprwe:   std_logic;
+    fault:    std_logic;
+    internalfault: std_logic;
   end record;
 
   type execute_debug_type is record
@@ -401,7 +402,20 @@ package xtcpkg is
     executed:   boolean;
     lhs:        word_type;
     rhs:        word_type;
+    trap:       std_logic;
+    dbgen:      std_logic;
+    hold:       std_logic;
+    multvalid:  std_logic;
   end record;
+
+  type memory_debug_type is record
+    strobe:   std_logic;
+    write:    std_logic;
+    address:  word_type;
+    pc:       word_type;
+    data:     word_type;
+    faddr:    word_type;
+  end record memory_debug_type;
 
   type tlb_entry_type is record
     pagesize:   std_logic_vector(1 downto 0);

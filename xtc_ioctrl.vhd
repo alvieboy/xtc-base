@@ -37,15 +37,18 @@ begin
     
   wbo.dat <= swbi(selnum).dat;
   wbo.ack <= swbi(selnum).ack;
+  wbo.err <= swbi(selnum).err;
   wbo.stall <= '0';
 
   -- Simple tag generator
   process(syscon.clk)
   begin
     if rising_edge(syscon.clk) then
-       --if wbi.cyc='1' and wbi.stb='1' and wbo.ack='0' then
-          wbo.tag <= wbi.tag;
-       --end if;
+      if syscon.rst='1' then
+        wbo.tag <=  (others => '0');
+      else
+        wbo.tag <= wbi.tag;
+      end if;
     end if;
   end process;
 

@@ -79,7 +79,7 @@ begin
       variable condition_clause: condition_type;
       variable alu2_imreg: std_logic;
       variable alu2_samereg: std_logic;
-      variable no_reg_conflict: boolean;
+      --variable no_reg_conflict: boolean;
       --variable flags_source: flagssource_type;
       variable pc: word_type;
       variable imflag: std_logic;
@@ -101,7 +101,7 @@ begin
       modify_flags:=false;
       jump := (others => 'X');
       --jump_clause := JUMP_NONE;
-      no_reg_conflict := true;
+      --no_reg_conflict := true;
       imflag := '0';
 
       -- TODO: save power, only enable RB that need..
@@ -118,7 +118,7 @@ begin
 
       sr := dec.sr;
       jump := dec.jump;
-      condition_clause := dec.condition;
+      --condition_clause := dec.condition;
       except_return:=dec.except_return;
 
       dw.cop_id := dec.cop_id;
@@ -184,10 +184,10 @@ begin
 
         end if;
 
-        dw.delay_slot := false;
-        if (is_jump) then
-          dw.delay_slot := true;
-        end if;
+        --dw.delay_slot := false;
+        --if (is_jump) then
+        --  dw.delay_slot := true;
+        --end if;
 
         case dec.loadimm is
 
@@ -269,8 +269,23 @@ begin
 
       if rst='1' or flush='1' then
         dw.valid := '0';
-        dw.delay_slot := false;
+        --dw.delay_slot := false;
         dw.imflag := '0';
+        dw.regwe := '0';
+        dw.rd1   := '0';
+        dw.rd2   := '0';
+        dw.ismult:= '0';
+        dw.blocks := '0';
+        dw.cop_en := '0';
+        dw.cop_wr := '0';
+        dw.priv := '0';
+        dw.sprwe := '0';
+        dw.is_jump := false;
+        dw.memory_access := '0';
+        dw.memory_write := '0';
+        dw.enable_alu := '0';
+        dw.use_carry := '0';
+        dw.modify_flags := false;
       end if;
 
       if dec.extended then

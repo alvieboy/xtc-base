@@ -40,7 +40,15 @@ entity xtc_top_ppro_sdram is
     MOSI:     out std_logic;
     MISO:     in std_logic;
     SCK:      out std_logic;
-    NCS:      out std_logic
+    NCS:      out std_logic;
+
+    NNMI:     in std_logic;
+
+    -- SD card
+    SDMOSI:     out std_logic;
+    SDMISO:     in std_logic;
+    SDSCK:      out std_logic;
+    SDNCS:      out std_logic
 
     -- The LED
     --LED:        out std_logic
@@ -111,6 +119,9 @@ architecture behave of xtc_top_ppro_sdram is
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
     iowbi:           in wb_miso_type;
+    nmi:            in std_logic;
+    nmiack:         out std_logic;
+    rstreq:         out std_logic;
         -- SDRAM signals
     -- extra clocking
     clk_off_3ns: in std_logic;
@@ -150,17 +161,35 @@ architecture behave of xtc_top_ppro_sdram is
   signal swbi: slot_wbi;
   signal swbo: slot_wbo;
   signal sids: slot_ids;
+  signal nmi, nmi_q, nmiack, rstreq,rstreq_q, do_reset: std_logic;
 
 begin
 
+  process(sysclk)
+  begin
+    if rising_edge(sysclk) then
+      if sysrst='1' then
+        rstreq_q<='0';
+      else
+        rstreq_q<=rstreq;
+      end if;
+    end if;
+  end process;
+
+  do_reset<='1' when rstreq_q='0' and rstreq='1' else '0';
+
+
   syscon.clk<=sysclk;
-  syscon.rst<=sysrst;
+  syscon.rst<=sysrst or do_reset;
 
   cpu: xtc_top_sdram
   port map (
     wb_syscon   => syscon,
     iowbi           => wbo,
     iowbo           => wbi,
+    nmi             => nmi,
+    nmiack          => nmiack,
+    rstreq          => rstreq,
         -- extra clocking
     clk_off_3ns => clk_off_3ns,
 
@@ -177,7 +206,7 @@ begin
     DRAM_WE_N   => DRAM_WE_N
 
   );
-  DRAM_ADDR(12)<='0';
+  --DRAM_ADDR(12)<='0';
 
   ioctrl: xtc_ioctrl
     port map (
@@ -221,6 +250,30 @@ begin
       cs        => NCS
   );
 
+  sdspi: spi
+    generic map (
+      INTERNAL_SPI => false
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(3),
+      wbo       => swbi(3),
+      mosi      => SDMOSI,
+      miso      => SDMISO,
+      sck       => SDSCK,
+      cs        => SDNCS
+  );
+
+  emptyslots: for N in 4 to 15 generate
+    eslot: nodev
+      port map (
+        syscon    => syscon,
+        wbi       => swbo(N),
+        wbo       => swbi(N)
+     );
+    --swbi(N) <= wb_miso_default;
+  end generate;
+
   wb_clk_i <= sysclk;
   wb_rst_i <= sysrst;
 
@@ -244,5 +297,21 @@ begin
     clkout1  => clk_off_3ns,
     rstout  => clkgen_rst
   );
+
+  -- NMI
+  process (sysclk)
+  begin
+    if rising_edge(sysclk) then
+      if sysrst='1' then
+        nmi <= '0';
+      else
+        if NNMI='0' then
+          nmi<='1';
+        elsif nmiack='1' then
+          nmi<='0';
+        end if;
+      end if;
+    end if;
+  end process;
 
 end behave;

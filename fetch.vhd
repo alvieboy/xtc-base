@@ -38,7 +38,28 @@ architecture behave of fetch is
 
   signal strobe_i: std_logic;
 
+  -- debug only
+  signal busycnt: unsigned(31 downto 0);
+
 begin
+
+  process(clk)
+  begin
+    if rising_edge(clk) then
+      if rst='1' then
+        busycnt<=(others =>'0');
+      else
+        if strobe_i='1' and stall='1' then
+          busycnt<=busycnt+1;
+        else
+          busycnt<=(others =>'0');
+        end if;
+
+      end if;
+    end if;
+  end process;
+
+  fuo.internalfault<='1' when busycnt > 65535 else '0';
 
   strobe<=strobe_i;
 
@@ -153,6 +174,8 @@ begin
         end if;
 
       when jumping =>
+        if true then
+
           strobe_i <= '1';
           enable <= '1';
         if stall='0' then
@@ -166,6 +189,19 @@ begin
           fw.invert_readout := '0';
           fw.state := running;
           end if;
+        end if;
+        else
+          fw.fpc := jumpaddr;
+          fw.unaligned := jumpaddr(1);
+          fw.fpc(1 downto 0) := "00";
+
+          fw.pc := jumpaddr;
+          fw.pc(0) := '0';
+          fw.unaligned_jump := jumpaddr(1);
+          --fw.state := jumping;
+          strobe_i <= '0';
+          enable <= '0';
+          abort <= '1';
         end if;
         fuo.valid<='0';
 
@@ -188,7 +224,7 @@ begin
       fw.unaligned := '0';
       fw.unaligned_jump := '0';
       fw.invert_readout := '0';
-      fw.state := running;
+      fw.state := jumping;
       fuo.valid<='0';
     end if;
 

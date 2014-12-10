@@ -131,6 +131,12 @@ begin
       if rst='1' then
         fdw.drq.valid := '0';
         fdw.hold := '0';
+        fdw.alu := '0';
+        fdw.alufwa := '0';
+        fdw.alufwb := '0';
+        fdw.waiting := '0';
+        fdw.rd1q := '0';
+        fdw.rd2q := '0';
       end if;
 
 

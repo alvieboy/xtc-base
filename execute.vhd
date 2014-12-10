@@ -20,7 +20,8 @@ entity execute is
   
     int:  in std_logic;
     intline: in std_logic_vector(7 downto 0);
-
+    nmi:  in std_logic;
+    nmiack:  out std_logic;
     -- Input for previous stages
     fdui:  in fetchdata_output_type;
 
@@ -72,6 +73,8 @@ begin
   dbgo.lhs <= unsigned(alu_a_a);
   dbgo.rhs <= unsigned(alu_a_b);
 
+  dbgo.dbgen <= er.psr(2);
+
   myalu: alu
     port map (
       clk   => clk,
@@ -99,7 +102,7 @@ begin
 
   process(clk,fdui,er,rst,alu_a_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
-          mem_busy,wb_busy,int,cop_busy,lhs,alu1_busy,ci,rhs)
+          mem_busy,wb_busy,int,cop_busy,lhs,alu1_busy,ci,rhs,mult_valid)
     variable ew: execute_regs_type;
     variable busy_int: std_logic;
     constant reg_zero: unsigned(31 downto 0) := (others => '0');
@@ -135,6 +138,7 @@ begin
     do_fault := false;
     fault_address:=(others => 'X');
     trap:=false;
+    nmiack <= '0';
 
     if wb_busy='0' then
       ew.regwe := '0';
@@ -181,8 +185,8 @@ begin
           report hstr(std_logic_vector(fdui.r.drq.pc)) & " <NOT VALID>" ;
         elsif busy_int='1' then
           report hstr(std_logic_vector(fdui.r.drq.pc)) & " <BUSY>" ;
-        elsif er.intjmp then
-          report hstr(std_logic_vector(fdui.r.drq.pc)) & " <JUMP>" ;
+        --elsif er.intjmp then
+         -- report hstr(std_logic_vector(fdui.r.drq.pc)) & " <JUMP>" ;
         end if;
       end if;
     end if;
@@ -200,6 +204,10 @@ begin
     dbgo.opcode2 <= fdui.r.drq.opcode;
     dbgo.pc <= fdui.r.drq.pc;
 
+
+    dbgo.hold <= fdui.r.hold;
+    dbgo.multvalid <= mult_valid;
+
     if fdui.valid='1' and passes_condition='1' then
       enable_alu <= fdui.r.drq.enable_alu;
     end if;
@@ -215,7 +223,14 @@ begin
     -- Note: if this happens in a delay slot.... the result is
     -- undefined.
 
-    if fdui.valid='1' and fdui.r.drq.priv='1' and er.psr(0)='0' then
+    if fdui.valid='1' and (fdui.r.drq.priv='1' and er.psr(0)='0') then
+      trap:=true;
+      do_fault:=true;
+      can_interrupt:=false;
+      fault_address:=x"1";
+    end if;
+
+    if ci.fault='1' then
       trap:=true;
       do_fault:=true;
       can_interrupt:=false;
@@ -237,6 +252,19 @@ begin
       fault_address:=x"0";
     end if;
 
+    if mui.fault='1' then
+      do_fault:=true;
+      fault_address:=x"3";
+    end if;
+
+    if nmi='1' and er.innmi='0' then --and er.jump='0' and fdui.valid='1' then
+      do_fault:=true;
+      fault_address:=x"4";
+      ew.innmi :='1';
+      nmiack<='1';
+    end if;
+
+
     if fdui.valid='1' and busy_int='0' then
       dbgo.valid <= true;
       if passes_condition='1' then
@@ -245,14 +273,16 @@ begin
       end if;
     end if;
 
+  
 
     do_trap<='0';
     ew.trapq:='0';
+    dbgo.trap<='0';
     if do_fault then
       passes_condition := '0';
       do_trap<='1';
       ew.trapq := '1';
-
+      dbgo.trap <= '1';
       dbgo.valid <= false;
     end if;
 
@@ -269,8 +299,9 @@ begin
       euo.clrreg    <= '0';
     end if;
 
-    if fdui.valid='1' and busy_int='0' and passes_condition='1' then
+    if fdui.valid='1' and busy_int='0' then
 
+     if passes_condition='1' then
       ew.alur := alu_a_r(31 downto 0);
 
       ew.wb_is_data_address := fdui.r.drq.wb_is_data_address;
@@ -301,9 +332,10 @@ begin
       end case;
 
       -- Never jump if busy
-      if busy_int='1' then
-        ew.jump := '0';
-      end if;
+      --if busy_int='1' then
+      --  ew.jump := '0';
+      --end if;
+     end if; -- passes condition
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
         case fdui.r.drq.sra2(2 downto 0) is
@@ -331,6 +363,7 @@ begin
         ew.psr(7 downto 0) := er.spsr(7 downto 0);
         ew.psr(31 downto 28) := er.spsr(31 downto 28);
         ew.jumpaddr := er.trappc;
+        ew.innmi:='0';
       end if;
 
     else
@@ -344,6 +377,7 @@ begin
       ew.jumpaddr(7 downto 4) := fault_address;
       ew.jumpaddr(3 downto 0) := x"0";
       ew.spsr := ew.psr; -- Save PSR
+      ew.psr(2) := '0'; -- Debug enabled.
       ew.psr(1) := '0'; -- Interrupt enable
       ew.psr(0) := '1'; -- Supervisor mode
       ew.psr(7 downto 4) := fault_address;
@@ -396,6 +430,8 @@ begin
 
     if fdui.valid='0' or passes_condition='0' then
       euo.data_access <= '0';
+      euo.sprwe     <= '0';--fdui.r.drq.sprwe;
+
     end if;
 
 
@@ -404,7 +440,14 @@ begin
       ew.psr(0) := '1'; -- Supervisor
       ew.psr(31 downto 1) := (others =>'0'); -- Interrupts disabled
       ew.trapvector := RESETADDRESS;--others => '0');
+      -- Debug.
+      ew.trappc := fdui.r.drq.npc;
       ew.jump := '0';
+      ew.regwe := '0';
+      ew.valid := '0';
+      ew.trapq := '0';
+      ew.innmi := '0';
+      euo.data_access <= '0';
     end if;
 
     if rising_edge(clk) then

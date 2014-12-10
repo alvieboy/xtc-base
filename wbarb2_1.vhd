@@ -105,6 +105,9 @@ m1_wbo.tag <= s0_wbi.tag;
 m0_wbo.ack <= s0_wbi.ack when current_master='0' else '0';
 m1_wbo.ack <= s0_wbi.ack when current_master='1' else '0';
 
+m0_wbo.err <= s0_wbi.err when current_master='0' else '0';
+m1_wbo.err <= s0_wbi.err when current_master='1' else '0';
+
 m0_wbo.stall <= s0_wbi.stall when current_master='0' else '1';
 m1_wbo.stall <= s0_wbi.stall when current_master='1' else '1';
 

@@ -18,7 +18,7 @@ use unisim.vcomponents.all;
 
 entity sdram_controller is
   generic (
-    HIGH_BIT: integer := 24;
+    HIGH_BIT: integer := 22;
     MHZ: integer := 96;
     REFRESH_CYCLES: integer := 4096;
     ADDRESS_BITS: integer := 12
@@ -59,17 +59,16 @@ end entity;
 architecture rtl of sdram_controller is
 
    type reg is record
-      address       : std_logic_vector(ADDRESS_BITS-1 downto 0);
+      address       : std_logic_vector(11 downto 0);
       bank          : std_logic_vector( 1 downto 0);
       init_counter  : std_logic_vector(14 downto 0);
       rf_counter    : integer;
       rf_pending    : std_logic;
       rd_pending    : std_logic;
       wr_pending    : std_logic;
-      act_row       : std_logic_vector(ADDRESS_BITS-1 downto 0);
-      act_ba        : std_logic_vector(1 downto 0);
+      act_row       : std_logic_vector(11 downto 0);
       data_out_low  : std_logic_vector(15 downto 0);
-      req_addr_q    : std_logic_vector(HIGH_BIT downto 2);
+      req_addr_q    : std_logic_vector(22 downto 2);
       req_data_write: std_logic_vector(31 downto 0);
       req_mask      : std_logic_vector(3 downto 0);
       data_out_valid: std_logic;
@@ -79,6 +78,8 @@ architecture rtl of sdram_controller is
       tag_out       : std_logic_vector(31 downto 0);
       tagq          : std_logic_vector(31 downto 0);
       tagqq         : std_logic_vector(31 downto 0);
+      data_write    : std_logic_vector(15 downto 0);
+
    end record;
 
    signal r : reg;
@@ -86,8 +87,8 @@ architecture rtl of sdram_controller is
 
    signal rstate       : std_logic_vector(8 downto 0);
    signal nstate       : std_logic_vector(8 downto 0);
-   signal rdata_write  : std_logic_vector(15 downto 0);
-   signal ndata_write  : std_logic_vector(15 downto 0);
+   --signal data_write  : std_logic_vector(15 downto 0);
+   --signal ndata_write  : std_logic_vector(15 downto 0);
 
    
    -- Vectors for each SDRAM 'command'
@@ -199,15 +200,15 @@ architecture rtl of sdram_controller is
    constant s_drdr2_id: std_logic_vector(4 downto 0) := "11111";
    constant s_drdr2 : std_logic_vector(8 downto 0) := "11111" & cmd_nop;
 
-   signal addr_row : std_logic_vector(ADDRESS_BITS-1 downto 0);
-   signal addr_bank: std_logic_vector(1 downto 0);
+
+   signal addr_row : std_logic_vector(11 downto 0); -- 12
+   signal addr_bank: std_logic_vector(1 downto 0);  -- 2
+   signal addr_col : std_logic_vector(7 downto 0);  -- 8  = 22 bits.
 
    constant COLUMN_HIGH: integer := HIGH_BIT - addr_row'LENGTH - addr_bank'LENGTH - 1; -- last 1 means 16 bit width
 
 
-  signal addr_col : std_logic_vector(7 downto 0);
   signal captured : std_logic_vector(15 downto 0);
-  signal busy: std_logic;
 
   constant tOPD: time := 2.1 ns;
   constant tHZ: time := 8 ns;
@@ -244,7 +245,7 @@ architecture rtl of sdram_controller is
   signal i_DRAM_DQM: std_logic_vector(1 downto 0);
   attribute IOB of i_DRAM_DQM: signal is "true";
 
-  attribute IOB of rdata_write: signal is "true";
+  --attribute IOB of r.data_write: signal is "true";
   attribute IOB of captured: signal is "true";
 
   signal i_DRAM_CLK: std_logic;
@@ -254,8 +255,16 @@ architecture rtl of sdram_controller is
   attribute fsm_encoding of rstate: signal is "user";
 
 begin
-
-    debug_cmd <= rstate(3 downto 0);
+  -- Each of the x16s 16,777,216-bit banks is organized as
+  -- 4,096 rows by 256 columns by 16 bits.
+  -- 12 bits rows, 8 bit columns, 2 bit banks, two words. 22 bits + 1
+  --
+  --                                222211111111110000000000
+  --                                321098765432109876543210
+  --                                ------------------------
+  --                                rrrrrrrrrrrrbbccccccccix
+  --
+   debug_cmd <= rstate(3 downto 0);
 
    -- Addressing is in 32 bit words - twice that of the DRAM width,
    -- so each burst of four access two system words.
@@ -263,12 +272,14 @@ begin
    --addr_bank <= address(10 downto 9);
    process(r.req_addr_q)
    begin
-    addr_bank <= r.req_addr_q(HIGH_BIT downto (HIGH_BIT-addr_bank'LENGTH)+1);
+    addr_bank <= --r.req_addr_q(HIGH_BIT downto (HIGH_BIT-addr_bank'LENGTH)+1);
              -- (24-2) downto (24-2 - 2 - 13 - 1)
              --  22 downto 6
-    addr_row  <= --r.req_addr_q(HIGH_BIT-addr_bank'LENGTH  downto COLUMN_HIGH+2);
-                 r.req_addr_q(ADDRESS_BITS-1+9 downto 9);
-    addr_col  <= (others => '0');
+                 r.req_addr_q(10 downto 9);
+    addr_row  <= ----r.req_addr_q(HIGH_BIT-addr_bank'LENGTH  downto COLUMN_HIGH+2);
+                 --r.req_addr_q(ADDRESS_BITS-1+9 downto 9);
+                r.req_addr_q(22 downto 11);
+    --addr_col  <= (others => '0');
 
     addr_col  <= --r.req_addr_q(COLUMN_HIGH+1 downto  2) & "0";
                  r.req_addr_q(8 downto 2) & "0";
@@ -320,23 +331,23 @@ begin
    DATA_OUT       <= r.data_out_low & captured;--r.data_out_low & captured;
    data_out_valid <= r.data_out_valid;
 
-   DRAM_DQ    <= (others => 'Z') after tHZ when r.tristate='1' else rdata_write;
+   DRAM_DQ    <= (others => 'Z') after tHZ when r.tristate='1' else r.data_write;
 
    pending <= '1' when r.wr_pending='1' or r.rd_pending='1' else '0';
 
    tag_out <= r.tag_out;
 
-   process (r, rstate, address, req_read, rdata_write, req_write, addr_row, addr_bank, addr_col, data_in, captured)
+   process (r, rstate, address, req_read, req_write,
+        addr_row, addr_bank, addr_col, data_in, captured, tag_in, data_mask)
    begin
       -- copy the existing values
       n <= r;
       nstate <= rstate;
-      ndata_write <= rdata_write;
 
       if req_read = '1' then
          if r.rd_pending='0' and r.wr_pending='0' then
            n.rd_pending <= '1';
-           n.req_addr_q <= address;
+           n.req_addr_q <= address(22 downto 2);
            n.tag_in <= tag_in;
          end if;
       end if;
@@ -344,7 +355,7 @@ begin
       if req_write = '1' then
          if r.wr_pending='0' and r.rd_pending='0' then
            n.wr_pending <= '1';
-           n.req_addr_q <= address;
+           n.req_addr_q <= address(22 downto 2);
            -- Queue data here
            n.req_data_write <= data_in;
            n.req_mask <= data_mask;
@@ -381,7 +392,7 @@ begin
             nstate     <= s_init_nop;
             n.address <= (others => '0');
             n.bank    <= (others => '0');
-            n.act_ba  <= (others => '0');
+            --n.act_ba  <= (others => '0');
             n.rf_counter   <= 0;
             -- n.data_out_valid <= '1'; -- alvie- not here
             
@@ -422,8 +433,8 @@ begin
             if r.rd_pending = '1' or r.wr_pending = '1' then
                nstate        <= s_ra0;
                n.address     <= addr_row;
-               n.act_row    <= addr_row;
-               n.bank       <= addr_bank;
+               n.act_row    <=  addr_row;
+               n.bank       <=  addr_bank;
             end if;
 
             -- refreshes take priority over everything
@@ -448,7 +459,7 @@ begin
             n.tristate<='0';
 
             if r.rf_pending = '1' then
-              nstate     <= s_dr0;
+                nstate     <= s_dr0;
                  n.address(10) <= '1';
             else
 
@@ -464,7 +475,7 @@ begin
                n.address <= (others => '0');
                n.address(addr_col'HIGH downto 0) <= addr_col;
                n.bank    <= addr_bank;
-               n.act_ba    <= addr_bank;
+               --n.act_ba    <= addr_bank;
                n.dq_masks <= "00";
                n.rd_pending <= '0';
                n.tagq <= r.tag_in;
@@ -477,9 +488,9 @@ begin
                nstate     <= s_wr0;
                n.address <= (others => '0');
                n.address(addr_col'HIGH downto 0) <= addr_col;
-               ndata_write <= r.req_data_write(31 downto 16);
+               n.data_write <= r.req_data_write(31 downto 16);
                n.bank    <= addr_bank;
-               n.act_ba    <= addr_bank;
+               --n.act_ba    <= addr_bank;
                n.dq_masks<= not r.req_mask(3 downto 2);
                n.wr_pending <= '0';
                n.tagq <= r.tag_in;
@@ -526,7 +537,7 @@ begin
             nstate    <= s_wr3;
             n.bank    <= addr_bank;
             n.address(0) <= '1';
-            ndata_write <= r.req_data_write(15 downto 0);--data_in(31 downto 16);
+            n.data_write <= r.req_data_write(15 downto 0);--data_in(31 downto 16);
             --DRAM_DQ <= rdata_write;
             n.dq_masks<= not r.req_mask(1 downto 0);
             n.tristate <= '0';
@@ -593,13 +604,12 @@ begin
             nstate <= s_rd2;
             n.dq_masks <= "00";
             n.tristate<='1';
-            if r.rd_pending = '1' and r.act_row = addr_row and r.act_ba=addr_bank then
+            if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
 
               nstate <= s_rd3;  -- Another request came, and we can pipeline -
               n.address <= (others => '0');
               n.address(addr_col'HIGH downto 0) <= addr_col;
               n.bank    <= addr_bank;
-              n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
               n.tagq <= r.tag_in;
@@ -631,13 +641,12 @@ begin
             --n.address(0)<='1';
             n.tristate<='1';
 
-            if r.rd_pending = '1' and r.act_row = addr_row and r.act_ba=addr_bank then
+            if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
               nstate <= s_rd5;  -- Another request came, and we can pipeline -
               
               n.address <= (others => '0');
               n.address(addr_col'HIGH downto 0) <= addr_col;
               n.bank    <= addr_bank;
-              n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
               n.tagq <= r.tag_in;
@@ -740,10 +749,12 @@ begin
           r.data_out_valid <= '0';
           r.dq_masks <= "11";
           r.tristate<='1';
+          r.tag_in <= (others =>'0');
+          r.tag_out <= (others =>'0');
         else
          r <= n;
          rstate <= nstate;
-         rdata_write <= ndata_write;
+         --rdata_write <= ndata_write;
          end if;
       end if;
    end process;
