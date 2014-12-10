@@ -10,7 +10,7 @@
 
 #undef DEBUG_RELAX
 
-static void xtc_emit_relocation(int rel, long value, bfd_byte *dest);
+static int xtc_emit_relocation(int rel, long value, bfd_byte *dest);
 static int xtc_reloc_pcrel_offset(int rel);
 
 
@@ -1402,7 +1402,12 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
 #ifdef DEBUG_RELAX
           printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
 #endif
-          xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset);
+          if (xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset)!=0) {
+              printf("Error relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+              printf("Section: '%s'", input_section->name);
+
+              return FALSE;
+          }
 
 
           r_type = R_XTC_NONE;
@@ -1913,6 +1918,14 @@ static bfd_boolean xtc_fits_imm(long imm, int bitsize)
 
 }
 
+static inline long xtc_adjusted_rel(long value, long adjust)
+{
+    if (value<0) {
+        value+=adjust;
+    } 
+    return value;
+}
+
 static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
 {
     // Move I8 backwards. It's a 4-5, move to 2-3. The
@@ -1942,7 +1955,7 @@ static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
            location[5]);
 #endif
     if (value) {
-        *value -= 4;
+        *value = xtc_adjusted_rel(*value,2);
     }
 
 }
@@ -1971,7 +1984,7 @@ static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
            location[3]);
 #endif
     if (value) {
-        *value -= 2;
+        *value = xtc_adjusted_rel(*value,2);
     }
 }
 static void xtc_relax_e8_to_none(unsigned  char *location, long *value ATTRIBUTE_UNUSED)
@@ -2026,14 +2039,17 @@ static bfd_byte *xtc_emit_e24(bfd_byte *dest, long value)
     return dest;
 }
 
-static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
+static int xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 {
-
     switch (rel) {
     case R_XTC_32_E24_E8_R:
     case R_XTC_32_E24_E8:
 
-        BFD_ASSERT( xtc_fits_imm(value,32) );
+        if (!xtc_fits_imm(value,32)) {
+            printf("Value too large for 32-bit\n");
+            return -1;
+        }
+
 
         dest = xtc_emit_e24(dest,value>>8);
 
@@ -2044,7 +2060,7 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E24_I8_R:
     case R_XTC_32_E24_I8:
         // First, emit E24
-        BFD_ASSERT( xtc_fits_imm(value,32) );
+        //BFD_ASSERT( xtc_fits_imm(value,32) );
 
         dest = xtc_emit_e24(dest,value>>8);
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
@@ -2054,8 +2070,12 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E24:
         //        abort();
         /* Assert that it fits */
+        if (! xtc_fits_imm(value,24)) {
+            printf("Value too large for 24-bit\n");
 
-        BFD_ASSERT(xtc_fits_imm(value,24));
+            return -1;
+        }
+
         dest = xtc_emit_e24(dest,value);
 
         break;
@@ -2064,7 +2084,11 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
     case R_XTC_32_E8:
         dest+=2;
         // Apply extension
-        BFD_ASSERT( xtc_fits_imm(value,8) );
+        if (!xtc_fits_imm(value,8)) {
+            printf("Value too large for 8-bit\n");
+            return -1;
+        }
+
         xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
 
         //abort();
@@ -2072,7 +2096,11 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 
     case R_XTC_32_E8_I8_R:
     case R_XTC_32_E8_I8:
-        BFD_ASSERT( xtc_fits_imm(value,16) );
+        if (!xtc_fits_imm(value,16) ) {
+            printf("Value too large for 16-bit\n");
+            return -1;
+        }
+
         //printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
         //printf("%04lx\n", xtc_get16(dest));
@@ -2086,13 +2114,17 @@ static void xtc_emit_relocation(int rel, long value, bfd_byte *dest)
 
     case R_XTC_32_I8_R:
     case R_XTC_32_I8:
-        BFD_ASSERT( xtc_fits_imm(value,8) );
+        if (!xtc_fits_imm(value,8)) {
+            printf("Value too large for 8-bit\n");
+            return -1;
+        }
 
         //printf("Insn: %04lx ", xtc_get16(dest));
         xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
         //printf("Emit for instruction 0x%04lx, immed is %ld\n",xtc_get16(dest),value);
         break;
     }
+    return 0;
 }
 
 static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
@@ -2121,19 +2153,26 @@ static void xtc_relax_e24_e8_to_e8(unsigned char *location ATTRIBUTE_UNUSED, lon
            location[7]);
 #endif
     if (value) {
-        *value -= 4;
+        *value = xtc_adjusted_rel(*value,4);
     }
 
 }
 
 static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
 {
-#define NEW_RELOC_IF(bits,newrel,removedbytes, algo) \
-    if (xtc_fits_imm(value,bits)) { (*rel)=(newrel); retry=TRUE; algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); bytes+=removedbytes; break; }
+#define NEW_RELOC_IF(bits, newrel, removedbytes, adjust, algo) \
+    if (xtc_fits_imm( xtc_adjusted_rel(value,adjust),bits)) { \
+     (*rel)=(newrel); \
+     retry=TRUE; \
+     algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); \
+     bytes+=removedbytes; \
+     break; \
+    }
 
     //else { printf("Imm %ld does not fit %d bits\n", value,bits); }
     int bytes = 0;
     bfd_boolean retry;
+    int irel = *rel;
 
 #ifdef DEBUG_RELAX
     printf("Relaxing value of %ld, current relocation is %d\n", value,*rel);
@@ -2142,6 +2181,11 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
     do {
         retry = FALSE;
         //printf("Loop\n");
+#ifdef DEBUG_RELAX
+        printf("Loop: value of %ld, current relocation is %d\n", value,*rel);
+#endif
+        int ispcrel = xtc_reloc_pcrel(*rel);
+
         switch (*rel)
         {
         case R_XTC_32_E24_E8_R:
@@ -2150,18 +2194,18 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
              We can only remove the extension immed. */
 
             
-            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 4,xtc_relax_e24_e8_to_e8);
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 4, ispcrel?4:0, xtc_relax_e24_e8_to_e8);
             //abort();
             break;
 
         case R_XTC_32_E24_I8_R:
         case R_XTC_32_E24_I8:
-            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 2, xtc_relax_e24_i8_to_e8_i8);
+            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 2, ispcrel?2:0, xtc_relax_e24_i8_to_e8_i8);
             break;
 
         case R_XTC_32_E24_R:
         case R_XTC_32_E24:
-            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 2, xtc_relax_e24_to_e8);
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 2, ispcrel?2:0, xtc_relax_e24_to_e8);
             break;
 
         case R_XTC_32_E8_R:
@@ -2169,7 +2213,7 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
             if (!xtc_can_remove_extension(location+bytes)) {
                 break;
             }
-            NEW_RELOC_IF(0, R_XTC_NONE, 2, xtc_relax_e8_to_none);
+            NEW_RELOC_IF(0, R_XTC_NONE, 2, ispcrel?2:0, xtc_relax_e8_to_none);
             break;
 
         case R_XTC_32_E8_I8_R:
@@ -2178,9 +2222,9 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
                 //printf("Cannot remove extension\n");
                 break;
             }
-            break;
+            //break; // Disable for now
 
-            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2,xtc_relax_e8_i8_to_i8);
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2, ispcrel?2:0, xtc_relax_e8_i8_to_i8);
             break;
 
             /* We cannot relax this any further */
@@ -2189,7 +2233,12 @@ static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
     } while (retry);
 
     /* Apply relocation value */
-    xtc_emit_relocation(*rel,value, location+bytes);
+    if ( xtc_emit_relocation(*rel,value, location+bytes) < 0) {
+
+        printf("Error relaxing value of %ld, current relocation is %d (input reloc %d)\n", value,*rel, irel);
+
+        BFD_ASSERT(0);
+    }
     return bytes;
 }
 
