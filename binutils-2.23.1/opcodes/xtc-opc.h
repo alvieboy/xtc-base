@@ -157,7 +157,7 @@ const struct op_code_struct
     {"swi",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x2800, OPCODE_MASK_ARITH, INST_NO_OFFSET, nop },
 
 
-    {"nop",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x3810, 0x7fff, INST_NO_OFFSET, nop },
+    {"nop",    NO_EXT,       NO_IMM, INST_TYPE_NOARGS, 0x3800, 0x7fff, INST_NO_OFFSET, nop },
     { NULL, 0, 0, 0, 0, 0, 0, 0},
 };
 
