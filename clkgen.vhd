@@ -48,7 +48,7 @@ entity clkgen is
     clkout: out std_logic;
     clkout1: out std_logic;
     clkout2: out std_logic;
-    clkout2x: out std_logic;
+    vgaclk: out std_logic;
     rstout: out std_logic
   );
 end entity clkgen;
@@ -110,7 +110,7 @@ begin
 
   clk1_inst: BUFG port map ( I => clk1, O => clkout1 );
   clk2_inst: BUFG port map ( I => clk2, O => clkout2 );
-  clk3_inst: BUFG port map ( I => clk2x, O => clkout2x );
+  clk3_inst: BUFG port map ( I => clk2x, O => vgaclk );
 
 pll_base_inst : PLL_ADV
   generic map
@@ -133,7 +133,7 @@ pll_base_inst : PLL_ADV
     CLKOUT2_PHASE        => 0.0,
     CLKOUT2_DUTY_CYCLE   => 0.500,
 
-    CLKOUT3_DIVIDE       => 5,
+    CLKOUT3_DIVIDE       => 38,
     CLKOUT3_PHASE        => 0.0,
     CLKOUT3_DUTY_CYCLE   => 0.500,
 

@@ -16,6 +16,11 @@ entity xtc_top_sdram is
     nmi:              in std_logic;
     nmiack:           out std_logic;
     rstreq:           out std_logic;
+
+    -- DMA
+    dmawbi:         in wb_mosi_type;
+    dmawbo:         out wb_miso_type;
+
     -- SDRAM signals
     -- extra clocking
     clk_off_3ns: in std_logic;
@@ -89,8 +94,8 @@ architecture behave of xtc_top_sdram is
   );
   end component;
 
-  signal wbo,romwbo,ramwbo,piowbo,sdram_wbo: wb_mosi_type;
-  signal wbi,romwbi,ramwbi,piowbi,sdram_wbi: wb_miso_type;
+  signal wbo,romwbo,ramwbo,piowbo,sdram_wbo,cpu_sdram_wbo: wb_mosi_type;
+  signal wbi,romwbi,ramwbi,piowbi,sdram_wbi,cpu_sdram_wbi: wb_miso_type;
   signal edbg: memory_debug_type;
 
 begin
@@ -126,13 +131,29 @@ begin
     m_wbo         => wbi,
 
     -- Slave 0 signals
-    s0_wbi        => sdram_wbi,
-    s0_wbo        => sdram_wbo,
+    s0_wbi        => cpu_sdram_wbi,
+    s0_wbo        => cpu_sdram_wbo,
 
     -- Slave 0 signals
     s1_wbi        => piowbi,
     s1_wbo        => piowbo
   );
+
+  dbaarb: wbarb2_1
+  port map (
+    wb_syscon     => wb_syscon,
+    -- Master 0 signals
+    m0_wbi        => cpu_sdram_wbo,
+    m0_wbo        => cpu_sdram_wbi,
+    -- Master 1 signals
+    m1_wbi        => dmawbi,
+    m1_wbo        => dmawbo,
+
+    -- Slave signals
+    s0_wbi        => sdram_wbi,
+    s0_wbo        => sdram_wbo
+  );
+
 
   ramwbi.int <= iowbi.int;
 

@@ -10,17 +10,6 @@ entity xtc_top_ppro_sdram is
   port (
     CLK:        in std_logic;
 
-    -- Connection to the main SPI flash
-    --SPI_SCK:    out std_logic;
-    --SPI_MISO:   in std_logic;
-    --SPI_MOSI:   out std_logic;
-    --SPI_CS:     out std_logic;
-
-    -- WING connections
-    --WING_A:     inout std_logic_vector(15 downto 0);
-    --WING_B:     inout std_logic_vector(15 downto 0);
-    --WING_C:     inout std_logic_vector(15 downto 0);
-
     -- UART (FTDI) connection
     TXD:        out std_logic;
     RXD:        in std_logic;
@@ -42,13 +31,31 @@ entity xtc_top_ppro_sdram is
     SCK:      out std_logic;
     NCS:      out std_logic;
 
-    NNMI:     in std_logic;
+    --NNMI:     in std_logic;
 
     -- SD card
     SDMOSI:     out std_logic;
     SDMISO:     in std_logic;
     SDSCK:      out std_logic;
-    SDNCS:      out std_logic
+    SDNCS:      out std_logic;
+
+    HSYNC:      out std_logic;
+    VSYNC:      out std_logic;
+    BLUE:       out std_logic_vector(3 downto 0);
+    GREEN:      out std_logic_vector(3 downto 0);
+    RED:        out std_logic_vector(3 downto 0);
+
+    JOY_FIRE2:  in std_logic;
+    JOY_FIRE1:  in std_logic;
+    JOY_LEFT:   in std_logic;
+    JOY_RIGHT:  in std_logic;
+    JOY_SEL:    in std_logic;
+    JOY_UP:     in std_logic;
+    JOY_DOWN:   in std_logic;
+
+    AUDIO:      out std_logic_vector(1 downto 0);
+
+    RESET:      in std_logic
 
     -- The LED
     --LED:        out std_logic
@@ -102,7 +109,7 @@ architecture behave of xtc_top_ppro_sdram is
     clkout: out std_logic;
     clkout1: out std_logic;
     clkout2: out std_logic;
-    clkout2x: out std_logic;
+    vgaclk: out std_logic;
     rstout: out std_logic
   );
   end component;
@@ -119,6 +126,9 @@ architecture behave of xtc_top_ppro_sdram is
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
     iowbi:           in wb_miso_type;
+        -- DMA
+    dmawbi:         in wb_mosi_type;
+    dmawbo:         out wb_miso_type;
     nmi:            in std_logic;
     nmiack:         out std_logic;
     rstreq:         out std_logic;
@@ -152,18 +162,61 @@ architecture behave of xtc_top_ppro_sdram is
   );
   end component;
 
+  component vga_320_240_idx is
+  port(
+    wb_clk_i: in std_logic;
+	 	wb_rst_i: in std_logic;
+    wb_dat_o: out std_logic_vector(31 downto 0);
+    wb_dat_i: in std_logic_vector(31 downto 0);
+    wb_adr_i: in std_logic_vector(31 downto 2);
+    wb_we_i:  in std_logic;
+    wb_cyc_i: in std_logic;
+    wb_stb_i: in std_logic;
+    wb_ack_o: out std_logic;
+
+    -- Wishbone MASTER interface
+    mi_wb_dat_i: in std_logic_vector(31 downto 0);
+    mi_wb_dat_o: out std_logic_vector(31 downto 0);
+    mi_wb_adr_o: out std_logic_vector(31 downto 0);
+    mi_wb_sel_o: out std_logic_vector(3 downto 0);
+    mi_wb_cti_o: out std_logic_vector(2 downto 0);
+    mi_wb_we_o:  out std_logic;
+    mi_wb_cyc_o: out std_logic;
+    mi_wb_stb_o: out std_logic;
+    mi_wb_ack_i: in std_logic;
+    mi_wb_stall_i: in std_logic;
+
+    -- VGA signals
+    vgaclk:     in std_logic;
+    vga_hsync:  out std_logic;
+    vga_vsync:  out std_logic;
+    vga_b:      out std_logic_vector(4 downto 0);
+    vga_r:      out std_logic_vector(4 downto 0);
+    vga_g:      out std_logic_vector(4 downto 0);
+    blank:      out std_logic
+  );
+  end component;
+
+
 
   signal clk_off_3ns: std_ulogic;
 
   signal wbi: wb_mosi_type;
   signal wbo: wb_miso_type;
+  signal dmawbi: wb_mosi_type;
+  signal dmawbo: wb_miso_type;
+
   signal syscon: wb_syscon_type;
   signal swbi: slot_wbi;
   signal swbo: slot_wbo;
   signal sids: slot_ids;
   signal nmi, nmi_q, nmiack, rstreq,rstreq_q, do_reset: std_logic;
+  signal vgaclk: std_logic;
 
 begin
+
+  AUDIO(0) <= '0';
+  AUDIO(1) <= '0';
 
   process(sysclk)
   begin
@@ -190,6 +243,9 @@ begin
     nmi             => nmi,
     nmiack          => nmiack,
     rstreq          => rstreq,
+
+    dmawbi          => dmawbi,
+    dmawbo          => dmawbo,
         -- extra clocking
     clk_off_3ns => clk_off_3ns,
 
@@ -264,7 +320,46 @@ begin
       cs        => SDNCS
   );
 
-  emptyslots: for N in 4 to 15 generate
+
+  vga: vga_320_240_idx
+  port map (
+    wb_clk_i  => syscon.clk,
+	 	wb_rst_i  => syscon.rst,
+    wb_dat_o  => swbi(4).dat,
+    wb_dat_i  => swbo(4).dat,
+    wb_adr_i  => swbo(4).adr(31 downto 2),
+    wb_we_i   => swbo(4).we,
+    wb_cyc_i  => swbo(4).cyc,
+    wb_stb_i  => swbo(4).stb,
+    wb_ack_o  => swbi(4).ack,
+
+    -- Wishbone MASTER interface
+    mi_wb_dat_i => dmawbo.dat,
+    mi_wb_dat_o => dmawbi.dat,
+    mi_wb_adr_o => dmawbi.adr,
+    mi_wb_sel_o => dmawbi.sel,
+    --mi_wb_cti_o => dmawbi.cti,
+    mi_wb_we_o  => dmawbi.we,
+    mi_wb_cyc_o => dmawbi.cyc,
+    mi_wb_stb_o => dmawbi.stb,
+    mi_wb_ack_i => dmawbo.ack,
+    mi_wb_stall_i => dmawbo.stall,
+
+    -- VGA signals
+    vgaclk      => vgaclk,
+    vga_hsync   => HSYNC,
+    vga_vsync   => VSYNC,
+    vga_b(0)    => open,
+    vga_b(4 downto 1)       => BLUE,
+    vga_r(0)    => open,
+    vga_r(4 downto 1)       => RED,
+    vga_g(0)    => open,
+    vga_g(4 downto 1)       => GREEN,
+    blank       => open
+  );
+
+
+  emptyslots: for N in 5 to 15 generate
     eslot: nodev
       port map (
         syscon    => syscon,
@@ -295,6 +390,7 @@ begin
     rstin   => '0'  ,
     clkout  => sysclk,
     clkout1  => clk_off_3ns,
+    vgaclk => vgaclk,
     rstout  => clkgen_rst
   );
 
@@ -305,7 +401,7 @@ begin
       if sysrst='1' then
         nmi <= '0';
       else
-        if NNMI='0' then
+        if RESET='1' then
           nmi<='1';
         elsif nmiack='1' then
           nmi<='0';

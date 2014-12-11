@@ -474,6 +474,9 @@ package xtccomppkg is
     -- IO wishbone interface
     iowbo:           out wb_mosi_type;
     iowbi:           in wb_miso_type;
+       -- DMA
+    dmawbi:         in wb_mosi_type;
+    dmawbo:         out wb_miso_type;
     nmi:              in std_logic;
     nmiack:           out std_logic;
     rstreq:           out std_logic;
