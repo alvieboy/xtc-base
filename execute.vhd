@@ -172,6 +172,9 @@ begin
       busy_int := wb_busy;
     end if;
 
+    if busy_int='1' then
+      --ew.jump:='0';
+    end if;
     -- synthesis translate_off
     if DEBUG_OPCODES then
       if rising_edge(clk) then
@@ -335,6 +338,7 @@ begin
       --if busy_int='1' then
       --  ew.jump := '0';
       --end if;
+
      end if; -- passes condition
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
@@ -434,7 +438,9 @@ begin
 
     end if;
 
-
+    if mult_valid='1' then
+      ew.y := alu_a_y;
+    end if;
 
     if rst='1' then
       ew.psr(0) := '1'; -- Supervisor
@@ -442,12 +448,20 @@ begin
       ew.trapvector := RESETADDRESS;--others => '0');
       -- Debug.
       ew.trappc := fdui.r.drq.npc;
+
+
       ew.jump := '0';
       ew.regwe := '0';
       ew.valid := '0';
       ew.trapq := '0';
       ew.innmi := '0';
-      euo.data_access <= '0';
+      ew.y      := (others => 'X');
+      ew.sprval := (others => 'X');
+      ew.npc    := (others => 'X');
+      ew.scratch := (others => 'X');
+      ew.alur    := (others => 'X');
+      ew.jumpaddr:= (others => 'X');
+      --euo.data_access <= '0';
     end if;
 
     if rising_edge(clk) then
