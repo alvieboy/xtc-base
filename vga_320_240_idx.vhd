@@ -547,9 +547,9 @@ begin
       else
           blank <= '0';
           --if hflip='1' then
-            vga_b <= pallete_data(7 downto 0+3);
-            vga_r <= pallete_data(15 downto 8+3);
-            vga_g <= pallete_data(23 downto 16+3);
+            vga_r <= pallete_data(7 downto 0+3);
+            vga_g <= pallete_data(15 downto 8+3);
+            vga_b <= pallete_data(23 downto 16+3);
           -- synthesis translate_off
             vga_b <= pallete_data(7-3 downto 0);
             vga_r <= pallete_data(15-3 downto 8);
