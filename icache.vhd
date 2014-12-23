@@ -193,44 +193,13 @@ begin
   tag_mem_enable <= access_i;-- and enable;
   m_wb_dat_o(31 downto 0) <= (others => DontCareValue);
 
-  -- Valid mem
---  process(wb_clk_i)
---    variable index: integer;
---  begin
---    if rising_edge(wb_clk_i) then
---      if wb_rst_i='1' or flush='1' then
---        for i in 0 to (valid_mem'LENGTH)-1 loop
---          valid_mem(i) := '0';
---        end loop;
---      else
---        index := conv_integer(line_save);
---        if tag_mem_wen='1' then
---          valid_mem(index) := '1';--fill_success;
---        end if;
---      end if;
---      if enable='1' and strobe='1' then
---        valid_i <= valid_mem(conv_integer(line));
-      --else
-      --  valid_i <= valid_mem(conv_integer(line_save));
---      end if;
---    end if;
---  end process;
-
   -- Address save
   process(wb_clk_i)
   begin
     if rising_edge(wb_clk_i) then
-      --if wb_rst_i='1' then
-        --fill_end_q<='0';
-        --fill_end_q_q<='0';
-      --else
-        if (stall_i='0' and enable='1' and strobe='1') or (loadsave='1'and enable='1' and strobe='1') then
-        --if busy='0' and enable='1' and strobe='1' then
-          save_addr <= address;
-        end if;
-        --fill_end_q <= fill_end;
-        --fill_end_q_q <= fill_end_q;
-      --end if;
+      if (stall_i='0' and enable='1' and strobe='1') or (loadsave='1'and enable='1' and strobe='1') then
+        save_addr <= address;
+      end if;
     end if;
   end process;
 
@@ -264,11 +233,7 @@ begin
         access_q<='0';
       else
         if busy='0' and enable='1' then
-          --if strobe='1' then
-            access_q <= access_i;
-          --else
-            --access_q <= '0';
-          --end if;
+          access_q <= access_i;
         elsif abort='1' then
           access_q<='0';
         end if;
@@ -285,11 +250,15 @@ begin
         state <= flushing;
         busy <= '1';
         fill_success <='0';
-        offcnt <= (others => '0');
+        --offcnt <= (others => '0');
         flushcnt <= (others => '1');
         tag_mem_wen <= '1'; -- this needed ??
         cyc <= '0';
         stb <= '0';
+        m_wb_adr_o(31 downto CACHE_MAX_BITS) <= (others => 'X');
+        offcnt <= (others => 'X');
+        offcnt_write <= (others => 'X');
+
       else
         busy <= '0';
         cyc <= '0';
@@ -304,22 +273,28 @@ begin
             busy <= '1';
             flushcnt <= flushcnt - 1;
             tag_mem_wen<='1';
+            m_wb_adr_o(31 downto CACHE_MAX_BITS) <= (others => 'X');
             if flushcnt=0 then
               tag_mem_wen<='0';
               state <= running;
             end if;
 
           when running =>
+            offcnt <= (others => 'X');
+            offcnt_write <= (others => 'X');
+            m_wb_adr_o(31 downto CACHE_MAX_BITS) <= (others => 'X');
+
             if flush='1' then
               state <= flushing;
               flushcnt <= (others => '1');
               tag_mem_wen <= '1';
             else
+
               if access_q='1' and abort='0' then
                 if miss='1' and enable='1' then
                   ett:=        tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
   
-                  exttag_save<=ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
+                  exttag_save <= ett;--tag(ADDRESS_HIGH downto CACHE_MAX_BITS);
                   -- synthesis translate_off
                   --report str(ADDRESS_HIGH) & " " & hstr(ett);
                   -- synthesis translate_on
@@ -330,13 +305,14 @@ begin
                   else
                     m_wb_adr_o(31 downto CACHE_MAX_BITS) <= save_addr(31 downto CACHE_MAX_BITS);
                   end if;
-  
+
                   offcnt <= (others => '0');
                   offcnt_write <= (others => '0');
+  
                   cyc <= '1';
                   stb <= '1';
-                  --fill_success<='1';
                   busy <= '1';
+
                 end if;
               end if;
             end if;
@@ -344,11 +320,6 @@ begin
             busy<='1';
             cyc <= '1';
             stb <= '1';
-            --if offcnt(offcnt'HIGH)='0' then
-            --  stb <= '1';
-            --else
-            --  stb <= '0';
-            --end if;
 
             if m_wb_ack_i='1' then
               offcnt_write <= offcnt_write + 1;
@@ -359,12 +330,6 @@ begin
               end if;
             end if;
               
-
-            --if offcnt_write = offcnt_full then
-            --  state <= waitwrite;
-            --  offcnt <= (others => '0');
-            --else
-
             if m_wb_stall_i='0' then
               if offcnt(offcnt'HIGH)='0' then
                 offcnt <= offcnt + 1;
@@ -373,14 +338,22 @@ begin
 
           when waitwrite =>
             busy<='1';
+            m_wb_adr_o(31 downto CACHE_MAX_BITS) <= (others => 'X');
+            offcnt <= (others => 'X');
+            offcnt_write <= (others => 'X');
+
             state <= ending;
 
           when ending =>
             busy<='0';
-            
+            m_wb_adr_o(31 downto CACHE_MAX_BITS) <= (others => 'X');
+            offcnt <= (others => 'X');
+            offcnt_write <= (others => 'X');
+
             if enable='1' then
               fill_success<='1';
             end if;
+
             state <= running;
         end case;
       end if;
@@ -400,21 +373,9 @@ begin
     end if;
   end process;
 
-    --if busy='0' then
-  --    ack <= hit;
-  --  else
-   --   ack <= fill_success;
---      if state=ending then
---        ack <= '1';
---      else
---        ack <= '0';
---      end if;
-  --  end if;
- -- end process;
-
   access_i <= strobe;
 
-  hit <= '1' when tag_match='1' and valid_i='1' else '0';--and access_q='1' else '0';
+  hit <= '1' when tag_match='1' and valid_i='1' else '0';
 
   miss <= not hit;
 
@@ -436,14 +397,12 @@ begin
       end if;
     end if;
   end process;
-  --stall_i <= miss when access_q='1' else busy;
 
-  m_wb_cyc_o <= cyc;
-  m_wb_stb_o <= stb when offcnt(offcnt'HIGH)='0' else '0';
-  m_wb_we_o<='0';
-
+  m_wb_cyc_o  <= cyc;
+  m_wb_stb_o  <= stb when offcnt(offcnt'HIGH)='0' else '0';
+  m_wb_we_o   <= '0';
   m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
   m_wb_adr_o(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
-  m_wb_adr_o(1 downto 0)<="00";
+  m_wb_adr_o(1 downto 0) <= "00";
 
 end behave;
