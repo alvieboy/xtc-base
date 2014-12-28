@@ -447,7 +447,7 @@ begin
         if r.line_save = r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) and
           r.tag_save = r.save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS) then
 
-        valid_while_filling<='1';
+        --valid_while_filling<='1';
         end if;
       end if;
     end if;
