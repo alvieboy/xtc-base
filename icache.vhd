@@ -109,7 +109,7 @@ architecture behave of icache is
     save_addr:    std_logic_vector(address'RANGE);
     line_save:    std_logic_vector(CACHE_LINE_ID_BITS-1 downto 0);
     tag_save: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
-
+    enable_q:     std_logic;
   end record;
 
   signal r: icache_regs_type;
@@ -262,7 +262,7 @@ begin
 
         if r.access_q='1' then
           -- We had a cache access in last clock cycle.
-          if enable='1' then
+          if r.enable_q='1' then
  
             if miss='1' then -- And it was a miss...
               -- Recover last address
@@ -324,7 +324,9 @@ begin
         -- Attempt...
         if true then
         if valid_while_filling='1' then
-          data_valid := '1';--r.access_q;
+          -- If fetch disabled the memory on last clock, we have a problem here.
+
+          data_valid := r.enable_q;--r.access_q;
           stall_input := '0';
         end if;
         end if;
@@ -396,6 +398,8 @@ begin
       cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
     end if;
 
+    w.enable_q := enable;
+
     valid <= data_valid;
     stall <= stall_input;
 
@@ -413,6 +417,7 @@ begin
       w.offcnt := (others => 'X');
       w.offcnt_write := (others => 'X');
       w.access_q := '0';
+      w.enable_q := '0';
       w.queued_address:='0';
     end if;
 
@@ -454,7 +459,7 @@ begin
   m_wb_dat_o  <= (others => 'X');
 
   m_wb_adr_o(31 downto CACHE_MAX_BITS) <= r.wbaddr(31 downto CACHE_MAX_BITS);
-  m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
+  m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= r.line_save;--r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
   m_wb_adr_o(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(r.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
 
   m_wb_adr_o(1 downto 0) <= "00";
