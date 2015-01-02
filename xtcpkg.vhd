@@ -12,7 +12,7 @@ package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := true;
-  constant DATA_CACHE: boolean := true;
+  constant DATA_CACHE: boolean := false;
   constant MMU_ENABLED: boolean := false;
   constant MULT_ENABLED: boolean := true;
 
@@ -22,9 +22,17 @@ package xtcpkg is
   constant DEBUG_OPCODES: boolean := false;
   constant DEBUG_MEMORY: boolean := false;
   constant ENABLE_SHIFTER: boolean := true;
+  constant IO_REGISTER_INPUTS: boolean := false;
 
   constant TRACECLOCK: boolean := false;
   constant RESETADDRESS: unsigned(31 downto 0) := x"80000000";
+
+  -- Enable low-memory protection.
+  constant LOWPROTECTENABLE: boolean := false;
+  -- Enable bus/pipeline fault checks.
+  constant FAULTCHECKS: boolean := false;
+  -- Enable instruction/memory tracer.
+  constant TRACER_ENABLED: boolean := false;
 
   subtype opcode_type is std_logic_vector(15 downto 0);
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
@@ -184,6 +192,7 @@ package xtcpkg is
     cop_id:         std_logic_vector(1 downto 0);
     cop_reg:        std_logic_vector(3 downto 0);
     priv:           std_logic;
+    targetzero:     std_logic;
   end record;
 
 
@@ -222,6 +231,7 @@ package xtcpkg is
     reg_source:     reg_source_type;
     regwe:          std_logic;
     dreg:           regaddress_type;
+    targetzero:     std_logic;
     --reg_source1:    reg_source_type;
     --regwe1:         std_logic;
     --dreg1:          regaddress_type;
@@ -327,6 +337,7 @@ package xtcpkg is
     sprval:         word_type;
     trapq:          std_logic;
     innmi:          std_logic;
+    delayslot:      std_logic;
   end record;
 
   type execute_output_type is record
@@ -355,6 +366,7 @@ package xtcpkg is
     cop:     std_logic_vector(31 downto 0);
     jump:     std_logic;
     trap:     std_logic;
+    flush:    std_logic;
     clrreg:   std_logic;
     clrhold:  std_logic;
   end record;
@@ -475,6 +487,7 @@ package xtcpkg is
     tag:            std_logic_vector(31 downto 0);
     stall:          std_logic;
     in_flush:       std_logic;
+    err:            std_logic;
   end record;
 
 
