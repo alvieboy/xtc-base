@@ -424,13 +424,23 @@ begin
     end case;
 
       --- HAAAAACK
-      if opcode=x"0000" then
-        op:= O_SWI;
-      end if;
+    --  if opcode=x"0000" then
+--        op:= O_SWI;
+--      end if;
+
+    -- This is current version, and works.
 
     d.imm8l(7 downto 0) := opcode(11 downto 4);
     d.imm8h(7 downto 0) := opcode_low(7 downto 0);
     d.imm24 := opcode_low(12) & opcode_low(7 downto 0) & opcode_high(14 downto 0);
+
+    -- This is more optimized. Requires lots of compiler changes.
+
+    --d.imm8l(7 downto 0) := opcode_high(11 downto 4);
+    --d.imm8h(7 downto 0) := opcode_low(7 downto 0);
+    --d.imm24 := opcode_low(12) & opcode_high(14 downto 12) & opcode_high(3 downto 0) &
+    --  opcode_low(7 downto 0) & opcode_high(11 downto 4);
+
 
 
     if is_extended_opcode then
@@ -494,6 +504,11 @@ begin
         d.alu_source := alu_source_immed;
         d.sreg1 := opcode(7 downto 4);
       end if;
+    end if;
+
+    d.targetzero:='0';
+    if d.dreg="0000" then
+      d.targetzero:='1';
     end if;
 
     dec <= d;
