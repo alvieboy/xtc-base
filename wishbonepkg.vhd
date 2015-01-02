@@ -9,6 +9,11 @@ constant CTI_CYCLE_CONSTADDR:   std_logic_vector(2 downto 0) := "001";
 constant CTI_CYCLE_INCRADDR:    std_logic_vector(2 downto 0) := "010";
 constant CTI_CYCLE_ENDOFBURST:  std_logic_vector(2 downto 0) := "111";
 
+constant BTE_BURST_LINEAR:      std_logic_vector(1 downto 0) := "00";
+constant BTE_BURST_4BEATWRAP:   std_logic_vector(1 downto 0) := "01";
+constant BTE_BURST_8BEATWRAP:   std_logic_vector(1 downto 0) := "10";
+constant BTE_BURST_16BEATWRAP:  std_logic_vector(1 downto 0) := "11";
+
 type wb_miso_type is record
     ack:   std_logic;
     dat:   std_logic_vector(31 downto 0);
@@ -25,6 +30,8 @@ type wb_mosi_type is record
     cyc:      std_logic;
     stb:      std_logic;
     sel:      std_logic_vector(3 downto 0);
+    cti:      std_logic_vector(2 downto 0);
+    bte:      std_logic_vector(1 downto 0);
     we:       std_logic;
 end record;
 
