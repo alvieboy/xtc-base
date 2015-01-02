@@ -259,10 +259,10 @@ begin
   -- 4,096 rows by 256 columns by 16 bits.
   -- 12 bits rows, 8 bit columns, 2 bit banks, two words. 22 bits + 1
   --
-  --                                222211111111110000000000
-  --                                321098765432109876543210
-  --                                ------------------------
-  --                                rrrrrrrrrrrrbbccccccccix
+  --                                22211111111110000000000
+  --                                21098765432109876543210
+  --                                -----------------------
+  --                                rrrrrrrrrrrrbbcccccccix
   --
    debug_cmd <= rstate(3 downto 0);
 
@@ -348,6 +348,8 @@ begin
          if r.rd_pending='0' and r.wr_pending='0' then
            n.rd_pending <= '1';
            n.req_addr_q <= address(22 downto 2);
+           n.req_data_write <= (others => 'X');
+           n.req_mask <= (others => 'X');
            n.tag_in <= tag_in;
          end if;
       end if;
@@ -356,7 +358,6 @@ begin
          if r.wr_pending='0' and r.rd_pending='0' then
            n.wr_pending <= '1';
            n.req_addr_q <= address(22 downto 2);
-           -- Queue data here
            n.req_data_write <= data_in;
            n.req_mask <= data_mask;
            n.tag_in <= tag_in;
@@ -478,8 +479,11 @@ begin
                --n.act_ba    <= addr_bank;
                n.dq_masks <= "00";
                n.rd_pending <= '0';
-               n.tagq <= r.tag_in;
-               n.tagqq<=r.tagq;
+               n.data_write <= (others => 'X');
+
+               --n.tagq <= r.tag_in;
+               --n.tagqq<=r.tagq;
+               n.tag_out <= r.tag_in;
                --n.tristate<='1';
             end if;
             
@@ -493,8 +497,10 @@ begin
                --n.act_ba    <= addr_bank;
                n.dq_masks<= not r.req_mask(3 downto 2);
                n.wr_pending <= '0';
-               n.tagq <= r.tag_in;
-               n.tagqq<=r.tagq;
+               n.tag_out <= r.tag_in;
+
+               --n.tagq <= r.tag_in;
+               --n.tagqq<=r.tagq;
                --n.tristate <= '0';
             end if;
             
@@ -539,7 +545,7 @@ begin
             n.address(0) <= '1';
             n.data_write <= r.req_data_write(15 downto 0);--data_in(31 downto 16);
             --DRAM_DQ <= rdata_write;
-            n.dq_masks<= not r.req_mask(1 downto 0);
+            n.dq_masks <= not r.req_mask(1 downto 0);
             n.tristate <= '0';
 
          when s_wr1_id => null;
@@ -553,7 +559,7 @@ begin
             nstate     <= s_ra2;
             --DRAM_DQ <= rdata_write;
             n.data_out_valid<='1'; -- alvie- ack write
-            n.tag_out <= r.tagq;
+            --n.tag_out <= r.tagq;
             n.tristate <= '0';
             n.dq_masks<= "11";
             
@@ -612,8 +618,10 @@ begin
               n.bank    <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
-              n.tagq <= r.tag_in;
-              n.tagqq<=r.tagq;
+              n.data_write <= (others => 'X');
+              --n.tagq <= r.tag_in;
+              --n.tagqq<=r.tagq;
+              n.tag_out <= r.tag_in;
 
             end if;
             -- Update output tag immediatly
@@ -649,8 +657,10 @@ begin
               n.bank    <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
-              n.tagq <= r.tag_in;
-              n.tagqq<=r.tagq;
+              n.data_write <= (others => 'X');
+              --n.tagq <= r.tag_in;
+              --n.tagqq<=r.tagq;
+              n.tag_out <= r.tag_in;
 
             else
               nstate <= s_rd6; -- NOTE: not correct
@@ -666,7 +676,7 @@ begin
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
 
-            n.tag_out <= r.tagqq;
+            --n.tag_out <= r.tagqq;
 
 
          when s_rd5_id =>
@@ -690,7 +700,7 @@ begin
             nstate <= s_ra2;
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
-            n.tag_out <= r.tagq;
+            --n.tag_out <= r.tagq;
             --n.tag_out <= r.tag_in;
 
             n.tristate<='1';
@@ -707,7 +717,7 @@ begin
             nstate <= s_drdr2;
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
-            n.tag_out <= r.tag_in;
+            --n.tag_out <= r.tag_in;
 
          when s_drdr2_id =>
             nstate <= s_idle;
