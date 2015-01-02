@@ -23,7 +23,9 @@ architecture behave of xtc_ioctrl is
 
   signal selector: std_logic_vector(15 downto 0);
   signal selnum: integer range 0 to 15;
-  
+  signal ackint: std_logic;
+  signal trans_valid: std_logic := '1';
+
 begin
 
   process(wbi.adr)
@@ -34,21 +36,39 @@ begin
     selector(num)<='1';
     selnum<=num;
   end process;
-    
-  wbo.dat <= swbi(selnum).dat;
-  wbo.ack <= swbi(selnum).ack;
-  wbo.err <= swbi(selnum).err;
-  wbo.stall <= '0';
 
-  -- Simple tag generator
+  direct: if not IO_REGISTER_INPUTS generate
+
+    wbo.dat <= swbi(selnum).dat;
+    ackint  <= swbi(selnum).ack;
+    wbo.err <= swbi(selnum).err;
+
+  end generate;
+
+  indirect: if IO_REGISTER_INPUTS generate
+    trans_valid<='1' when ackint='0' else '0';
+    process(syscon.clk)
+    begin
+      if rising_edge(syscon.clk) then
+          wbo.dat <= swbi(selnum).dat;
+          ackint <= swbi(selnum).ack;
+          wbo.err <= swbi(selnum).err;
+      end if;
+    end process;
+  end generate;
+
+  wbo.stall <= '0';
+  wbo.ack <= ackint;
+
+  -- Simple tag generator. Also resynchronizer
   process(syscon.clk)
   begin
     if rising_edge(syscon.clk) then
-      if syscon.rst='1' then
-        wbo.tag <=  (others => '0');
-      else
+      --if syscon.rst='1' then
+      --  wbo.tag <=  (others => '0');
+      --else
         wbo.tag <= wbi.tag;
-      end if;
+      --end if;
     end if;
   end process;
 
@@ -58,8 +78,8 @@ begin
     swbo(i).dat <= wbi.dat;
     swbo(i).we  <= wbi.we;
     --swbo(i).tag <= wbi.tag;
-    swbo(i).cyc <= wbi.cyc and selector(i);
-    swbo(i).stb <= wbi.stb and selector(i);
+    swbo(i).cyc <= wbi.cyc and selector(i) and trans_valid;
+    swbo(i).stb <= wbi.stb and selector(i) and trans_valid;
   end generate;
 
 
