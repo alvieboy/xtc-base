@@ -1225,8 +1225,8 @@ BEGIN
 --		    Bank_Load := recaddr(25 downto 24);
 --		    Rows_Load := recaddr(23 downto 11);
 --		    Cols_Load := recaddr(10 downto 2);
-		    Bank_Load := recaddr(23 downto 22);
-		    Rows_Load := recaddr(21 downto 9);  -- 11:0
+		    Bank_Load := recaddr(10 downto 9);
+		    Rows_Load := recaddr(23 downto 11);  -- 11:0
 		    Cols_Load := recaddr(8 downto 2) & '0';
 
                     Init_Mem (Bank_Load, To_Integer(Rows_Load));
