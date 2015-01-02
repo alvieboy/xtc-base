@@ -158,7 +158,7 @@ architecture sim of tb_sdram_flash is
   end component;
 
  -- SDRAM signals
-  signal DRAM_ADDR   :    STD_LOGIC_VECTOR (11 downto 0);
+  signal DRAM_ADDR   :    STD_LOGIC_VECTOR (12 downto 0);
   signal DRAM_BA      :   STD_LOGIC_VECTOR (1 downto 0);
   signal DRAM_CAS_N   :    STD_LOGIC;
   signal DRAM_CKE      :    STD_LOGIC;
@@ -315,7 +315,15 @@ begin
     iowbo           => wbi,
     nmi             => nmi,
     nmiack          => nmiack,
-
+    dmawbi.dat      => (others => 'X'),
+    dmawbi.adr      => (others => 'X'),
+    dmawbi.tag      => (others => 'X'),
+    dmawbi.cyc      => '0',
+    dmawbi.bte      => BTE_BURST_LINEAR,
+    dmawbi.cti      => CTI_CYCLE_CLASSIC,
+    dmawbi.stb      => '0',
+    dmawbi.we       => '0',
+    dmawbi.sel      => "0000",
     clk_off_3ns     => w_clk_3ns,
 
     DRAM_ADDR   => DRAM_ADDR(11 downto 0),
@@ -331,9 +339,11 @@ begin
 
   );
 
+  DRAM_ADDR(12)<='0';
+
   sdram: mt48lc16m16a2
     GENERIC MAP  (
-        addr_bits  => 12,
+        addr_bits  => 13,
         data_bits  => 16,
         col_bits   => 8,
         index      => 0,
@@ -341,7 +351,7 @@ begin
     )
     PORT MAP (
         Dq    => DRAM_DQ,
-        Addr  => DRAM_ADDR(11 downto 0),
+        Addr  => DRAM_ADDR(12 downto 0),
         Ba    => DRAM_BA,
         Clk   => DRAM_CLK,
         Cke   => DRAM_CKE,
