@@ -44,6 +44,7 @@ architecture behave of memory is
   signal mr: memory_regs_type;
   signal mreg_q: regaddress_type;
   signal wb_ack_i_q: std_logic;
+  signal cycle_fault:std_logic;
 
   component reqcnt is
   port (
@@ -157,12 +158,11 @@ begin
         mw.dreg    := eui.mwreg;
         mw.pc      := eui.npc;
 
-        if proten='1' then
+        if proten='1' and LOWPROTECTENABLE then
           if eui.data_writeenable='1' and eui.data_access='1' then
             if (unsigned(eui.data_address)<unsigned(protw)) then
               mw.fault := '1';
               mw.wb_stb := '0';
-              --mw.wb_cyc := '0';
               mw.faddr := std_logic_vector(eui.npc);
             end if;
           end if;
@@ -186,13 +186,6 @@ begin
 
       if wb_err_i='1' then
         mw.fault := '1';
-      end if;
-
-
-      if req_pending='1' then
-        wb_cyc_o <= '1';
-      else
-        wb_cyc_o <= mr.wb_cyc;
       end if;
 
       if rst='1' then
@@ -237,26 +230,37 @@ begin
   wb_dat_o <= mr.wb_dat;
   wb_we_o  <= mr.wb_we;
   wb_sel_o <= mr.wb_sel;
-
   wb_tag_o <= mr.wb_tago;
+  wb_cyc_o <= req_pending or mr.wb_cyc;
 
-  -- Internal faiult...
-  process(clk)
-  begin
-    if rising_edge(clk) then
-      if rst='1' then
-        busycnt<=(others =>'0');
-      else
-        if mr.wb_cyc='1' and endcycle='0' then
-          busycnt<=busycnt+1;
-        else
+  faultcheck: if FAULTCHECKS generate
+    -- Internal fault...
+    process(clk)
+    begin
+      if rising_edge(clk) then
+        if rst='1' then
           busycnt<=(others =>'0');
+        else
+          if mr.wb_cyc='1' and endcycle='0' then
+            busycnt<=busycnt+1;
+          else
+            busycnt<=(others =>'0');
+          end if;
+  
         end if;
-
       end if;
-    end if;
-  end process;
+    end process;
+  
+    -- Cycle check.
+    cycle_fault<='1' when (req_pending or mr.wb_cyc) /= (req_pending or mr.wb_stb) else '0';
+  
+    muo.internalfault<='1' when busycnt > 65535 or cycle_fault='1' else '0';
+  end generate;
 
-  muo.internalfault<='1' when busycnt > 65535 else '0';
+  nofaultcheck: if not FAULTCHECKS generate
+    cycle_fault<='0';
+    muo.internalfault<='0';
+  end generate;
+
 
 end behave;
