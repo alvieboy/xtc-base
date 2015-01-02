@@ -53,70 +53,25 @@ begin
     begin
 
       wdata0 := (others => DontCareValue);
-      wdata1 := (others => DontCareValue);
+      --wdata1 := (others => DontCareValue);
       r0_we <= '0';
       r0_en <= '0';
       r0_addr <= (others => DontCareValue);
-      r1_en <= '0';
-      r1_we <= '0';
-      r1_addr <= (others => DontCareValue);
+      --r1_en <= '0';
+      --r1_we <= '0';
+      --r1_addr <= (others => DontCareValue);
       busy <= '0';
 
       if mui.mregwe='1' then
-        -- Memory access - This means we finish a load
-        -- and we need to write contents back to the register
-        -- file.
-
-        -- While this happens, we must stall the pipeline if it is trying to wb also.
-        -- We can use the second port if we are not writing back two registers
-        -- at this point.
-          --case eui.reg_source is
-         --   when reg_source_alu =>
-         --     wdata0 := eui.alur1;
-         --   when reg_source_imm =>
-         --     wdata0 := eui.imreg;
-         --   when reg_source_spr =>
-         --     wdata0 := eui.sprval;
-         --   when reg_source_pcnext =>
-          --    wdata0 := eui.npc;
-          --  when others =>
-          --    wdata0 := (others => 'X');
-          --end case;
-
-          --r0_we <=  eui.regwe;
-          --r0_addr <= eui.dreg;
-          --r0_en <= '1';
-
-          busy <= eui.r.regwe;
-
-          --r1_we <=  eui.regwe1;
-          --r1_addr <= eui.dreg1;
-
-          wdata0 := unsigned(mui.mdata);
-          r0_we <= '1';
-          r0_en <= '1';
-          r0_addr <= mui.mreg;
-
-        --case eui.regwe is
-        -- when '0' =>
-        --    wdata0 := unsigned(mui.mdata);
-        --   r0_we <= '1';
-        --    r0_addr <= mui.mreg;
-        --  when '1' =>
-        --    wdata1 := unsigned(mui.mdata);
-        --    r1_we <= '1';
-        --    r1_addr <= mui.mreg;
-        --  when others =>
-        --end case;
+        busy <= eui.r.regwe;
+        wdata0 := unsigned(mui.mdata);
+        r0_we <= '1';
+        r0_en <= '1';
+        r0_addr <= mui.mreg;
       else
-
-        if FAST_WRITEBACK then
-
           case eui.r.reg_source is
             when reg_source_alu =>
               wdata0 := eui.r.alur;
---            when reg_source_imm =>
---              wdata0 := eui.imreg;
             when reg_source_spr =>
               wdata0 := eui.r.sprval;
             when reg_source_pcnext=>
@@ -131,19 +86,10 @@ begin
           r0_en <=  eui.r.regwe;
           r0_addr <= eui.r.dreg;
 
-          --r1_we <=  eui.regwe1;
-          --r1_addr <= eui.dreg1;
-
-        else
-
-        end if;
       end if;
 
       r0_write <= std_logic_vector(wdata0);
-      r1_write <= std_logic_vector(wdata1);
-
-      -- We must handle SPR register write. This is fed back to
-      -- execution unit (and other units if applicable).
+      --r1_write <= std_logic_vector(wdata1);
 
     end process;
 
