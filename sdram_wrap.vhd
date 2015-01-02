@@ -94,6 +94,7 @@ architecture behave of sdram_ctrl is
   signal sdr_data_out      :      STD_LOGIC_VECTOR (31 downto 0);
   signal sdr_data_out_valid :      STD_LOGIC;
   signal sdr_data_in      : STD_LOGIC_VECTOR (31 downto 0);
+  signal sdr_tag          : STD_LOGIC_VECTOR (31 downto 0);
 
   signal sdr_data_mask: std_logic_vector(3 downto 0);
 
@@ -131,7 +132,7 @@ begin
     data_in      => sdr_data_in,
     data_mask  => sdr_data_mask,
     tag_in      => wb_tag_i,
-    tag_out     => wb_tag_o
+    tag_out     => sdr_tag
    );
 
 
@@ -145,6 +146,7 @@ begin
 
   wb_stall_o <= '1' when pending='1' else '0';
 
+  resync: if true generate
   process(wb_clk_i)
   begin
     if rising_edge(wb_clk_i) then
@@ -154,8 +156,16 @@ begin
        wb_ack_o <= sdr_data_out_valid;
      end if;
      wb_dat_o <= sdr_data_out;
+     wb_tag_o <= sdr_tag;
     end if;
   end process;
+  end generate;
+
+  noresync: if false generate
+    wb_ack_o <= sdr_data_out_valid;
+    wb_dat_o <= sdr_data_out;
+    wb_tag_o <= sdr_tag;
+  end generate;
 
   dbg.strobe <= ( not pending ) and wb_stb_i and wb_cyc_i;
   dbg.write  <= wb_we_i;
