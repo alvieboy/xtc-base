@@ -464,7 +464,7 @@ begin
 
   dcachegen: if DATA_CACHE generate
      dcache_accesstype <= ACCESS_NOCACHE when mwbo.adr(31)='1' else
-      ACCESS_WT;
+      ACCESS_WB_WA;
 
      dcacheinst: dcache
        generic map (
@@ -488,6 +488,7 @@ begin
          co.stall    => mwbi.stall,
          co.valid    => mwbi.ack,
          co.tag      => mwbi.tag,
+         co.err      => mwbi.err,
          mwbi   => wbi,
          mwbo   => wbo
        );
@@ -548,24 +549,43 @@ begin
       eui       => euo -- for fast register write
     );
 
-  -- Internal faiult...
-  process(wb_syscon.clk)
-  begin
-    if rising_edge(wb_syscon.clk) then
-      if wb_syscon.rst='1' then
-        busycnt<=(others =>'0');
-      else
-        if execute_busy='1' or notallvalid='1' or freeze_decoder='1' then
-          busycnt<=busycnt+1;
-        else
-          busycnt<=(others =>'0');
-        end if;
+  faultcheck: if FAULTCHECKS generate
 
+    -- Internal pipeline fault...
+    process(wb_syscon.clk)
+    begin
+      if rising_edge(wb_syscon.clk) then
+        if wb_syscon.rst='1' then
+          busycnt<=(others =>'0');
+        else
+          if execute_busy='1' or notallvalid='1' or freeze_decoder='1' then
+            busycnt<=busycnt+1;
+          else
+            busycnt<=(others =>'0');
+          end if;
+  
+        end if;
       end if;
+    end process;
+  
+    pipeline_internalfault<='1' when busycnt > 65535 else '0';
+  end generate;
+
+  nofaultchecks: if not FAULTCHECKS generate
+    pipeline_internalfault<='0';
+  end generate;
+
+  -- synthesis translate_off
+  process
+  begin
+    wait on muo.internalfault;
+    if muo.internalfault'event and muo.internalfault='1' then
+      wait until rising_edge(wb_syscon.clk);
+      wait until rising_edge(wb_syscon.clk);
+      report "Internal memory fault" severity failure;
     end if;
   end process;
-
-  pipeline_internalfault<='1' when busycnt > 65535 else '0';
+  -- synthesis translate_on
 
 end behave;
 
