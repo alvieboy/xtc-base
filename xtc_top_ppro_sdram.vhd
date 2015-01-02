@@ -283,6 +283,9 @@ begin
   );
 
   myuart: uart
+    generic map (
+      bits => 11
+    )
     port map (
       syscon      => syscon,
       wbi         => swbo(1),
@@ -320,6 +323,7 @@ begin
       cs        => SDNCS
   );
 
+  vgaenabled: if false generate
 
   vga: vga_320_240_idx
   port map (
@@ -357,7 +361,29 @@ begin
     vga_g(4 downto 1)       => GREEN,
     blank       => open
   );
+  end generate;
 
+
+  vgadisabled: if true generate
+    eslot: sinkdev
+      port map (
+        syscon    => syscon,
+        wbi       => swbo(4),
+        wbo       => swbi(4)
+     );
+    dmawbi.dat <= (others => 'X');
+    dmawbi.adr <= (others => 'X');
+    dmawbi.sel <= (others => 'X');
+    dmawbi.we <='0';
+    dmawbi.cyc<='0';
+    dmawbi.stb<='0';
+    RED<=(others => '0');
+    GREEN<=(others => '0');
+    BLUE<=(others => '0');
+    HSYNC<='0';
+    VSYNC<='0';
+
+  end generate;
 
   emptyslots: for N in 5 to 15 generate
     eslot: nodev
