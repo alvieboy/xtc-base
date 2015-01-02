@@ -795,4 +795,6 @@ begin
     dbg_miss<=miss;
   end process;
 
+  co.err <= '0';
+
 end behave;
