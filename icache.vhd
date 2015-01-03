@@ -212,7 +212,7 @@ begin
   --wrcachea<='1' when m_wb_ack_i='1' and cache_addr_write=cache_addr_read else '0';
   wrcachea<='0';
 
-  process(r,strobe,enable,miss,wb_rst_i,wb_clk_i,line,line_offset,hit,flush,m_wb_ack_i,m_wb_stall_i,valid_while_filling)
+  process(r,strobe,enable,miss,wb_rst_i,wb_clk_i,line,line_offset,hit,flush,m_wb_ack_i,m_wb_stall_i,valid_while_filling,abort)
     variable ett: std_logic_vector(exttag_save'RANGE);
     variable w: icache_regs_type;
     variable data_valid: std_logic;
@@ -264,7 +264,7 @@ begin
           -- We had a cache access in last clock cycle.
           if r.enable_q='1' then
  
-            if miss='1' then -- And it was a miss...
+            if miss='1' and abort='0' then -- And it was a miss...
               -- Recover last address
               --w.save_addr := r.save_addr;
               --w.queued_address := '1';
