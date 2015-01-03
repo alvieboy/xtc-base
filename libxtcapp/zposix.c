@@ -116,37 +116,23 @@ int open(const char *pathname, int flags,...)
         return -1;
 
     makefullpath(path, pathname);
-    debugprint("open ");
-    debugprint(pathname);
-    debugprint("\r\n");
-    debugprint(path);
 
     if (path[0]!='/') {
-        debugprint("ai1");
         return -1;
     }
-    debugprint("Lookup delim");
 
     pptr=&path[1];
 
     const char *delim = strchr(pptr,'/');
 
-    debugprint("chr");
-
     if (NULL==delim) {
-        debugprint("delim ");
-        debugprint(pptr);
         return -1;
     } else {
         if (!*delim) {
-            debugprint("ai3");
-
             return -1;
         }
 
         if ((delim-pptr) > 15) {
-            debugprint("ai4");
-
             return -1; /* Too large */
         }
 
@@ -158,23 +144,15 @@ int open(const char *pathname, int flags,...)
 
 
     /* Look it up */
-    debugprint("Find\r\n");
     struct zfops *ops = zfFindBackend(rdevice);
 
     if (ops==NULL) {
-        debugprint("ai5 ");
-        debugprint(rdevice);
-
         return -1;
     }
 
-    debugprint("Call\r\n");
-    debugprint(delim);
     void *handle = ops->open(delim);
 
     if (NULL==handle) {
-        debugprint("No handle\r\n");
-
         return -1;
     }
 

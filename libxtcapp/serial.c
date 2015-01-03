@@ -37,16 +37,6 @@ static struct zfdevops serial_devops = {
 
 void stdio_register_console(const char *device)
 {
-    // Will this work ?
-    /*
-    open(device,O_RDONLY);
-    open(device,O_WRONLY);
-    open(device,O_WRONLY);
-
-    fdopen(0,"r");
-    fdopen(1,"w+");
-    fdopen(2,"w+");
-    */
     if (NULL==fopen(device,"r")) {
         while(1);
     }
@@ -56,7 +46,6 @@ void stdio_register_console(const char *device)
     if (NULL==fopen(device,"w")) {
         while(1);
     }
-
 }
 
 int serial_register_device(const char *name, void*data)

@@ -11,7 +11,6 @@ static void *sd_open(const char *path)
 {
     ssize_t r;
 
-    printf("SD: Opening file '%s'\r\n", path);
     FIL *f = (FIL*)malloc(sizeof(FIL));
 
     r = f_open (f, path, FA_READ);            /* Open or create a file */
@@ -40,13 +39,11 @@ static ssize_t sd_read(void *handle,void *dest,size_t size)
     unsigned char *b = (unsigned char*)dest;
     while (toread>0) {
         chunk = toread >= 65535 ? 65535 : toread;
-        //printf("sd_read: size %d, toread %d, chunk %d\n", (int)size, toread, (int)chunk);
         r = f_read(f, b, chunk, &bytes);
         if (r!=FR_OK) {
             printf("SD error read: %d\n",r);
             return -r;
         }
-        //printf("sd_read: ret %d, bytes %d\n", r, (int)bytes);
         toread-=bytes;
         b+=bytes;
     }
