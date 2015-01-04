@@ -339,6 +339,15 @@ begin
 
    process (r, rstate, address, req_read, req_write,
         addr_row, addr_bank, addr_col, data_in, captured, tag_in, data_mask)
+
+    procedure shifttags is
+    begin
+                   -- Shift tags.
+               n.tagq     <= r.tag_in;
+               n.tagqq    <=r.tagq;
+               n.tag_out  <= r.tagqq;
+    end procedure;
+
    begin
       -- copy the existing values
       n <= r;
@@ -481,10 +490,9 @@ begin
                n.rd_pending <= '0';
                n.data_write <= (others => 'X');
 
-               --n.tagq <= r.tag_in;
-               --n.tagqq<=r.tagq;
-               n.tag_out <= r.tag_in;
-               --n.tristate<='1';
+               -- Shift tags.
+               shifttags;
+
             end if;
             
             -- unless we have a write on the same row? writes take priroty over reads
@@ -497,11 +505,9 @@ begin
                --n.act_ba    <= addr_bank;
                n.dq_masks<= not r.req_mask(3 downto 2);
                n.wr_pending <= '0';
-               n.tag_out <= r.tag_in;
 
-               --n.tagq <= r.tag_in;
-               --n.tagqq<=r.tagq;
-               --n.tristate <= '0';
+               -- Shift tags.
+               shifttags;
             end if;
             
             
@@ -547,6 +553,7 @@ begin
             --DRAM_DQ <= rdata_write;
             n.dq_masks <= not r.req_mask(1 downto 0);
             n.tristate <= '0';
+            shifttags;
 
          when s_wr1_id => null;
          when s_wr2_id =>
@@ -559,6 +566,7 @@ begin
             nstate     <= s_ra2;
             --DRAM_DQ <= rdata_write;
             n.data_out_valid<='1'; -- alvie- ack write
+            shifttags;
             --n.tag_out <= r.tagq;
             n.tristate <= '0';
             n.dq_masks<= "11";
@@ -621,9 +629,13 @@ begin
               n.data_write <= (others => 'X');
               --n.tagq <= r.tag_in;
               --n.tagqq<=r.tagq;
-              n.tag_out <= r.tag_in;
+              --n.tag_out <= r.tag_in;
 
             end if;
+
+            -- Shift tags.
+            shifttags;
+
             -- Update output tag immediatly
             --n.tag_out <= r.tagq;
 
@@ -660,11 +672,13 @@ begin
               n.data_write <= (others => 'X');
               --n.tagq <= r.tag_in;
               --n.tagqq<=r.tagq;
-              n.tag_out <= r.tag_in;
+              --n.tag_out <= r.tag_in;
 
             else
               nstate <= s_rd6; -- NOTE: not correct
             end if;
+            -- Shift tags.
+            shifttags;
 
             --if r.rf_pending = '1' then
             --   nstate <= s_drdr0;
@@ -700,6 +714,7 @@ begin
             nstate <= s_ra2;
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
+            shifttags;
             --n.tag_out <= r.tagq;
             --n.tag_out <= r.tag_in;
 
