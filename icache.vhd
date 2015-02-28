@@ -291,6 +291,8 @@ begin
           w.state := flushing;
           w.flushcnt := (others => '1');
           w.tag_mem_wen := '1';
+          -- TODO: check if this is correct...
+          stall_input:='1';
         end if;
 
       when filling =>

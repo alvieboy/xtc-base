@@ -437,21 +437,31 @@ package xtcpkg is
     flags:      std_logic_vector(3 downto 0);
   end record;
 
-
-  type copo is record
-    id:   std_logic_vector(1 downto 0);
+  type copi is record
     reg:  std_logic_vector(3 downto 0);
     data: std_logic_vector(31 downto 0);
     wr:   std_logic;
     en:   std_logic;
   end record;
 
-  type copi is record
+  type copo is record
     data:   std_logic_vector(31 downto 0);
     valid:  std_logic;
     fault:  std_logic;
   end record;
-  
+
+  type copo_a is array(0 to 3) of copo;
+  type copi_a is array(0 to 3) of copi;
+
+  type copifo is record
+    id:   std_logic_vector(1 downto 0);
+    o:    copi;
+  end record;
+
+  type copifi is record
+    i:    copo;
+  end record;
+
   constant DontCareValue: std_logic := 'X';
 
   function opcode_txt_pad(strin: in string) return string;

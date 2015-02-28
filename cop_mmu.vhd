@@ -15,19 +15,15 @@ entity cop_mmu is
     tlbv:   out tlb_entry_type;
 
     mmuen:  out std_logic;
-    icache_flush: out std_logic;
-    dcache_flush: out std_logic;
-    dcache_inflush: in std_logic;
 
     dbgi:    in execute_debug_type;
     mdbgi:    in memory_debug_type;
 
-
     proten: out std_logic;
     protw: out std_logic_vector(31 downto 0);
     fflags: in std_logic_vector(31 downto 0);
-    ci:     in copo;
-    co:     out copi
+    ci:     in copi;
+    co:     out copo
   );
 end entity cop_mmu;
 
@@ -76,17 +72,7 @@ begin
 
   tlba<=std_logic_vector(addr_q);
 
-  req<='1' when ci.id="00" and ci.en='1' else '0';
-
-  process(clk)
-  begin
-    if rising_edge(clk) then
-      co.fault<='0';
-      if ci.en='1' and ci.id/="00" then
-        co.fault<='1';
-      end if;
-    end if;
-  end process;
+  req<='1' when ci.en='1' else '0';
 
   tlbv.pagesize <= wrq(31 downto 30);
   tlbv.ctx      <= wrq(24 downto 24);
@@ -101,8 +87,6 @@ begin
         mmuen<='0';
         tlbw<='0';
         ack<='0';
-        icache_flush<='0';
-        dcache_flush<='0';
         mmatchen<='1';
         mmatch<=x"001640E4";
         msetup<=false;
@@ -116,8 +100,6 @@ begin
         tlbw<='0';
         ack<='0';
         msetup<=false;
-        icache_flush<='0';
-        dcache_flush<='0';
         if req='1' and ack='0' then
           co.data<=(others => '0');
           case ci.reg is
@@ -138,14 +120,6 @@ begin
                 mmuen<=ci.data(0);
               end if;
             when "0100" =>
-              if ci.wr='1' then
-                icache_flush<=ci.data(0);
-                dcache_flush<=ci.data(1);
-              end if;
-              co.data(1) <= dcache_inflush;
-              if MMU_ENABLED then
-                co.data(0) <= '1';
-              end if;
 
             when "0110" =>
               if ci.wr='1' then

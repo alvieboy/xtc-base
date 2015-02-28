@@ -31,8 +31,8 @@ entity execute is
     -- Input from memory unit, for SPR update
     mui:  in memory_output_type;
     -- Coprocessor interface
-    co:   out copo;
-    ci:   in  copi;
+    co:   out copifo;
+    ci:   in  copifi;
     dbgo: out execute_debug_type
 
   );
@@ -96,9 +96,9 @@ begin
       sign  => alu1_sign
     );
 
-  co.en<=cop_en;
+  co.o.en <= cop_en;
 
-  cop_busy<='1' when cop_en='1' and ci.valid/='1' else '0';
+  cop_busy<='1' when cop_en='1' and ci.i.valid/='1' else '0';
 
   process(clk,fdui,er,rst,alu_a_r,
           alu1_co, alu1_sign,alu1_zero,alu1_ovf,
@@ -216,10 +216,10 @@ begin
     end if;
 
     cop_en <= '0';
-    co.wr <= 'X';
-    co.reg <= fdui.r.drq.cop_reg;
+    co.o.wr <= 'X';
+    co.o.reg <= fdui.r.drq.cop_reg;
     co.id <= fdui.r.drq.cop_id;
-    co.data <= lhs;
+    co.o.data <= lhs;
 
 
 
@@ -233,7 +233,7 @@ begin
       fault_address:=x"1";
     end if;
 
-    if ci.fault='1' then
+    if ci.i.fault='1' then
       trap:=true;
       do_fault:=true;
       can_interrupt:=false;
@@ -293,7 +293,7 @@ begin
 
     if fdui.valid='1' and passes_condition='1' then
       cop_en <= fdui.r.drq.cop_en;
-      co.wr <= fdui.r.drq.cop_wr;
+      co.o.wr <= fdui.r.drq.cop_wr;
     end if;
 
     if fdui.valid='1' and passes_condition='0' and fdui.r.drq.blocks='1' then
@@ -418,7 +418,7 @@ begin
 
     euo.imreg       <= fdui.r.drq.imreg;
     euo.sr          <= ew.sr;
-    euo.cop         <= ci.data;
+    euo.cop         <= ci.i.data;
 
     -- Memory lines
 

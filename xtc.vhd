@@ -97,12 +97,14 @@ architecture behave of xtc is
 
   signal dbg:   execute_debug_type;
   signal mdbg:  memory_debug_type;
-  signal co: copo;
-  signal ci: copi;
+  signal cifo:    copifo;
+  signal cifi:    copifi;
+
+  signal co:    copo_a;
+  signal ci:    copi_a;
 
   signal mwbi:  wb_miso_type;
   signal mwbo:  wb_mosi_type;
-
 
   signal immu_tlbw: std_logic:='0';
   signal immu_tlbv: tlb_entry_type;
@@ -125,6 +127,7 @@ architecture behave of xtc is
   signal protw: std_logic_vector(31 downto 0);
   signal rstreq_i: std_logic;
   signal fflags: std_logic_vector(31 downto 0);
+  signal intin: std_logic_vector(31 downto 0);
 begin
 
     process(wb_syscon.clk)
@@ -139,8 +142,6 @@ begin
         fflags(5) <= dbg.hold;
         fflags(6) <= dbg.multvalid;
         fflags(7) <= dbg.trap;
-        fflags(8) <= co.en;
-        fflags(9) <= ci.valid;
       end if;
     end if;
   end process;
@@ -148,7 +149,6 @@ begin
   rstreq_i<= pipeline_internalfault ;
   rstreq <= rstreq_i;
 
-  --rstreq<='0';
   -- synthesis translate_off
   trc: tracer
     port map (
@@ -176,7 +176,6 @@ begin
     rb3_we  => rbw1_we,
     rb3_addr=> rbw1_addr,
     rb3_wr  => rbw1_wr
-    --dbg_addr => "0000"
   );
 
   cache: if INSTRUCTION_CACHE generate
@@ -405,62 +404,57 @@ begin
       -- Input from memory unit (spr update)
       mui       => muo,
       -- COP
-      co        => co,
-      ci        => ci,
+      co        => cifo,
+      ci        => cifi,
       -- Debug
       dbgo      => dbg
     );
 
 
-  -- Dummy MMU cop
-  mmucop: block
-     component cop_mmu is
-     port (
-       clk:    in std_logic;
-       rst:    in std_logic;
-   
-       tlbw:   out std_logic;
-       tlba:   out std_logic_vector(2 downto 0);
-       tlbv:   out tlb_entry_type;
-       mmuen: out std_logic;
-       icache_flush: out std_logic;
-       dcache_flush: out std_logic;
-       dcache_inflush: in std_logic;
-       proten: out std_logic;
-        protw: out std_logic_vector(31 downto 0);
-        fflags: in std_logic_vector(31 downto 0);
-       dbgi:  in execute_debug_type;
-       mdbgi:  in memory_debug_type;
-       ci:     in copo;
-       co:     out copi
-     );
-     end component;
+  --  MMU cop
+  copmmuinst: entity work.cop_mmu
+    port map (
+      clk   => wb_syscon.clk,
+      rst   => wb_syscon.rst,
 
-  begin
+      tlbw  => immu_tlbw,
+      tlba  => immu_tlba,
+      tlbv  => immu_tlbv,
+      mmuen => immu_enabled,
+      proten => proten,
+      protw  => protw,
+      dbgi  => dbg,
+      mdbgi  => mdbg,--edbg,
+      fflags => fflags,
+      ci    => ci(1),
+      co    => co(1)
+  );
 
-    copmmuinst: cop_mmu
-      port map (
-        clk   => wb_syscon.clk,
-        rst   => wb_syscon.rst,
-    
-        tlbw  => immu_tlbw,
-        tlba  => immu_tlba,
-        tlbv  => immu_tlbv,
-        mmuen => immu_enabled,
-        icache_flush => icache_flush,
-        dcache_flush => dcache_flush,
-        dcache_inflush => dcache_inflush,
-        proten => proten,
-        protw  => protw,
-        dbgi  => dbg,
-        mdbgi  => mdbg,--edbg,
-        fflags => fflags,
-        ci    => co,
-        co    => ci
+  coparbinst: entity work.cop_arb
+    port map (
+      clk   => wb_syscon.clk,
+      rst   => wb_syscon.rst,
+      cfi   => cifo,
+      cfo   => cifi,
+      ci    => co,
+      co    => ci
     );
 
+  --  MMU cop
+  copsysinst: entity work.cop_sys
+    port map (
+      clk   => wb_syscon.clk,
+      rst   => wb_syscon.rst,
+      icache_flush    => icache_flush,
+      dcache_flush    => dcache_flush,
+      dcache_inflush  => dcache_inflush,
+      int_in => x"00000000",
+      --intacken => '0',
+      ci    => ci(0),
+      co    => co(0)
+  );
 
-  end block;
+
 
   dcachegen: if DATA_CACHE generate
      dcache_accesstype <= ACCESS_NOCACHE when mwbo.adr(31)='1' else

@@ -20,6 +20,7 @@ type wb_miso_type is record
     tag:   std_logic_vector(31 downto 0);
     int:   std_logic;
     err:   std_logic;
+    rty:   std_logic;
     stall: std_logic;
 end record;
 
@@ -33,6 +34,8 @@ type wb_mosi_type is record
     cti:      std_logic_vector(2 downto 0);
     bte:      std_logic_vector(1 downto 0);
     we:       std_logic;
+    -- Not in wishbone standard
+    --bse:      std_logic_vector(5 downto 0); -- Burst size extension
 end record;
 
 type wb_syscon_type is record

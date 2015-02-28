@@ -4,8 +4,8 @@
 _start:              	
  	limr 0x7FFFFC, r15
         limr 0x90000004, r2
-        /*limr 51, r1*/
-        limr 42, r1
+        limr 51, r1
+        /* limr 42, r1 */ /* Baudrate divider */
         stw r1, (r2)
         limr 'B', r1
         stw.i r1, (r2-4)
@@ -17,6 +17,11 @@ _start:
         or.i	r1, r1, 2
         wspr	r1, psr
         nop
+        
+        // Flush i-cache.
+        br	__flush_icache, r13
+        nop
+        
 
 #ifdef BOOTSDRAM
         jmp	r0,	r0
@@ -173,12 +178,12 @@ $tmp1:
 .type	__flush_dcache, @function
 __flush_dcache:
         limr	2, r1
-        copw	0, 4, r1
+        copw	0, 0, r1
         nop
         nop
         nop
 $.waitflush:
-        copr	0, 4, r1
+        copr	0, 0, r1
         nop
         and.i	r1, r2, 2
         cmpi	0, r2
@@ -193,7 +198,9 @@ $.waitflush:
 __flush_icache:
         /* D-Cache flushed. Flush i-cache */
         limr	1, r1  
-        copw	0, 4, r1
+        copw	0, 0, r1
+        nop
+        nop
         nop
         nop
         jmp	r13,	r0
