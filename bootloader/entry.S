@@ -1,17 +1,89 @@
 .section ".vectors", "ax"
 
 .globl _start
-_start:              	
- 	limr 0x7FFFFC, r15
+_start:
         limr 0x90000004, r2
         limr 51, r1
-        /* limr 42, r1 */ /* Baudrate divider */
+        //limr 42, r1 /* Baudrate divider */
         stw r1, (r2)
-        limr 'B', r1
+
+	// Test writing to user registers
+              /*
+        limr	-1,	r1
+        wusr	r1,	r1
+        limr	0,	r1
+        rusr	r1,	r1
+                */
+        
+        /* Wait for a while, so receiver syncs on next char */
+/*
+
+        limr	0x10000, r1
+.waitstart:
+        cmpi	0,	r1
+        br.cne	.waitstart, r0
+        addi 	-1,	r1
+*/
+        br	outbyte, r13
+        limr	'B',	r1
+
+	limr 'Z', r1
         stw.i r1, (r2-4)
+
+        br	outbyte, r13
+        limr	'o',	r1
+        br	outbyte, r13
+        limr	'o',	r1
+        br	outbyte, r13
+        limr	't',	r1
+
+	/* Detect top-of-ram first. Start at 0x1000 */
+        ldw	(r0),	r6
+
+        br	outbyte, r13
+        limr	'1',	r1
+
+        stw	r0, (r0)
+
+        br	outbyte, r13
+        limr	'2',	r1
+
+
+
+        limr	0x1000, r1
+        limr 	0xa5a5a5a5, r2
+.ramd1:	stw	r2, (r1)
+	ldw	(r0), r3
+        cmp	r2,	r3
+        br.ceq	.ramd2,	r0
+        nop
+        cmpi	0x40000000, r1
+        br.ceq	.ramerr, r0
+        nop
+        br	.ramd1,	r0
+        add	r1,	r1
+.ramerr:	
+	/* RAM error */
+        br	outbyte, r13
+        limr	'E',	r1
+.endless:
+	br	.endless, r0	
+	nop
+        
+.ramd2: /* We have now top-of-memory, subtract a word so we can set up stack */
+	stw	r6,	(r0) // Restore old word@0
+        addr	r1,	r10
+	add.i	r1, 	r15, -4
+        
+        br	outbyte, r13
+	limr 'M', r1
+
+
+/*
         limr	_trapbegin, r1
         wspr	r1, tr
         nop
+*/
         rspr	psr, r1
         nop
         or.i	r1, r1, 2
@@ -21,49 +93,65 @@ _start:
         // Flush i-cache.
         br	__flush_icache, r13
         nop
-        
+
 
 #ifdef BOOTSDRAM
         jmp	r0,	r0
         nop
 #endif
 
-#ifndef TESTS
+#if 1
 
         limr 	bootstr, r1
 	br	.printromstring, r13
         nop
 
-	limr	0x200000,	r1
-        limr   	0,	r2
+        /* Print memory size */
+        br	asmprinthex, r13
+        addr	r10,	r1
+        
+        limr 	bootstr2, r1
+	br	.printromstring, r13
+        nop
 
+
+        sra.i	r10,	r1, 2
+        limr   	0,	r2
+        
 $.memtest:
 	/* r1 is memory size in words, r2 is pointer */
         addr	r1,	r3
         addr	r2,	r4
+        sra.i	r2, 	r2,	2
 $.memtestloop1:
 	stw	r2, 	(r2)
-        addi	-1,	r1
-        /* Read */
-        ldw	(r2),	r5
-        cmp	r2,	r5
-        /*addi	-1,	r1*/
-        br.cne	.memoryerror1, r13
-        nop
-	cmpi	0,	r1
         addi	4,	r2
+	stw	r2, 	(r2)
+        addi	4,	r2
+	stw	r2, 	(r2)
+        addi	4,	r2
+	stw	r2, 	(r2)
+        addi	-4,	r1
+	cmpi	0,	r1
         br.cne	$.memtestloop1, r0
-	nop
+        addi	4,	r2
+	//nop
         
+       
         /* read back */
 $.memtestloop2:
         ldw	(r4),	r2
         cmp	r4,	r2
-        addi	-1,	r3
         br.cne	.memoryerror,	r13
+        addi	-1,	r3
         cmpi	0,	r3
         br.cne	$.memtestloop2, r0
         addi	4,	r4
+
+        limr 	strok,	r1
+        br	.printromstring, r13
+        nop
+        
 #endif
 
 	br	main, r13
@@ -232,37 +320,18 @@ abort:
 .section ".rodata"
 .globl bootstr
 bootstr:
-	.string "XThunderCore Boot Loader v0.1 (C) 2014 Alvaro Lopes\r\nTesting memory: "
+	.string "XThunderCore Boot Loader v0.1 (C) 2014 Alvaro Lopes\r\nTesting 0x"
+bootstr2:
+	.string " bytes of memory: "
 strerror:
 	.string "Failed\r\n"
 strok:
-	.string "Passed\r\n"
+	.string "passed\r\n"
 
 .section ".trap0", "ax"
 trapbase:
 	br	irqhandler, r0
         nop
-
-.section ".trap1", "ax"
-trapbase1:
-	br	irqhandler, r0
-        nop
-
-.section ".trap2", "ax"
-trapbase2:
-	br	irqhandler, r0
-        nop
-
-.section ".trap3", "ax"
-trapbase3:
-	br	irqhandler, r0
-        nop
-
-.section ".trap4", "ax"
-trapbase4:
-	br	irqhandler, r0
-        nop
-
 .text
 irqhandler:
 	wspr	r15, sr0

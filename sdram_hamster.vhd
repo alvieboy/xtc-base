@@ -411,7 +411,7 @@ begin
          when s_init_nop_id => --s_init_nop(8 downto 4) =>
             nstate     <= s_init_nop;
             dbgstate<= IDLE;
-            n.address <= (others => '0');
+            n.address <= (others => 'X');
             n.bank    <= (others => '0');
             --n.act_ba  <= (others => '0');
             n.rf_counter   <= 0;
@@ -434,7 +434,7 @@ begin
                nstate     <= s_init_mrs;
                            -- Mode register is as follows:
                            -- resvd   wr_b   OpMd   CAS=2   Seq   bust=1
-                n.address   <= "00" & "0" & "00" & "010" & "0" & "000";
+               n.address   <= "00" & "0" & "00" & "010" & "0" & "000";
                            -- resvd
                n.bank      <= "00";
             end if;
@@ -483,7 +483,7 @@ begin
             -- we can stay in this state until we have something to do
             nstate       <= s_ra2;
             n.tristate<='0';
-
+            n.address <= (others => 'X');
             if r.rf_pending = '1' then
                 nstate     <= s_dr0;
                 n.address(10) <= '1';
@@ -540,9 +540,11 @@ begin
          ------------------------------------------------------
          when s_dr0_id =>
             dbgstate<= DR0;
+            n.address <= (others => 'X');
             nstate <= s_dr1;
          when s_dr1_id =>
             dbgstate<= DR1;
+            n.address <= (others => 'X');
             nstate <= s_idle;
 
          ------------------------------
@@ -550,22 +552,28 @@ begin
          ------------------------------
          when s_rf0_id =>
             dbgstate<= RF0;
+            n.address <= (others => 'X');
             nstate <= s_rf1;
          when s_rf1_id =>
             dbgstate<= RF1;
+            n.address <= (others => 'X');
             nstate <= s_rf2;
          when s_rf2_id =>
             dbgstate<= RF2;
+            n.address <= (others => 'X');
             nstate <= s_rf3;
          when s_rf3_id =>
             nstate <= s_rf4;
+            n.address <= (others => 'X');
             dbgstate<= RF3;
          when s_rf4_id =>
             nstate <= s_rf5;
+            n.address <= (others => 'X');
             dbgstate<= RF4;
          when s_rf5_id =>
             nstate <= s_idle;
             dbgstate<= RF5;
+            n.address <= (others => 'X');
          ------------------------------
          -- The Write section
          ------------------------------
@@ -604,6 +612,8 @@ begin
                nstate         <= s_wr2;
                --n.address(10) <= '1';
             end if;
+
+            n.address <= (others => 'X');
 
             -- But if there is a read pending in the same row, do that
             if r.rd_pending = '1' and r.act_row = addr_row and r.bank = addr_bank then
@@ -654,6 +664,9 @@ begin
             end if;
             n.dq_masks <= "00";
             n.tristate<='1';
+
+            n.address <= (others => 'X');
+
             if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
 
               nstate <= s_rd3;  -- Another request came, and we can pipeline -
@@ -701,6 +714,7 @@ begin
             nstate <= s_rd5;
             n.dq_masks <= "00";
             n.tristate<='1';
+            n.address <= (others => 'X');
 
             if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
               nstate <= s_rd5;  -- Another request came, and we can pipeline -
@@ -762,6 +776,8 @@ begin
             nstate <= s_rd7;
             n.dq_masks<= "00";
             n.tristate<='1';
+            n.address <= (others => 'X');
+
             if CL=2 then
               n.data_out_low <= captured;
               n.data_out_valid <= '1';
@@ -777,6 +793,8 @@ begin
               n.data_out_low <= captured;
               n.data_out_valid <= '1';
             end if;
+            n.address <= (others => 'X');
+
             shifttags;
             --n.tag_out <= r.tagq;
             --n.tag_out <= r.tag_in;
@@ -791,9 +809,11 @@ begin
          ------------------------------
          when s_drdr0_id =>
             dbgstate<= DRDR0;
+            n.address <= (others => 'X');
             nstate <= s_drdr1;
          when s_drdr1_id =>
             dbgstate<= DRDR1;
+            n.address <= (others => 'X');
             nstate <= s_drdr2;
             n.data_out_low <= captured;
             n.data_out_valid <= '1';
@@ -807,6 +827,8 @@ begin
             if r.rf_pending = '1' then
                nstate <= s_rf0;
             end if;
+
+            n.address <= (others => 'X');
             
             if r.rd_pending = '1' or r.wr_pending = '1' then
                nstate       <= s_ra0;

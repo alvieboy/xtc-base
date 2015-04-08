@@ -7,7 +7,8 @@ use work.xtccomppkg.all;
 
 entity regbank_3p is
   generic (
-    ADDRESS_BITS: integer := 4
+    ADDRESS_BITS: integer := 4;
+    ZEROSIZE: integer := 4
   );
   port (
     clk:      in std_logic;
@@ -35,7 +36,8 @@ architecture behave of regbank_3p is
 
   component regbank_2p is
   generic (
-    ADDRESS_BITS: integer := 4
+    ADDRESS_BITS: integer := 4;
+    ZEROSIZE: integer := 4
   );
   port (
     clk:      in std_logic;
@@ -58,7 +60,8 @@ begin
 
   rba: regbank_2p
   generic map (
-    ADDRESS_BITS => ADDRESS_BITS
+    ADDRESS_BITS => ADDRESS_BITS,
+    ZEROSIZE => ZEROSIZE
   )
   port map (
     clk       => clk,
@@ -76,7 +79,8 @@ begin
 
   rbb: regbank_2p
   generic map (
-    ADDRESS_BITS => ADDRESS_BITS
+    ADDRESS_BITS => ADDRESS_BITS,
+    ZEROSIZE => ZEROSIZE
   )
   port map (
     clk       => clk,

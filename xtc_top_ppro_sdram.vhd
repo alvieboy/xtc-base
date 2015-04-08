@@ -64,140 +64,11 @@ end entity xtc_top_ppro_sdram;
 
 architecture behave of xtc_top_ppro_sdram is
 
-  component bootrom is
-  port (
-    syscon:     in wb_syscon_type;
-    wbi:        in wb_mosi_type;
-    wbo:        out wb_miso_type
-  );
-  end component;
-
-  
-  component uart is
-  generic (
-    bits: integer := 11
-  );
-  port (
-    syscon:     in wb_syscon_type;
-    wbi:        in wb_mosi_type;
-    wbo:        out wb_miso_type;
-    tx:       out std_logic;
-    rx:       in std_logic
-  );
-  end component;
-
-  component spi is
-  generic (
-    INTERNAL_SPI: boolean := false
-  );
-  port (
-    syscon:     in wb_syscon_type;
-    wbi:        in wb_mosi_type;
-    wbo:        out wb_miso_type;
-    mosi:     out std_logic;
-    miso:     in std_logic;
-    sck:      out std_logic;
-    cs:       out std_logic;
-    enabled:  out std_logic
-  );
-  end component spi;
-
-  component clkgen is
-  port (
-    clkin:  in std_logic;
-    rstin:  in std_logic;
-    clkout: out std_logic;
-    clkout1: out std_logic;
-    clkout2: out std_logic;
-    vgaclk: out std_logic;
-    rstout: out std_logic
-  );
-  end component;
-
   signal sysrst:      std_logic;
   signal sysclk:      std_logic;
   signal clkgen_rst:  std_logic;
   signal wb_clk_i:    std_logic;
   signal wb_rst_i:    std_logic;
-
-  component xtc_top_sdram is
-  port (
-    wb_syscon:      in wb_syscon_type;
-    -- IO wishbone interface
-    iowbo:           out wb_mosi_type;
-    iowbi:           in wb_miso_type;
-        -- DMA
-    dmawbi:         in wb_mosi_type;
-    dmawbo:         out wb_miso_type;
-    nmi:            in std_logic;
-    nmiack:         out std_logic;
-    rstreq:         out std_logic;
-        -- SDRAM signals
-    -- extra clocking
-    clk_off_3ns: in std_logic;
-    -- SDRAM signals
-    DRAM_ADDR   : OUT   STD_LOGIC_VECTOR (11 downto 0);
-    DRAM_BA      : OUT   STD_LOGIC_VECTOR (1 downto 0);
-    DRAM_CAS_N   : OUT   STD_LOGIC;
-    DRAM_CKE      : OUT   STD_LOGIC;
-    DRAM_CLK      : OUT   STD_LOGIC;
-    DRAM_CS_N   : OUT   STD_LOGIC;
-    DRAM_DQ      : INOUT STD_LOGIC_VECTOR(15 downto 0);
-    DRAM_DQM      : OUT   STD_LOGIC_VECTOR(1 downto 0);
-    DRAM_RAS_N   : OUT   STD_LOGIC;
-    DRAM_WE_N    : OUT   STD_LOGIC
-
-  );
-  end component;
-
-  component xtc_serialreset is
-  generic (
-    SYSTEM_CLOCK_MHZ: integer := 100
-  );
-  port (
-    clk:      in std_logic;
-    rx:       in std_logic;
-    rstin:    in std_logic;
-    rstout:   out std_logic
-  );
-  end component;
-
-  component vga_320_240_idx is
-  port(
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-
-    -- Wishbone MASTER interface
-    mi_wb_dat_i: in std_logic_vector(31 downto 0);
-    mi_wb_dat_o: out std_logic_vector(31 downto 0);
-    mi_wb_adr_o: out std_logic_vector(31 downto 0);
-    mi_wb_sel_o: out std_logic_vector(3 downto 0);
-    mi_wb_cti_o: out std_logic_vector(2 downto 0);
-    mi_wb_we_o:  out std_logic;
-    mi_wb_cyc_o: out std_logic;
-    mi_wb_stb_o: out std_logic;
-    mi_wb_ack_i: in std_logic;
-    mi_wb_stall_i: in std_logic;
-
-    -- VGA signals
-    vgaclk:     in std_logic;
-    vga_hsync:  out std_logic;
-    vga_vsync:  out std_logic;
-    vga_b:      out std_logic_vector(4 downto 0);
-    vga_r:      out std_logic_vector(4 downto 0);
-    vga_g:      out std_logic_vector(4 downto 0);
-    blank:      out std_logic
-  );
-  end component;
-
-
 
   signal clk_off_3ns: std_ulogic;
 
@@ -235,7 +106,7 @@ begin
   syscon.clk<=sysclk;
   syscon.rst<=sysrst or do_reset;
 
-  cpu: xtc_top_sdram
+  cpu: entity work.xtc_top_sdram
   port map (
     wb_syscon   => syscon,
     iowbi           => wbo,
@@ -264,7 +135,7 @@ begin
   );
   --DRAM_ADDR(12)<='0';
 
-  ioctrl: xtc_ioctrl
+  ioctrl: entity work.xtc_ioctrl
     port map (
       syscon      => syscon,
       wbi         => wbi,
@@ -275,14 +146,14 @@ begin
     );
 
 
-  myrom: bootrom
+  myrom: entity work.bootrom
     port map (
       syscon      => syscon,
       wbi         => swbo(0),
       wbo         => swbi(0)
   );
 
-  myuart: uart
+  myuart: entity work.uart
     generic map (
       bits => 11
     )
@@ -295,7 +166,7 @@ begin
       rx          => RXD
   );
 
-  flashspi: spi
+  flashspi: entity work.spi
     generic map (
       INTERNAL_SPI => true
     )
@@ -309,7 +180,7 @@ begin
       cs        => NCS
   );
 
-  sdspi: spi
+  sdspi: entity work.spi
     generic map (
       INTERNAL_SPI => false
     )
@@ -325,7 +196,7 @@ begin
 
   vgaenabled: if false generate
 
-  vga: vga_320_240_idx
+  vga: entity work.vga_320_240_idx
   port map (
     wb_clk_i  => syscon.clk,
 	 	wb_rst_i  => syscon.rst,
@@ -365,7 +236,7 @@ begin
 
 
   vgadisabled: if true generate
-    eslot: sinkdev
+    eslot: entity work.sinkdev
       port map (
         syscon    => syscon,
         wbi       => swbo(4),
@@ -386,7 +257,7 @@ begin
   end generate;
 
   emptyslots: for N in 5 to 15 generate
-    eslot: nodev
+    eslot: entity work.nodev
       port map (
         syscon    => syscon,
         wbi       => swbo(N),
@@ -398,7 +269,7 @@ begin
   wb_clk_i <= sysclk;
   wb_rst_i <= sysrst;
 
-  rstgen: xtc_serialreset
+  rstgen: entity work.xtc_serialreset
     generic map (
       SYSTEM_CLOCK_MHZ  => 96
     )
@@ -410,7 +281,7 @@ begin
     );
   --sysrst <= clkgen_rst;
 
-  clkgen_inst: clkgen
+  clkgen_inst: entity work.clkgen
   port map (
     clkin   => clk,
     rstin   => '0'  ,

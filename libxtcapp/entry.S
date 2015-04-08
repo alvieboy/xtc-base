@@ -11,7 +11,9 @@ _start:
         limr	'B', r1
         
         limr	trapbase, r1
-        wspr	r1, tr
+        //wspr	r1, tr
+        copw	0, 1, r1
+
         nop
         
 /*	ldw.i	(r0+_warmboot), r14
@@ -37,7 +39,9 @@ $.cold:
 
         br	outbyte, r13
         limr	'O', r1
+        
         /* Enable memory protection */
+        /*
         limr	_erodata,	r1
         copw	0, 7, r1
         nop
@@ -45,26 +49,26 @@ $.cold:
         limr	3,	r1
         copw	0, 6, r1
         nop
-        
+        */
         br	outbyte, r13
         limr	'P', r1
         
 
 	/* Clear BSS */
 
-#ifndef NOCLEARBSS        
+#if 1 //ndef NOCLEARBSS        
         limr	__bss_start, r1
         limr	__bss_end - 4, r2
 .bssloop:
-        ldw	(r1), r4
+       // ldw	(r1), r4
         stw	r0, (r1)
         cmp	r1, r2
         br.cne	.bssloop, r0
         addi	4, r1
-#endif
 
         br	outbyte, r13
         limr	'b', r1
+#endif
 
         /* Call Ctors */
         

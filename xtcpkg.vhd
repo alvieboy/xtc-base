@@ -30,7 +30,7 @@ package xtcpkg is
   -- Enable low-memory protection.
   constant LOWPROTECTENABLE: boolean := false;
   -- Enable bus/pipeline fault checks.
-  constant FAULTCHECKS: boolean := false;
+  constant FAULTCHECKS: boolean := true;
   -- Enable instruction/memory tracer.
   constant TRACER_ENABLED: boolean := false;
 
@@ -38,7 +38,7 @@ package xtcpkg is
   subtype dual_opcode_type is std_logic_vector(31 downto 0);
   subtype word_type is unsigned(31 downto 0);
   subtype word_type_std is std_logic_vector(31 downto 0);
-  subtype regaddress_type is std_logic_vector(3 downto 0);
+  subtype regaddress_type is std_logic_vector(4 downto 0); -- Includes supervisor bit
 
   type alu_source_type is (
     alu_source_reg,
@@ -94,6 +94,9 @@ package xtcpkg is
     O_COPW,
     O_RSPR,
     O_WSPR,
+    -- Regbank
+    O_RDUSR,
+    O_WRUSR,
     -- Misc
     O_SWI,
     -- Errors
@@ -204,6 +207,8 @@ package xtcpkg is
     unaligned:      std_logic;
     unaligned_jump: std_logic;
     invert_readout: std_logic;
+    seq:            std_logic;
+    priv:           std_logic;
     qopc:           std_logic_vector(15 downto 0);
   end record;
 
@@ -328,9 +333,10 @@ package xtcpkg is
     reg_source:     reg_source_type;
 
     jump:           std_logic;
+    jumppriv:        std_logic;
     jumpaddr:       word_type;
-    trapvector:     word_type;
-    trappc:         word_type;
+    --trapvector:     word_type;
+    --trappc:         word_type;
     scratch:        word_type;
     y:              word_type;
     npc:            word_type;
@@ -365,6 +371,7 @@ package xtcpkg is
 
     cop:     std_logic_vector(31 downto 0);
     jump:     std_logic;
+    jumppriv: std_logic;
     trap:     std_logic;
     flush:    std_logic;
     clrreg:   std_logic;
@@ -516,26 +523,42 @@ package body xtcpkg is
   end function;
 
   function regname(r: in regaddress_type) return string is
-    variable tmp: string(1 to 3);
+    variable tmp: string(1 to 4);
   begin
     case r is
-      when "0000" => tmp := "R0 ";
-      when "0001" => tmp := "R1 ";
-      when "0010" => tmp := "R2 ";
-      when "0011" => tmp := "R3 ";
-      when "0100" => tmp := "R4 ";
-      when "0101" => tmp := "R5 ";
-      when "0110" => tmp := "R6 ";
-      when "0111" => tmp := "R7 ";
-      when "1000" => tmp := "R8 ";
-      when "1001" => tmp := "R9 ";
-      when "1010" => tmp := "R10";
-      when "1011" => tmp := "R11";
-      when "1100" => tmp := "R12";
-      when "1101" => tmp := "R13";
-      when "1110" => tmp := "R14";
-      when "1111" => tmp := "R15";
-      when others => tmp := "R? ";
+      when "00000" => tmp := "UR0 ";
+      when "00001" => tmp := "UR1 ";
+      when "00010" => tmp := "UR2 ";
+      when "00011" => tmp := "UR3 ";
+      when "00100" => tmp := "UR4 ";
+      when "00101" => tmp := "UR5 ";
+      when "00110" => tmp := "UR6 ";
+      when "00111" => tmp := "UR7 ";
+      when "01000" => tmp := "UR8 ";
+      when "01001" => tmp := "UR9 ";
+      when "01010" => tmp := "UR10";
+      when "01011" => tmp := "UR11";
+      when "01100" => tmp := "UR12";
+      when "01101" => tmp := "UR13";
+      when "01110" => tmp := "UR14";
+      when "01111" => tmp := "UR15";
+      when "10000" => tmp := "SR0 ";
+      when "10001" => tmp := "SR1 ";
+      when "10010" => tmp := "SR2 ";
+      when "10011" => tmp := "SR3 ";
+      when "10100" => tmp := "SR4 ";
+      when "10101" => tmp := "SR5 ";
+      when "10110" => tmp := "SR6 ";
+      when "10111" => tmp := "SR7 ";
+      when "11000" => tmp := "SR8 ";
+      when "11001" => tmp := "SR9 ";
+      when "11010" => tmp := "SR10";
+      when "11011" => tmp := "SR11";
+      when "11100" => tmp := "SR12";
+      when "11101" => tmp := "SR13";
+      when "11110" => tmp := "SR14";
+      when "11111" => tmp := "SR15";
+      when others => tmp := "SR? ";
     end case;
     return tmp;
   end function;

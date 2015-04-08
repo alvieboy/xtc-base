@@ -41,10 +41,11 @@ begin
 
     duo.r <= dr;
 
-    opdecoder: opdec
+    opdecoder: entity work.opdec
       port map (
         opcode_high   => opcode_high,
         opcode_low    => opcode_low,
+        priv          => fui.r.priv,
         dec           => dec
       );
 

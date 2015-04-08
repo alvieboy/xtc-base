@@ -8,6 +8,7 @@ static struct __zFILE __files[MAX_FILES];
 
 static char _snprintfbuf[8192];
 
+FILE*stdin=&__files[0];
 FILE*stdout=&__files[1];
 FILE*stderr=&__files[2];
 

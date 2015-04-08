@@ -112,24 +112,6 @@ architecture behave of dcache is
 
   ------------------------------------------------------------------------------
 
-  component reqcnt is
-  port (
-    clk:  in std_logic;
-    rst:  in std_logic;
-
-    stb:  in std_logic;
-    cyc:  in std_logic;
-    stall:in std_logic;
-    ack:  in std_logic;
-
-    req:  out std_logic;
-    lastreq:  out std_logic;
-    count:  out unsigned(2 downto 0)
-  );
-  end component;
-
-
-
   -- extracted values from port A
   signal line_number:   line_number_type;
 
@@ -192,7 +174,7 @@ begin
 
   -- TAG memory
 
-  tagmem: generic_dp_ram_rf
+  tagmem: entity work.generic_dp_ram_rf
   generic map (
     address_bits  => CACHE_LINE_ID_BITS,
     data_bits     => ADDRESS_HIGH-CACHE_MAX_BITS+3
@@ -216,7 +198,7 @@ begin
   -- Cache memory
   memgen: for i in 0 to 3 generate
 
-  cachemem: generic_dp_ram_rf
+  cachemem: entity work.generic_dp_ram_rf
   generic map (
     address_bits => cmem_addra'LENGTH,
     data_bits => 8
@@ -242,7 +224,7 @@ begin
 
   co.in_flush <= r.in_flush;
 
-  reqcnt_inst: reqcnt
+  reqcnt_inst: entity work.reqcnt
   port map (
     clk   => syscon.clk,
     rst   => syscon.rst,

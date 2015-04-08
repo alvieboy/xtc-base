@@ -6,6 +6,7 @@ use ieee.numeric_std.all;
 library work;
 use work.xtcpkg.all;
 use work.xtccomppkg.all;
+use work.wishbonepkg.all;
 -- synthesis translate_off
 use work.txt_util.all;
 -- synthesis translate_on
@@ -15,30 +16,24 @@ entity icache is
       ADDRESS_HIGH: integer := 31
   );
   port (
-    wb_clk_i:       in std_logic;
-    wb_rst_i:       in std_logic;
+    syscon:         in wb_syscon_type;
 
     valid:          out std_logic;
     data:           out std_logic_vector(31 downto 0);
     address:        in std_logic_vector(31 downto 0);
     strobe:         in std_logic;
     enable:         in std_logic;
+    seq:            in std_logic;
     stall:          out std_logic;
     flush:          in std_logic;
     abort:          in std_logic;
 
     tag:            in std_logic_vector(31 downto 0);
     tagen:          in std_logic;
-    -- Master wishbone interface
 
-    m_wb_ack_i:       in std_logic;
-    m_wb_dat_i:       in std_logic_vector(31 downto 0);
-    m_wb_dat_o:       out std_logic_vector(31 downto 0);
-    m_wb_adr_o:       out std_logic_vector(31 downto 0);
-    m_wb_cyc_o:       out std_logic;
-    m_wb_stb_o:       out std_logic;
-    m_wb_stall_i:     in std_logic;
-    m_wb_we_o:        out std_logic
+    -- Master wishbone interface
+    mwbo:           out wb_mosi_type;
+    mwbi:           in  wb_miso_type
   );
 end icache;
 
@@ -47,6 +42,8 @@ architecture behave of icache is
   constant ADDRESS_LOW: integer := 0;
   constant CACHE_MAX_BITS: integer := 13; -- 8 Kb
   constant CACHE_LINE_SIZE_BITS: integer := 6; -- 64 bytes
+  constant CACHE_LINE_SIZE: integer := 2**CACHE_LINE_SIZE_BITS;
+
   constant CACHE_LINE_ID_BITS: integer := CACHE_MAX_BITS-CACHE_LINE_SIZE_BITS;
 
 -- memory max width: 19 bits (18 downto 0)
@@ -70,11 +67,11 @@ architecture behave of icache is
     flushing,
     running,
     filling,
-    waitwrite,
+    --waitwrite,
     ending
   );
 
-  constant offcnt_full: unsigned(line_offset'HIGH downto 2) := (others => '1');
+  constant offcnt_zero: unsigned(line_offset'HIGH downto 2) := (others => '0');
 
   signal tag_match: std_logic;
   signal cache_addr_read,cache_addr_write: std_logic_vector(CACHE_MAX_BITS-1 downto 2);
@@ -102,14 +99,17 @@ architecture behave of icache is
     flushcnt:     unsigned(line'RANGE);
     tag_mem_wen:  std_logic;
     wbaddr:       std_logic_vector(31 downto CACHE_MAX_BITS);
-    offcnt:       unsigned(line_offset'HIGH+1 downto 2);
+    offcnt:       unsigned(line_offset'HIGH downto 2);
     offcnt_write: unsigned(line_offset'HIGH downto 2);
+    stbcount:     unsigned(line_offset'HIGH downto 2);
     access_q:     std_logic;
     queued_address: std_logic;
     save_addr:    std_logic_vector(address'RANGE);
     line_save:    std_logic_vector(CACHE_LINE_ID_BITS-1 downto 0);
     tag_save: std_logic_vector(ADDRESS_HIGH-CACHE_MAX_BITS downto 0);
     enable_q:     std_logic;
+    iwfready:     std_logic;
+    fault:        std_logic;
   end record;
 
   signal r: icache_regs_type;
@@ -124,30 +124,55 @@ architecture behave of icache is
 
   signal wrcachea: std_logic;
 
+  signal cmem_enable: std_logic;
+  signal cmem_wren:   std_logic;
+
+  signal access_to_same_line: std_logic;
+
 begin
 
   ctag_address<=ctag(address_tag'HIGH downto address_tag'LOW);
 
-  tagmem: generic_dp_ram
+  tagmem: entity work.generic_dp_ram_1r1w
   generic map (
     address_bits  => CACHE_LINE_ID_BITS,
     data_bits     => ADDRESS_HIGH-CACHE_MAX_BITS+2
   )
   port map (
-    clka      => wb_clk_i,
+    clka      => syscon.clk,
     ena       => tag_mem_enable,
-    wea       => '0',
     addra     => cache_addr_read(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS),--line,
-    dia       => dignore,--(others => DontCareValue),
     doa       => ctag,
 
-    clkb      => wb_clk_i,
+    clkb      => syscon.clk,
     enb       => '1',
     web       => r.tag_mem_wen,
     addrb     => tag_mem_addr,
     dib       => tag_mem_data,
     dob       => open
   );
+
+  cachemem: entity work.generic_dp_ram_1r1w
+  generic map (
+    address_bits => cache_addr_read'LENGTH,
+    data_bits => 32
+  )
+  port map (
+    clka      => syscon.clk,
+    ena       => cache_mem_enable,
+    addra     => cache_addr_read,
+    doa       => data,
+
+    clkb      => syscon.clk,
+    enb       => cmem_enable,
+    web       => cmem_wren,
+    addrb     => cache_addr_write,
+    dib       => mwbi.dat,
+    dob       => open
+  );
+
+  cmem_enable <= '1';
+  cmem_wren <= mwbi.ack;
 
   valid_i <= ctag(ctag'HIGH);
 
@@ -188,31 +213,12 @@ begin
     end if;
   end process;
 
-  cachemem: generic_dp_ram
-  generic map (
-    address_bits => cache_addr_read'LENGTH,
-    data_bits => 32
-  )
-  port map (
-    clka      => wb_clk_i,
-    ena       => cache_mem_enable,
-    wea       => wrcachea,
-    addra     => cache_addr_read,
-    dia       => m_wb_dat_i,
-    doa       => data,
+  cache_addr_write <= r.line_save & mwbi.tag(CACHE_LINE_SIZE_BITS-3 downto 0);
 
-    clkb      => wb_clk_i,
-    enb       => '1',
-    web       => m_wb_ack_i,
-    addrb     => cache_addr_write,
-    dib       => m_wb_dat_i,
-    dob       => open
-  );
+  access_to_same_line<='1' when r.line_save = r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) and
+          r.tag_save = r.save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS) else '0';
 
-  --wrcachea<='1' when m_wb_ack_i='1' and cache_addr_write=cache_addr_read else '0';
-  wrcachea<='0';
-
-  process(r,strobe,enable,miss,wb_rst_i,wb_clk_i,line,line_offset,hit,flush,m_wb_ack_i,m_wb_stall_i,valid_while_filling,abort)
+  process(r,strobe,enable,miss,syscon,line,line_offset,hit,flush,mwbi,valid_while_filling,abort)
     variable ett: std_logic_vector(exttag_save'RANGE);
     variable w: icache_regs_type;
     variable data_valid: std_logic;
@@ -223,15 +229,15 @@ begin
 
     w.busy := '0';
     w.cyc := '0';
-    w.stb := 'X';
+   -- w.stb := 'X';
     w.tag_mem_wen := '0';
     w.fill_success :='0';
     w.flushcnt := (others => 'X');
 
-    cache_addr_write <= r.line_save & std_logic_vector(r.offcnt_write(r.offcnt_write'HIGH downto 2));
     data_valid := '0';
     tag_mem_enable <= enable and strobe;
     cache_mem_enable <= enable and strobe;
+    cache_addr_read <= line & line_offset;
 
     case r.state is
 
@@ -242,12 +248,30 @@ begin
         w.wbaddr(31 downto CACHE_MAX_BITS) := (others => 'X');
         w.offcnt := (others => 'X');
         w.offcnt_write := (others => 'X');
-
+        w.iwfready := '0';
         stall_input := '1';
 
         if r.flushcnt=0 then
           w.tag_mem_wen:='0';
+          --w.state := running;
+        if r.queued_address='1' and r.fault='1' then
+          w.state := filling;
+          w.wbaddr(31 downto CACHE_MAX_BITS) := r.save_addr(31 downto CACHE_MAX_BITS);
+          w.state := filling;
+          w.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2) := unsigned(r.save_addr(CACHE_LINE_SIZE_BITS-1 downto 2));
+          w.offcnt_write  := (others => '1');
+          w.stbcount      := (others => '1');
+          w.cyc   := '1';
+          w.stb   := '1';
+          w.busy  := '1';
+          w.queued_address:='0';
+          w.line_save := r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
+          w.tag_save := r.save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS);
+
+        else
           w.state := running;
+        end if;
+
         end if;
 
       when running =>
@@ -255,11 +279,11 @@ begin
         w.offcnt := (others => 'X');
         w.offcnt_write := (others => 'X');
         w.wbaddr(31 downto CACHE_MAX_BITS) := (others => 'X');
-
+        w.iwfready:='0';
         stall_input := '0';
 
         data_valid := hit;
-
+        w.stb := 'X';
         if r.access_q='1' then
           -- We had a cache access in last clock cycle.
           if r.enable_q='1' then
@@ -275,9 +299,10 @@ begin
               w.wbaddr(31 downto CACHE_MAX_BITS) := r.save_addr(31 downto CACHE_MAX_BITS);
               w.state := filling;
 
-              w.offcnt        := (others => '0');
-              w.offcnt_write  := (others => '0');
- 
+              w.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2) := unsigned(r.save_addr(CACHE_LINE_SIZE_BITS-1 downto 2));
+              w.offcnt_write  := (others => '1');
+              w.stbcount      := (others => '1');
+
               w.cyc   := '1';
               w.stb   := '1';
               w.busy  := '1';
@@ -295,56 +320,116 @@ begin
           stall_input:='1';
         end if;
 
+        w.queued_address := '0';
+        if r.access_q='1' and data_valid='0' then
+          w.queued_address:='1';
+        else
+          w.queued_address:='0';
+        end if;
+
+        w.fault := '0';
+
       when filling =>
         stall_input := '1';
         w.busy:= '1';
         w.cyc := '1';
-        w.stb := '1';
+        tag_mem_enable    <= '1';
+        cache_mem_enable  <= enable and strobe;
 
-        if r.access_q='1' then
-        --  cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
-        end if;
-
-        tag_mem_enable <= '1';
-        cache_mem_enable <= enable and strobe;
-
-        if m_wb_ack_i='1' then
-          w.offcnt_write := r.offcnt_write + 1;
+        if mwbi.ack='1' then
+          w.iwfready := '1';
+          w.offcnt_write := r.offcnt_write - 1;
           -- This will go to 0, but we check before and switch state
-          if r.offcnt_write=offcnt_full then
+          if r.offcnt_write=offcnt_zero then
             w.tag_mem_wen := '1';
-            w.state := waitwrite;
+            w.state := ending;
           end if;
         end if;
           
-        if m_wb_stall_i='0' then
-          if r.offcnt(r.offcnt'HIGH)='0' then
-            w.offcnt := r.offcnt + 1;
+        if mwbi.stall='0' then
+          w.offcnt := r.offcnt + 1;
+          -- this needed ??
+          if r.stbcount/=offcnt_zero then
+            w.stbcount := w.stbcount - 1;
+          else
+            w.stb := '0';
           end if;
         end if;
 
-        -- Attempt...
         if true then
-        if valid_while_filling='1' then
-          -- If fetch disabled the memory on last clock, we have a problem here.
 
-          data_valid := r.enable_q;--r.access_q;
-          stall_input := '0';
+          if r.iwfready='0' then
+            cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
+          end if;
+
+        if enable='1' then
+          stall_input := not r.iwfready;
+          data_valid := r.iwfready;
+
+
+          if r.iwfready='1' and strobe='1' then
+            w.iwfready:='0';
+          end if;
+          if seq='0' and strobe='1' and stall_input='0' then
+            --stall_input := '1';
+            data_valid:='0';
+            w.fault :='1';
+          end if;
+
+          if r.access_q='1' and access_to_same_line='0' then
+            data_valid:='0';
+            stall_input:='1';
+            w.fault := '1';
+          end if;
         end if;
+
+        if r.fault='1' then
+          stall_input:='1';
+          data_valid:='0';
         end if;
+
+        if stall_input='0' then
+          if enable='1' and strobe='1' then
+            w.queued_address:='1';
+          else
+            w.queued_address:='0';
+          end if;
+        end if;
+
+          if flush='1' then
+            w.state := flushing;
+            w.flushcnt := (others => '1');
+            w.tag_mem_wen := '1';
+            w.fault:='1';
+            -- TODO: check if this is correct...
+            stall_input:='1';
+          end if;
+
+        if stall_input='0' then
+          if enable='1' and strobe='1' then
+            w.queued_address:='1';
+          else
+            w.queued_address:='0';
+          end if;
+        end if;
+
         if abort='1' then
-          
+          w.fault:='1';
         end if;
 
-      when waitwrite =>
-        w.busy := '1';
-        w.wbaddr(31 downto CACHE_MAX_BITS) := (others => 'X');
-        w.offcnt := (others => 'X');
-        w.offcnt_write := (others => 'X');
-        tag_mem_enable <= '1';
---        cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
-        w.state := ending;
-        stall_input := '1';
+        end if;  -- IWF
+
+
+
+--      when waitwrite =>
+--       w.busy := '1';
+--        w.wbaddr(31 downto CACHE_MAX_BITS) := (others => 'X');
+--        w.offcnt := (others => 'X');
+--        w.offcnt_write := (others => 'X');
+--        tag_mem_enable <= '1';
+----        cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
+--        w.state := ending;
+--        stall_input := '1';
 
       when ending =>
         w.busy :='0';
@@ -354,19 +439,36 @@ begin
         tag_mem_enable <= '1';
         cache_mem_enable <='1';
 --        cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
+        cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
+
         stall_input := '1';
+        w.fault:='0';
 
         if enable='1' then
           w.fill_success := '1';
         end if;
 
-        w.state := running;
+        if r.queued_address='1' and r.fault='1' then
+          w.state := filling;
+          w.wbaddr(31 downto CACHE_MAX_BITS) := r.save_addr(31 downto CACHE_MAX_BITS);
+          w.state := filling;
+          w.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2) := unsigned(r.save_addr(CACHE_LINE_SIZE_BITS-1 downto 2));
+          w.offcnt_write  := (others => '1');
+          w.stbcount      := (others => '1');
+          w.cyc   := '1';
+          w.stb   := '1';
+          w.busy  := '1';
+          w.queued_address:='0';
+          w.line_save := r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
+          w.tag_save := r.save_addr(ADDRESS_HIGH downto CACHE_MAX_BITS);
+
+        else
+          w.state := running;
+        end if;
     end case;
 
 
-    cache_addr_read <= line & line_offset;
 
-    w.queued_address := '0';
 
     if strobe='1' and enable='1' then
       if stall_input='0' then
@@ -385,20 +487,18 @@ begin
       end if;
     end if;
 
-    if r.access_q='1' and data_valid='0' then
-      w.queued_address:='1';
-    else
-      w.queued_address:='0';
-    end if;
 
     if abort='1' then
       w.access_q:='0';
       w.queued_address:='0';
     end if;
 
-    if (r.queued_address='1' and stall_input='1') or strobe='0' then
-      cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
-    end if;
+    -- Improve this. It's problematic for timing purposes.
+
+--    if (r.queued_address='1' and stall_input='1') or strobe='0' then
+--    if (r.queued_address='1' and stall_input='1') then
+--      cache_addr_read <= r.save_addr(CACHE_MAX_BITS-1 downto 2);
+--    end if;
 
     w.enable_q := enable;
 
@@ -407,7 +507,7 @@ begin
 
 
 
-    if wb_rst_i='1' then
+    if syscon.rst='1' then
       w.state := flushing;
       w.busy  := '1';
       w.fill_success :='0';
@@ -421,12 +521,13 @@ begin
       w.access_q := '0';
       w.enable_q := '0';
       w.queued_address:='0';
+      w.iwfready:='0';
     end if;
 
 
 
 
-    if rising_edge(wb_clk_i) then
+    if rising_edge(syscon.clk) then
       r <= w;
     end if;
 
@@ -438,10 +539,10 @@ begin
 
   miss <= not hit;
 
-  process(wb_clk_i)
+  process(syscon.clk)
     variable requested_offset: unsigned(5 downto 2);
   begin
-    if rising_edge(wb_clk_i) then
+    if rising_edge(syscon.clk) then
       valid_while_filling<='0';
       requested_offset := unsigned(cache_addr_read(5 downto 2));
       if r.state=filling and r.offcnt_write(5 downto 2) > requested_offset then
@@ -455,15 +556,17 @@ begin
     end if;
   end process;
 
-  m_wb_cyc_o  <= r.cyc;
-  m_wb_stb_o  <= r.stb when r.offcnt(r.offcnt'HIGH)='0' else '0';
-  m_wb_we_o   <= '0';
-  m_wb_dat_o  <= (others => 'X');
+  mwbo.cyc  <= r.cyc;
+  mwbo.stb  <= r.stb;-- when r.stbcount/=offcnt_zero else '0';-- when r.offcnt(r.offcnt'HIGH)='0' else '0';
+  mwbo.we   <= '0';
+  mwbo.dat  <= (others => 'X');
 
-  m_wb_adr_o(31 downto CACHE_MAX_BITS) <= r.wbaddr(31 downto CACHE_MAX_BITS);
-  m_wb_adr_o(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= r.line_save;--r.save_addr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS);
-  m_wb_adr_o(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(r.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
+  mwbo.adr(31 downto CACHE_MAX_BITS) <= r.wbaddr(31 downto CACHE_MAX_BITS);
+  mwbo.adr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= r.line_save;
+  mwbo.adr(CACHE_LINE_SIZE_BITS-1 downto 2) <= std_logic_vector(r.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
 
-  m_wb_adr_o(1 downto 0) <= "00";
+  mwbo.tag(CACHE_LINE_SIZE_BITS-3 downto 0) <= std_logic_vector(r.offcnt(CACHE_LINE_SIZE_BITS-1 downto 2));
+
+  mwbo.adr(1 downto 0) <= "00";
 
 end behave;

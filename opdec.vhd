@@ -11,6 +11,7 @@ entity opdec is
   port (
     opcode_high:  in std_logic_vector(15 downto 0);
     opcode_low:   in std_logic_vector(15 downto 0);
+    priv:         in std_logic;
     dec:          out opdec_type
   );
 end entity opdec;
@@ -57,7 +58,7 @@ begin
     variable mtype: memory_access_type;
     variable opcode: std_logic_vector(15 downto 0);
     variable is_extended_opcode: boolean;
-
+    variable supervisor: std_logic;
   begin
 
     if opcode_high(15)='1' then
@@ -67,6 +68,7 @@ begin
     end if;
 
     opcode := opcode_high;
+    supervisor := priv;
 
 
   -- Decode memory access type, if applicable
@@ -122,15 +124,17 @@ begin
             -- No/R
             case opcode(10) is
             when '0' =>
-              case opcode(9) is
-                when '0' => op := O_SEXTB;      -- 38
-                when '1' => op := O_SEXTS;      -- 3a
-                when others =>
+              case opcode(9 downto 8) is
+                when "00" => op := O_SEXTB;      -- 38
+                when "10" => op := O_SEXTS;      -- 3a
+                when others => op := O_ABORT;
               end case;
             when '1' =>
-              case opcode(9) is
-                when '0' => op := O_RSPR;      -- 38
-                when '1' => op := O_WSPR;      -- 3a
+              case opcode(9 downto 8) is
+                when "00" => op := O_RSPR;      -- 38
+                when "10" => op := O_WSPR;      -- 3a
+                when "01" => op := O_RDUSR;
+                when "11" => op := O_WRUSR;
                 when others =>
               end case;
 
@@ -164,8 +168,8 @@ begin
     --decoded_op := op;
 
     d.opcode := opcode;
-    d.sreg1 := opcode(3 downto 0);
-    d.sreg2 := opcode(7 downto 4);
+    d.sreg1 := supervisor & opcode(3 downto 0);
+    d.sreg2 := supervisor & opcode(7 downto 4);
     d.sr := opcode(6 downto 4);
 
     d.dreg := d.sreg1;
@@ -287,7 +291,7 @@ begin
 
         if d.alu_op=ALU_ADDRI then
           d.alu_source := alu_source_immed;
-          d.sreg1 := opcode(7 downto 4);
+          d.sreg1 := supervisor & opcode(7 downto 4);
           --d.sreg2 := opcode(3 downto 0);
           d.alu_op := ALU_ADD;
         end if;
@@ -329,6 +333,23 @@ begin
         d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         d.enable_alu := '1';
 
+      when O_RDUSR =>
+        d.alu_op := ALU_ADD;
+        d.alu_source := alu_source_immed;
+        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
+        d.sreg1(4) := '0'; -- Read user.
+        --d.dreg(4) := '1'; -- Force into supervisor
+        d.priv:='1'; -- Privileged instruction
+        d.enable_alu := '1';
+
+      when O_WRUSR =>
+        d.alu_op := ALU_ADD;
+        d.alu_source := alu_source_immed;
+        d.rd1:='1'; d.rd2:='1'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
+        d.dreg(4) := '0'; -- Write user.
+        d.priv:='1'; -- Privileged instruction
+        d.enable_alu := '1';
+
       when O_CMPI =>
         subloadimm     := LOAD8;
         d.modify_flags := true;
@@ -349,14 +370,14 @@ begin
 
       when O_JMP =>
         -- Swap register...
-        d.sreg1 := opcode(7 downto 4);
+        d.sreg1 := supervisor & opcode(7 downto 4);
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_pcnext;
         d.is_jump := true;
         d.jump := JUMP_RI_ABS;
 
       when O_JMPE =>
         -- Swap register...
-        d.sreg1 := opcode(7 downto 4);
+        d.sreg1 := supervisor & opcode(7 downto 4);
         d.rd1:='0'; d.rd2:='0'; d.modify_gpr:=false;
         d.is_jump := true;
         d.jump := JUMP_RI_ABS;
@@ -393,14 +414,14 @@ begin
         d.alu_op := ALU_SEXTB;
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         d.enable_alu := '1';
-          d.sreg1 := opcode(7 downto 4);
+          d.sreg1 := supervisor & opcode(7 downto 4);
 
       when O_SEXTS =>
         d.alu_source := alu_source_reg;
         d.alu_op := ALU_SEXTS;
         d.rd1:='1'; d.rd2:='0'; d.modify_gpr:=true; d.reg_source:=reg_source_alu;
         d.enable_alu := '1';
-          d.sreg1 := opcode(7 downto 4);
+          d.sreg1 := supervisor & opcode(7 downto 4);
 
       when O_RSPR =>
         --d.alu_source := alu_source_;
@@ -497,17 +518,17 @@ begin
       -- Check DREG
       if opcode_low(14 downto 12)="010" then
         -- DREG extended....
-        d.dreg := opcode_low(3 downto 0);
+        d.dreg := supervisor & opcode_low(3 downto 0);
       end if;
 
       if op=O_ALU and opcode_low(14 downto 12)="100" then
         d.alu_source := alu_source_immed;
-        d.sreg1 := opcode(7 downto 4);
+        d.sreg1 := supervisor & opcode(7 downto 4);
       end if;
     end if;
 
     d.targetzero:='0';
-    if d.dreg="0000" then
+    if d.dreg(3 downto 0)="0000" then
       d.targetzero:='1';
     end if;
 

@@ -17,11 +17,13 @@ entity fetch is
     read:     in std_logic_vector(31 downto 0);
     enable:   out std_logic;
     strobe:   out std_logic;
+    seq:      out std_logic;
     abort:    out std_logic;
     nseq:     out std_logic;
     -- Control
     freeze:    in std_logic;
     jump:     in std_logic;
+    jumppriv: in std_logic;
     jumpaddr: in word_type;
     dual:     in std_logic;
 
@@ -43,23 +45,27 @@ architecture behave of fetch is
 
 begin
 
-  process(clk)
-  begin
-    if rising_edge(clk) then
-      if rst='1' then
-        busycnt<=(others =>'0');
-      else
-        if strobe_i='1' and stall='1' then
-          busycnt<=busycnt+1;
-        else
+  fault1: if FAULTCHECKS generate
+
+    process(clk)
+    begin
+      if rising_edge(clk) then
+        if rst='1' then
           busycnt<=(others =>'0');
+        else
+          if strobe_i='1' and stall='1' then
+            busycnt<=busycnt+1;
+          else
+            busycnt<=(others =>'0');
+          end if;
+  
         end if;
-
       end if;
-    end if;
-  end process;
+    end process;
+  
+    fuo.internalfault<='1' when busycnt > 65535 else '0';
 
-  fuo.internalfault<='1' when busycnt > 65535 else '0';
+  end generate;
 
   strobe<=strobe_i;
 
@@ -70,6 +76,7 @@ begin
   address <= std_logic_vector(fr.fpc);
 
   nseq <= '1' when fr.state=jumping else '0';
+  seq <= fr.seq;
 
   process(fr, rst, clk, stall, valid, freeze, dual, jump, jumpaddr,read)
     variable fw: fetch_regs_type;
@@ -88,9 +95,9 @@ begin
     abort <= '0';
 
     enable <= not freeze;
-    strobe_i <= not freeze;
-
-    if fr.unaligned_jump='1' and read(15)='1' then --dual='1' then
+    --strobe_i <= not freeze;
+    strobe_i<='1';
+    if fr.unaligned_jump='1' and read(15)='1' then -- Extended opcode.
       fuo.valid <= '0';
     end if;
 
@@ -114,7 +121,8 @@ begin
           if valid='1' then
             if freeze='0' then
               if not (fr.unaligned_jump='1' and dual='1') then
-              fw.pc := realnpc;
+                fw.pc := realnpc;
+                fw.seq := '1';
               end if;
               fw.qopc := read(15 downto 0);
               fw.unaligned_jump := '0';
@@ -125,6 +133,7 @@ begin
             --  report "DUAL" severity note;
             --end if;
           end if;
+
           if dual='0' and valid='1' and freeze='0' then
             -- Will go unaligned
             if fr.unaligned='0' then
@@ -159,9 +168,10 @@ begin
         else
           -- Jump request
           fw.fpc := jumpaddr;
+          fw.priv:= jumppriv;
           fw.unaligned := jumpaddr(1);
           fw.fpc(1 downto 0) := "00";
-
+          fw.seq := '0';
           fw.pc := jumpaddr;
           fw.pc(0) := '0';
           fw.unaligned_jump := jumpaddr(1);
@@ -180,14 +190,15 @@ begin
           enable <= '1';
         if stall='0' then
           fw.fpc := npc;
+          fw.seq := '1';
           --fw.unaligned := fr.unaligned_jump;
           if fr.unaligned_jump='1' then
             fw.invert_readout := '1';
             fw.state := aligning;
             fw.unaligned_jump:='0';
           else
-          fw.invert_readout := '0';
-          fw.state := running;
+            fw.invert_readout := '0';
+            fw.state := running;
           end if;
         end if;
         else
@@ -211,6 +222,7 @@ begin
           fw.qopc :=  read(15 downto 0);
           --fw.unaligned := '0';
           fw.fpc := npc;
+          fw.seq := '1';
           fw.state := running;
         end if;
       when others =>
@@ -219,13 +231,15 @@ begin
     if rst='1' then
       fw.pc :=  RESETADDRESS;
       fw.fpc := RESETADDRESS;
-      strobe_i <= '0';
-      enable <= '0';
+      fw.seq := '0';
+      fw.priv:='1';
+      --strobe_i <= '0';
+      --enable <= '0';
       fw.unaligned := '0';
       fw.unaligned_jump := '0';
       fw.invert_readout := '0';
       fw.state := jumping;
-      fuo.valid<='0';
+      --fuo.valid<='0';
     end if;
 
     if rising_edge(clk) then

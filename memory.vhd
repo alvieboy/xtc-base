@@ -146,9 +146,10 @@ begin
         mw.wb_dat  := wdata;
         mw.wb_adr  := eui.data_address;
         mw.wb_tago := (others => 'X');
-        mw.wb_tago(3 downto 0) := eui.mwreg;
+        mw.wb_tago(3 downto 0) := eui.mwreg(3 downto 0);
         mw.wb_tago(4) := not eui.data_writeenable;
         mw.wb_tago(7 downto 5) := mrsel;
+        mw.wb_tago(8) := eui.mwreg(4);
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
         mw.wb_stb  := eui.data_access;
@@ -173,7 +174,7 @@ begin
 
       muo.mdata <= mdata;
 
-      muo.mreg <= wb_tag_i(3 downto 0);
+      muo.mreg <= wb_tag_i(8) & wb_tag_i(3 downto 0);
 
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
 

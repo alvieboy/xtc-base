@@ -129,8 +129,24 @@ begin
   end if;
 end process;
 
+-- synthesis translate_off
+process (wb_syscon.clk)
+begin
+  if rising_edge(wb_syscon.clk) then
+    if is_x(s0_wbi.err) then
+      report "Slave0 'err' is X" severity failure;
+    end if;
+    if is_x(s1_wbi.err) then
+      report "Slave1 'err' is X" severity failure;
+    end if;
+  end if;
+end process;
+-- synthesis translate_on
+
 -- Process responses from both slaves.
 -- USE ONLY IN SIMULATION FOR NOW!!!!!
+
+
 
 process(s0_wbi,s1_wbi,queued,qdat,qtag)
   variable sel: std_logic_vector(1 downto 0);
@@ -163,13 +179,13 @@ begin
       m_wbo.dat<=s1_wbi.dat;
       m_wbo.err<=s1_wbi.err;
       m_wbo.tag<=s1_wbi.tag;
-    when others =>
+    when "11" =>
       queue <= '1'; -- Queue S1 request.
       m_wbo.ack<='1';
       m_wbo.dat<=s0_wbi.dat;
       m_wbo.err<=s0_wbi.err;
       m_wbo.tag<=s0_wbi.tag;
-
+    when others => null;
   end case;
 end process;
 

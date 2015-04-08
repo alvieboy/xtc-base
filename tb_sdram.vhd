@@ -307,7 +307,7 @@ begin
   syscon.clk<=w_clk;
   syscon.rst<=w_rst;
 
-  cpu: xtc_top_sdram
+  cpu: entity work.xtc_top_sdram
   port map (
     wb_syscon   => syscon,
     -- Master wishbone interface
@@ -362,7 +362,7 @@ begin
         Dqm   => DRAM_DQM
     );
 
-  ioctrl: xtc_ioctrl
+  ioctrl: entity work.xtc_ioctrl
     port map (
       syscon      => syscon,
       wbi         => wbi,
@@ -420,7 +420,7 @@ begin
 
 
   emptyslots: for N in 4 to 15 generate
-    eslot: nodev
+    eslot: entity work.nodev
       port map (
         syscon    => syscon,
         wbi       => swbo(N),

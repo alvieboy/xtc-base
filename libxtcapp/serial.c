@@ -7,8 +7,8 @@ typedef volatile unsigned int *reg_t;
 
 void serial_init(void *ptr)
 {
-    reg_t reg =(reg_t)ptr;
-    *(reg+1) = 42;//51;
+  //  reg_t reg =(reg_t)ptr;
+//    *(reg+1) = 42;//51;
 }
 
 static ssize_t serial_read(void *ptr, void *dest, size_t size)

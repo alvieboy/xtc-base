@@ -96,6 +96,8 @@ enum xtc_instr
     copw,
     rspr,
     wspr,
+    rusr,
+    wusr,
 
     invalid_inst
 };

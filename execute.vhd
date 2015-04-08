@@ -30,10 +30,19 @@ entity execute is
 
     -- Input from memory unit, for SPR update
     mui:  in memory_output_type;
+
     -- Coprocessor interface
     co:   out copifo;
     ci:   in  copifi;
-    dbgo: out execute_debug_type
+
+    -- Other data (usually from coprocessor)
+    trapbase: in  std_logic_vector(31 downto 0);
+    trappc:   in  std_logic_vector(31 downto 0);
+    trapaddr: out std_logic_vector(31 downto 0);
+    istrap:   out std_logic;
+
+    -- Debugging
+    dbgo:     out execute_debug_type
 
   );
 end entity execute;
@@ -75,7 +84,7 @@ begin
 
   dbgo.dbgen <= er.psr(2);
 
-  myalu: alu
+  myalu: entity work.alu
     port map (
       clk   => clk,
       rst   => rst,
@@ -334,12 +343,15 @@ begin
         when others =>        ew.jumpaddr := (others => 'X');
       end case;
 
+
       -- Never jump if busy
       --if busy_int='1' then
       --  ew.jump := '0';
       --end if;
 
      end if; -- passes condition
+
+    ew.jumppriv := er.psr(0);
 
       if fdui.r.drq.sprwe='1' and fdui.r.drq.memory_access='0' then
         case fdui.r.drq.sra2(2 downto 0) is
@@ -351,11 +363,12 @@ begin
           when "010" => -- SPSR
             ew.spsr(7 downto 0) := unsigned(lhs(7 downto 0));
             ew.spsr(31 downto 28) := unsigned(lhs(31 downto 28));
-          when "011" => -- TTR
-            ew.trapvector := unsigned(lhs);
-          when "100" => -- TPC
-            ew.trappc := unsigned(lhs);
-          when "101" => -- SR
+          --when "011" => -- TTR
+          --  ew.trapvector := unsigned(lhs);
+         -- when "100" => -- TPC
+          --  ew.trappc := unsigned(lhs);
+          --when "101" => -- SR
+          when "011" => -- SR
             ew.scratch := unsigned(lhs);
 
           when others =>
@@ -366,7 +379,8 @@ begin
         -- Restore PSR, BR
         ew.psr(7 downto 0) := er.spsr(7 downto 0);
         ew.psr(31 downto 28) := er.spsr(31 downto 28);
-        ew.jumpaddr := er.trappc;
+        ew.jumpaddr := unsigned(trappc);
+        ew.jumppriv := er.spsr(0);
         ew.innmi:='0';
       end if;
 
@@ -375,19 +389,23 @@ begin
       enable_alu<='0';
     end if;
 
+    trapaddr <= std_logic_vector(fdui.r.drq.tpc);
+
+    istrap<='0';
     if do_fault then
       --ew.jump:='1';
-      ew.jumpaddr(31 downto 8):=er.trapvector(31 downto 8);
-      ew.jumpaddr(7 downto 4) := fault_address;
-      ew.jumpaddr(3 downto 0) := x"0";
+      ew.jumpaddr(31 downto 2):= unsigned(trapbase(31 downto 2));
+      --  ew.jumpaddr(7 downto 4) := fault_address;
+      ew.jumpaddr(1 downto 0) := "00";
       ew.spsr := ew.psr; -- Save PSR
       ew.psr(2) := '0'; -- Debug enabled.
       ew.psr(1) := '0'; -- Interrupt enable
       ew.psr(0) := '1'; -- Supervisor mode
       ew.psr(7 downto 4) := fault_address;
+      istrap<='1';
+      ew.jumppriv := er.psr(0);
 
       --ew.psr(1) := fdui.r.drq.imflag;
-      ew.trappc := fdui.r.drq.tpc;
     end if;
 
     busy <= busy_int or (fdui.r.hold and not mult_valid);
@@ -408,9 +426,11 @@ begin
         ew.sprval(27 downto 8) := (others => '0');
         ew.sprval(31 downto 28) := er.spsr(31 downto 28);
 
-      when "011" => ew.sprval := er.trapvector;  
-      when "100" => ew.sprval := er.trappc;
-      when "101" => ew.sprval := er.scratch;
+      --when "011" => ew.sprval := er.trapvector;
+     -- when "100" => ew.sprval := er.trappc;
+      --when "101" => ew.sprval := er.scratch;
+      when "011" => ew.sprval := er.scratch;
+
       when others => ew.sprval := (others => 'X');
     end case;
 
@@ -445,12 +465,13 @@ begin
     if rst='1' then
       ew.psr(0) := '1'; -- Supervisor
       ew.psr(31 downto 1) := (others =>'0'); -- Interrupts disabled
-      ew.trapvector := RESETADDRESS;--others => '0');
+      --ew.trapvector := RESETADDRESS;--others => '0');
       -- Debug.
-      ew.trappc := fdui.r.drq.npc;
+      --ew.trappc := fdui.r.drq.npc;
 
 
       ew.jump := '0';
+      ew.jumppriv := '1';
       ew.regwe := '0';
       ew.valid := '0';
       ew.trapq := '0';
@@ -480,6 +501,7 @@ begin
   end process;
 
   euo.jump <= (er.jump and fdui.valid) or (er.trapq);
+  euo.jumppriv <= er.jumppriv;
   euo.trap <= do_trap;
   euo.clrhold <= mult_valid or (er.jump and fdui.valid) or (er.trapq) ;
 

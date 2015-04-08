@@ -103,7 +103,7 @@ begin
   sdram_wbi.err <= '0';
   sdram_wbi.int <= '0';
 
-  cpu: xtc
+  cpu: entity work.xtc
   port map (
     wb_syscon       => wb_syscon,
     -- Master wishbone interface
@@ -118,7 +118,7 @@ begin
     edbg            => edbg
   );
 
-  muxer: xtc_wbmux2
+  muxer: entity work.xtc_wbmux2
   generic map (
     select_line   => 31,
     address_high  => 31,
@@ -139,7 +139,7 @@ begin
     s1_wbo        => piowbo
   );
 
-  dbaarb: wbarb2_1
+  dbaarb: entity work.wbarb2_1
   port map (
     wb_syscon     => wb_syscon,
     -- Master 0 signals
@@ -157,7 +157,7 @@ begin
 
   ramwbi.int <= iowbi.int;
 
-  maccarb: wbarb2_1
+  maccarb: entity work.wbarb2_1
   port map (
     wb_syscon     => wb_syscon,
     -- Master 0 signals
@@ -173,7 +173,7 @@ begin
   );
 
 
-  ioadaptor: wb_master_p_to_slave_np
+  ioadaptor: entity work.wb_master_p_to_slave_np
   port map (
     syscon      => wb_syscon,
     mwbo        => piowbi,
@@ -182,7 +182,7 @@ begin
     swbo        => iowbo
   );
 
-  sdramcrtl_inst: sdram_ctrl
+  sdramcrtl_inst: entity work.sdram_ctrl
   generic map (
     HIGH_BIT => 22
   )

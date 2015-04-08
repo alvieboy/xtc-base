@@ -67,6 +67,7 @@ architecture behave of xtc is
   signal cache_strobe:         std_logic;
   signal cache_enable:         std_logic;
   signal cache_stall:          std_logic;
+  signal cache_seq:            std_logic;
   signal cache_nseq:           std_logic;
   
   signal decode_freeze:       std_logic;
@@ -123,11 +124,17 @@ architecture behave of xtc is
   signal pipeline_internalfault: std_logic;
   signal busycnt: unsigned (31 downto 0);
 
-  signal proten: std_logic;
-  signal protw: std_logic_vector(31 downto 0);
+  signal proten:  std_logic;
+  signal protw:   std_logic_vector(31 downto 0);
   signal rstreq_i: std_logic;
-  signal fflags: std_logic_vector(31 downto 0);
-  signal intin: std_logic_vector(31 downto 0);
+  signal fflags:  std_logic_vector(31 downto 0);
+  signal intin:   std_logic_vector(31 downto 0);
+
+  signal trappc:    std_logic_vector(31 downto 0);
+  signal trapaddr:  std_logic_vector(31 downto 0);
+  signal trapbase:  std_logic_vector(31 downto 0);
+  signal istrap:    std_logic;
+
 begin
 
     process(wb_syscon.clk)
@@ -159,9 +166,10 @@ begin
 
   -- Register bank.
 
-  rbe: regbank_3p
+  rbe: entity work.regbank_3p
   generic map (
-    ADDRESS_BITS => 4
+    ADDRESS_BITS => 5,
+    ZEROSIZE => 4
   )
   port map (
     clk     => wb_syscon.clk,
@@ -180,13 +188,12 @@ begin
 
   cache: if INSTRUCTION_CACHE generate
 
-  cache: icache
+  cache: entity work.icache
   generic map (
     ADDRESS_HIGH => 31
   )
   port map (
-    wb_clk_i    => wb_syscon.clk,
-    wb_rst_i    => wb_syscon.rst,
+    syscon      => wb_syscon,
 
     valid       => cache_valid,
     data        => cache_data,
@@ -196,20 +203,16 @@ begin
     enable      => cache_enable,
     flush       => icache_flush,
     abort       => icache_abort,
+    seq         => cache_seq,
     tag         => cache_tag,
     tagen       => immu_enabled,
-
-    m_wb_ack_i  => romwbi.ack,
-    m_wb_dat_i  => romwbi.dat,
-    m_wb_adr_o  => romwbo.adr,
-    m_wb_cyc_o  => romwbo.cyc,
-    m_wb_stb_o  => romwbo.stb,
-    m_wb_stall_i => romwbi.stall
+    mwbi        => romwbi,
+    mwbo        => romwbo
   );
 
     mmub: if MMU_ENABLED generate
     cache_tag <= immu_paddr;
-    immuinst: mmu
+    immuinst: entity work.mmu
       port map (
         clk   => wb_syscon.clk,
         rst   => wb_syscon.rst,
@@ -259,7 +262,7 @@ begin
 
 
 
-  fetch_unit: fetch
+  fetch_unit: entity work.fetch
     port map (
       clk       => wb_syscon.clk,
       rst       => wb_syscon.rst,
@@ -271,10 +274,12 @@ begin
       enable    => cache_enable,
       strobe    => cache_strobe,
       abort     => icache_abort,
+      seq       => cache_seq,
       nseq      => cache_nseq,
 
       freeze    => decode_freeze,
       jump      => euo.jump,
+      jumppriv  => euo.jumppriv,
       jumpaddr  => euo.r.jumpaddr,
       dual      => dual,
 
@@ -282,7 +287,7 @@ begin
       fuo       => fuo
     );
 
-  decode_unit: decode
+  decode_unit: entity work.decode
     port map (
       clk       => wb_syscon.clk,
       rst       => wb_syscon.rst,
@@ -301,7 +306,7 @@ begin
   freeze_decoder <= execute_busy or notallvalid;
   flushfd <= euo.jump or euo.trap;
 
-  fetchdata_unit: fetchdata
+  fetchdata_unit: entity work.fetchdata
     port map (
       clk       => wb_syscon.clk,
       rst       => wb_syscon.rst,
@@ -385,7 +390,7 @@ begin
   execute_busy <= e_busy;
   executed <= euo.executed;
 
-  execute_unit: execute
+  execute_unit: entity work.execute
     port map (
       clk       => wb_syscon.clk,
       rst       => wb_syscon.rst,
@@ -406,6 +411,10 @@ begin
       -- COP
       co        => cifo,
       ci        => cifi,
+      -- Trap
+      trappc    => trappc,
+      istrap    => istrap,
+      trapbase  => trapbase,
       -- Debug
       dbgo      => dbg
     );
@@ -449,6 +458,12 @@ begin
       dcache_flush    => dcache_flush,
       dcache_inflush  => dcache_inflush,
       int_in => x"00000000",
+
+      trappc    => trappc,
+      trapaddr  => trapaddr,
+      istrap    => istrap,
+      trapbase  => trapbase,
+
       --intacken => '0',
       ci    => ci(0),
       co    => co(0)
@@ -460,7 +475,7 @@ begin
      dcache_accesstype <= ACCESS_NOCACHE when mwbo.adr(31)='1' else
       ACCESS_WB_WA;
 
-     dcacheinst: dcache
+     dcacheinst: entity work.dcache
        generic map (
            ADDRESS_HIGH => 31,
            CACHE_MAX_BITS =>  13, -- 8 Kb
@@ -496,7 +511,7 @@ begin
   end generate;
 
 
-  memory_unit: memory
+  memory_unit: entity work.memory
     port map (
     clk             => wb_syscon.clk,
     rst             => wb_syscon.rst,
@@ -524,7 +539,7 @@ begin
     muo             => muo
     );
 
-  writeback_unit: writeback
+  writeback_unit: entity work.writeback
     port map (
       clk       => wb_syscon.clk,
       rst       => wb_syscon.rst,
