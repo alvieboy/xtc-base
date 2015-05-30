@@ -140,7 +140,7 @@ begin
 
   -- Register banks
 
-  rb1: regbank_5p
+  rb1: entity work.regbank_5p
   generic map (
     ADDRESS_BITS => ADDRESS_BITS
   )
@@ -170,7 +170,7 @@ begin
     dbg_do    => dbg_do0
   );
 
-  rb2: regbank_5p
+  rb2: entity work.regbank_5p
   generic map (
     ADDRESS_BITS => ADDRESS_BITS
   )
