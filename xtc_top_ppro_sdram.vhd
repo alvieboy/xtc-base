@@ -146,7 +146,7 @@ begin
     );
 
 
-  myrom: entity work.bootrom
+  myrom: entity work.nodev
     port map (
       syscon      => syscon,
       wbi         => swbo(0),
