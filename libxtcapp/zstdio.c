@@ -214,16 +214,23 @@ static FILE *__find_free_file()
 }
 
 
+extern void printstring(const char*);
+
 FILE *fopen(const char *path, const char *mode)
 {
     FILE *r = __find_free_file();
-    if (NULL==r)
+    if (NULL==r) {
+        printstring("No free files!?!?!?\n");
         return r;
+    }
 
     int fd = open(path,O_RDONLY);
     //fprintf(stderr,"Attempting to open %s\r\n",path);
-    if (fd<0)
+    if (fd<0) {
+        printstring("Cannot open file\n");
+
         return NULL;
+    }
     //fprintf(stderr,"Opened %s, fd %d\r\n",path, fd);
     
     r->fd = fd;

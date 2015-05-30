@@ -3,7 +3,7 @@
 .globl _start
 _start:
 	addr	r15,	r12
- 	limr _stack - 4, r15
+ 	limr 	_stack - 4, r15
         addr	r13,	r1
         br	printhex, r13
         nop
@@ -77,6 +77,7 @@ $.cold:
        
 	br	main, r13
         nop
+        swi
 .end:        
 	br	.end, r0
         nop
@@ -138,6 +139,7 @@ $tmp1:
 /*
 .globl abort
 abort:
+	swi
 	br	abort, r0
         nop
 */

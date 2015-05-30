@@ -35,15 +35,24 @@ static struct zfdevops serial_devops = {
     &serial_write
 };
 
+extern void printstring(const char*);
+
 void stdio_register_console(const char *device)
 {
     if (NULL==fopen(device,"r")) {
+        asm("swi");
+        printstring("Cannot open STDIN?\n");
         while(1);
     }
     if (NULL==fopen(device,"w")) {
+        asm("swi");
+        printstring("Cannot open STDOUT?\n");
         while(1);
     }
     if (NULL==fopen(device,"w")) {
+        asm("swi");
+        printstring("Cannot open STDERR?\n");
+
         while(1);
     }
 }

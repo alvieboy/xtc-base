@@ -104,7 +104,14 @@ void register_sd()
 
 DSTATUS disk_initialize (BYTE d)
 {
-    return SD_disk_initialize();
+    DSTATUS r;
+    int count=3;
+    do {
+        r =  SD_disk_initialize();
+        if ((r&STA_NOINIT)==0)
+            break;
+    } while (count--);
+    return r;
 }
 
 DSTATUS disk_status (BYTE d)

@@ -19,7 +19,7 @@ ffwrap.o disk.o spi.o
 
 all: libxtcapp.a
 
-ASFLAGS=-DNOCLEARBSS
+ASFLAGS=
 #%.o:%.c
 #	$(CC) $(CFLAGS) -emit-llvm  -c $+ -o $@.bc
 #	# list-hybrid, list-ilp, list-burr, vliw-td

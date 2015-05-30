@@ -50,7 +50,8 @@ static int TM_FATFS_SD_CardType;			/* Card type flags */
 #define FATFS_CS_HIGH spi_select(spibase,1)
 #define FATFS_CS_LOW  spi_select(spibase,0)
 
-#define FATFS_DEBUG_SEND_USART(x)
+extern void printstring(const char*);
+#define FATFS_DEBUG_SEND_USART(x) do { printstring(x); printstring("\r\n"); } while (0)
 extern unsigned int millis();
 
 /* Initialize MMC interface */

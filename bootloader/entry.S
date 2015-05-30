@@ -24,31 +24,10 @@ _start:
         br.cne	.waitstart, r0
         addi 	-1,	r1
 */
-        br	outbyte, r13
-        limr	'B',	r1
-
-	limr 'Z', r1
-        stw.i r1, (r2-4)
-
-        br	outbyte, r13
-        limr	'o',	r1
-        br	outbyte, r13
-        limr	'o',	r1
-        br	outbyte, r13
-        limr	't',	r1
-
 	/* Detect top-of-ram first. Start at 0x1000 */
         ldw	(r0),	r6
 
-        br	outbyte, r13
-        limr	'1',	r1
-
         stw	r0, (r0)
-
-        br	outbyte, r13
-        limr	'2',	r1
-
-
 
         limr	0x1000, r1
         limr 	0xa5a5a5a5, r2
@@ -75,10 +54,6 @@ _start:
         addr	r1,	r10
 	add.i	r1, 	r15, -4
         
-        br	outbyte, r13
-	limr 'M', r1
-
-
 /*
         limr	_trapbegin, r1
         wspr	r1, tr
@@ -94,6 +69,13 @@ _start:
         br	__flush_icache, r13
         nop
 
+        limr	1, r1  
+        copw	0, 0, r1
+        nop
+        nop
+        nop
+        nop
+
 
 #ifdef BOOTSDRAM
         jmp	r0,	r0
@@ -103,7 +85,7 @@ _start:
 #if 1
 
         limr 	bootstr, r1
-	br	.printromstring, r13
+	br	printromstring, r13
         nop
 
         /* Print memory size */
@@ -111,12 +93,14 @@ _start:
         addr	r10,	r1
         
         limr 	bootstr2, r1
-	br	.printromstring, r13
+	br	printromstring, r13
         nop
 
 
         sra.i	r10,	r1, 2
         limr   	0,	r2
+#endif    
+#if 0
         
 $.memtest:
 	/* r1 is memory size in words, r2 is pointer */
@@ -149,7 +133,7 @@ $.memtestloop2:
         addi	4,	r4
 
         limr 	strok,	r1
-        br	.printromstring, r13
+        br	printromstring, r13
         nop
         
 #endif
@@ -166,13 +150,13 @@ $.memtestloop2:
         addr	r1,	r11
 
         limr	$.strmemerror, r1
-        br	.printromstring, r13
+        br	printromstring, r13
         nop
         addr	r4,	r1
         br	asmprinthex,	r13
         nop
         limr	$.strsep1,	r1
-        br	.printromstring, r13
+        br	printromstring, r13
         nop
         addr	r4,	r1
         br	asmprinthex,	r13
@@ -187,13 +171,13 @@ $.memtestloop2:
         addr	r2,	r7
         
         limr	$.strmemerror, r1
-        br	.printromstring, r13
+        br	printromstring, r13
         nop
         addr	r7,	r1
         br	asmprinthex,	r13
         nop
         limr	$.strsep1,	r1
-        br	.printromstring, r13
+        br	printromstring, r13
         nop
         addr	r5,	r1
         br	asmprinthex,	r13
@@ -228,7 +212,7 @@ $.loop1:
         jmp	r5,	r0
         nop
 
-.printromstring:
+printromstring:
         addr	r1, r8
 .loop:
         ldb	(r8), r1
