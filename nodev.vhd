@@ -12,7 +12,7 @@ entity nodev is
   );
 end entity nodev;
 architecture behave of nodev is
-  signal ack,err: std_logic;
+  signal ack,err: std_logic := '0';
 begin
   wbo.ack<=ack;
   wbo.err<=err;
