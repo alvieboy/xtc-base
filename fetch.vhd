@@ -91,7 +91,9 @@ begin
       realnpc := fr.pc + 2;
     end if;
 
+    fuo.npc <= realnpc;
     fuo.valid <= valid;
+
     abort <= '0';
 
     enable <= not freeze;
@@ -239,6 +241,7 @@ begin
       fw.unaligned_jump := '0';
       fw.invert_readout := '0';
       fw.state := jumping;
+      fw.qopc := (others => '0');
       --fuo.valid<='0';
     end if;
 
