@@ -28,7 +28,7 @@ extern unsigned long xtc_get_target_address (long, bfd_boolean, int,
                                              bfd_boolean *);
 
 extern enum xtc_instr get_insn_xtc (long, bfd_boolean *, 
-                                    enum xtc_instr_type *,
+                                    //enum xtc_instr_type *,
                                     short *);
 
 #endif /* xtc-dis.h */

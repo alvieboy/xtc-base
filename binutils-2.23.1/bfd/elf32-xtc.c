@@ -8,6 +8,22 @@
 
 #define INST_WORD_SIZE 2
 
+#undef DEBUG_RELAX
+
+static int xtc_emit_relocation(int rel, long value, bfd_byte *dest);
+static int xtc_reloc_pcrel_offset(int rel);
+
+
+/* PIC support.  */
+
+#define PLT_ENTRY_SIZE 8
+
+#define PLT_ENTRY_WORD_0  0xb0000000          /* "imm 0".  */
+#define PLT_ENTRY_WORD_1  0xe9940000          /* "lwi r12,r20,0" - relocated to lwi r12,r20,func@GOT.  */
+#define PLT_ENTRY_WORD_1_NOPIC  0xe9800000    /* "lwi r12,r0,0" - non-PIC object.  */
+#define PLT_ENTRY_WORD_2  0x98186000          /* "brad r12".  */
+#define PLT_ENTRY_WORD_3  0x80000000          /* "nop".  */
+
 
 #if 0
 static bfd_reloc_status_type
@@ -24,20 +40,17 @@ init_insn_reloc (bfd *abfd, arelent *reloc_entry, asymbol *symbol,
 	  || reloc_entry->addend == 0))
     {
         reloc_entry->address += input_section->output_offset;
-        printf("No reloc needed\n");
       return bfd_reloc_ok;
     }
 
   /* This works because partial_inplace is FALSE.  */
   if (output_bfd != NULL) {
-      printf("Continure\n");
 
 
       return bfd_reloc_continue;
   }
 
   if (reloc_entry->address > bfd_get_section_limit (abfd, input_section)) {
-      printf("Out of range");
 
       return bfd_reloc_outofrange;
   }
@@ -208,35 +221,7 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12_8,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		        /* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_12_8,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          20,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		        /* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_8,/* Type.  */
+   HOWTO (R_XTC_32_I8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           8,			/* Bitsize.  */
@@ -244,27 +229,55 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_8",   	/* Name.  */
-          TRUE,			/* Partial Inplace.  */
-          0,			/* Source Mask.  */
-          0,		/* Dest Mask.  */
-          FALSE),  		/* PC relative offset?  */
-
-   HOWTO (R_XTC_32_IMM_12_12_12,/* Type.  */
-          0,			/* Rightshift.  */
-          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
-          FALSE,		/* PC_relative.  */
-          0,			/* Bitpos.  */
-          complain_overflow_bitfield, /* Complain on overflow.  */
-          xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_12",   	/* Name.  */
+          "R_XTC_32_I8",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12,/* Type.  */
+   HOWTO (R_XTC_32_E8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          8,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E8_NR,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          8,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_NR",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E8_I8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          16,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_I8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		/* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           24,			/* Bitsize.  */
@@ -272,62 +285,180 @@ static reloc_howto_type xtc_elf_howto_raw[] =
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12",   	/* Name.  */
+          "R_XTC_32_E24",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		        /* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12,/* Type.  */
+   HOWTO (R_XTC_32_E24_I8,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          12,			/* Bitsize.  */
+          32,			/* Bitsize.  */
           FALSE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12",   	/* Name.  */
+          "R_XTC_32_E24_I8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		        /* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24_E8,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0,		/* Dest Mask.  */
+          FALSE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_NR,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          FALSE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_NR",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0,		/* Dest Mask.  */
           FALSE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_12_8_PCREL,/* Type.  */
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+   HOWTO (R_XTC_32_I8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          32,			/* Bitsize.  */
+          8,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_12_8_PCREL",   	/* Name.  */
+          "R_XTC_32_I8_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE),  		/* PC relative offset?  */
 
-   HOWTO (R_XTC_32_IMM_12_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_E8_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
-          20,			/* Bitsize.  */
+          8,			/* Bitsize.  */
           TRUE,		/* PC_relative.  */
           0,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_12_PCREL",   	/* Name.  */
+          "R_XTC_32_E8_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0xffffffff,		/* Dest Mask.  */
           TRUE), /* PC relative offset?  */
-   HOWTO (R_XTC_32_IMM_8_PCREL,/* Type.  */
+   HOWTO (R_XTC_32_E8_NR_R,/* Type.  */
           0,			/* Rightshift.  */
           2,			/* Size (0 = byte, 1 = short, 2 = long).  */
           8,			/* Bitsize.  */
+          TRUE,		/* PC_relative.  */
+          0,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E8_NR_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0xffffffff,		/* Dest Mask.  */
+          TRUE), /* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E8_I8_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          16,			/* Bitsize.  */
           TRUE,		        /* PC_relative.  */
           4,			/* Bitpos.  */
           complain_overflow_bitfield, /* Complain on overflow.  */
           xtc_elf_ignore_reloc,/* Special Function.  */
-          "R_XTC_32_IMM_8_PCREL",   	/* Name.  */
+          "R_XTC_32_E8_I8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+
+   HOWTO (R_XTC_32_E24_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          24,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_I8_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_I8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_R",   	/* Name.  */
+          TRUE,			/* Partial Inplace.  */
+          0,			/* Source Mask.  */
+          0x0,		/* Dest Mask.  */
+          TRUE),  		/* PC relative offset?  */
+   HOWTO (R_XTC_32_E24_E8_NR_R,/* Type.  */
+          0,			/* Rightshift.  */
+          2,			/* Size (0 = byte, 1 = short, 2 = long).  */
+          32,			/* Bitsize.  */
+          TRUE,		        /* PC_relative.  */
+          4,			/* Bitpos.  */
+          complain_overflow_bitfield, /* Complain on overflow.  */
+          xtc_elf_ignore_reloc,/* Special Function.  */
+          "R_XTC_32_E24_E8_NR_R",   	/* Name.  */
           TRUE,			/* Partial Inplace.  */
           0,			/* Source Mask.  */
           0x0,		/* Dest Mask.  */
@@ -364,69 +495,83 @@ xtc_elf_reloc_type_lookup (bfd * abfd ATTRIBUTE_UNUSED,
   switch (code)
     {
     case BFD_RELOC_NONE:
-        printf("xtc_elf_reloc_type_lookup: none\n");
       xtc_reloc = R_XTC_NONE;
       break;
     case BFD_RELOC_32:
-        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_32\n");
       xtc_reloc = R_XTC_32;
       break;
       /* RVA is treated the same as 32 */
     case BFD_RELOC_RVA:
-        printf("xtc_elf_reloc_type_lookup: BFD_RELOC_RVA\n");
 
       xtc_reloc = R_XTC_32;
       break;
     case BFD_RELOC_32_PCREL:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_32_PCREL\n");
 
       xtc_reloc = R_XTC_32_PCREL;
       break;
 
     case BFD_RELOC_XTC_32:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32\n");
 
         xtc_reloc = R_XTC_32;
         break;
 
     case BFD_RELOC_XTC_32_PCREL:
-        printf("xtc_elf_reloc_type_lookup: BDF_RELOC_XTC_32_PCREL\n");
 
         xtc_reloc = R_XTC_32_PCREL;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_12_12_8_PCREL;
+    case BFD_RELOC_XTC_I8:
+        xtc_reloc = R_XTC_32_I8;
         break;
-    case BFD_RELOC_XTC_IMM_12_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_12_8_PCREL;
+    case BFD_RELOC_XTC_E8:
+        xtc_reloc = R_XTC_32_E8;
         break;
-    case BFD_RELOC_XTC_IMM_8_PCREL:
-        xtc_reloc = R_XTC_32_IMM_8_PCREL;
+    case BFD_RELOC_XTC_E8_NR:
+        xtc_reloc = R_XTC_32_E8_NR;
+        break;
+    case BFD_RELOC_XTC_E8_I8:
+        xtc_reloc = R_XTC_32_E8_I8;
+        break;
+    case BFD_RELOC_XTC_E24:
+        xtc_reloc = R_XTC_32_E24;
+        break;
+    case BFD_RELOC_XTC_E24_I8:
+        xtc_reloc = R_XTC_32_E24_I8;
+        break;
+    case BFD_RELOC_XTC_E24_E8:
+        xtc_reloc = R_XTC_32_E24_E8;
+        break;
+    case BFD_RELOC_XTC_E24_E8_NR:
+        xtc_reloc = R_XTC_32_E24_E8_NR;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_8:
-        xtc_reloc = R_XTC_32_IMM_12_12_8;
+    case BFD_RELOC_XTC_I8_PCREL:
+        xtc_reloc = R_XTC_32_I8_R;
         break;
-    case BFD_RELOC_XTC_IMM_12_8:
-        xtc_reloc = R_XTC_32_IMM_12_8;
+    case BFD_RELOC_XTC_E8_PCREL:
+        xtc_reloc = R_XTC_32_E8_R;
         break;
-    case BFD_RELOC_XTC_IMM_8:
-        xtc_reloc = R_XTC_32_IMM_8;
+    case BFD_RELOC_XTC_E8_NR_PCREL:
+        xtc_reloc = R_XTC_32_E8_NR_R;
+        break;
+    case BFD_RELOC_XTC_E8_I8_PCREL:
+        xtc_reloc = R_XTC_32_E8_I8_R;
+        break;
+    case BFD_RELOC_XTC_E24_PCREL:
+        xtc_reloc = R_XTC_32_E24_R;
+        break;
+    case BFD_RELOC_XTC_E24_I8_PCREL:
+        xtc_reloc = R_XTC_32_E24_I8_R;
+        break;
+    case BFD_RELOC_XTC_E24_E8_PCREL:
+        xtc_reloc = R_XTC_32_E24_E8_R;
+        break;
+    case BFD_RELOC_XTC_E24_E8_NR_PCREL:
+        xtc_reloc = R_XTC_32_E24_E8_NR_R;
         break;
 
-    case BFD_RELOC_XTC_IMM_12_12_12:
-        xtc_reloc = R_XTC_32_IMM_12_12_12;
-        break;
-    case BFD_RELOC_XTC_IMM_12_12:
-        xtc_reloc = R_XTC_32_IMM_12_12;
-        break;
-    case BFD_RELOC_XTC_IMM_12:
-        xtc_reloc = R_XTC_32_IMM_12;
-        break;
 
     default:
-        printf("xtc_elf_reloc_type_lookup: unknown %d\n", code);
         abort();
 
       return (reloc_howto_type *) NULL;
@@ -469,9 +614,9 @@ xtc_elf_info_to_howto (bfd * abfd ATTRIBUTE_UNUSED,
   cache_ptr->howto = xtc_elf_howto_table [ELF32_R_TYPE (dst->r_info)];
 }
 
-struct elf32_mb_dyn_relocs
+struct elf32_xtc_dyn_relocs
 {
-  struct elf32_mb_dyn_relocs *next;
+  struct elf32_xtc_dyn_relocs *next;
 
   /* The input section of the reloc.  */
   asection *sec;
@@ -485,20 +630,20 @@ struct elf32_mb_dyn_relocs
 
 /* ELF linker hash entry.  */
 
-struct elf32_mb_link_hash_entry
+struct elf32_xtc_link_hash_entry
 {
   struct elf_link_hash_entry elf;
 
   /* Track dynamic relocs copied for this symbol.  */
-  struct elf32_mb_dyn_relocs *dyn_relocs;
+  struct elf32_xtc_dyn_relocs *dyn_relocs;
 
 };
 
-#define elf32_mb_hash_entry(ent) ((struct elf32_mb_link_hash_entry *)(ent))
+#define elf32_xtc_hash_entry(ent) ((struct elf32_xtc_link_hash_entry *)(ent))
 
 /* ELF linker hash table.  */
 
-struct elf32_mb_link_hash_table
+struct elf32_xtc_link_hash_table
 {
   struct elf_link_hash_table elf;
 
@@ -517,9 +662,9 @@ struct elf32_mb_link_hash_table
 
 /* Get the ELF linker hash table from a link_info structure.  */
 
-#define elf32_mb_hash_table(p)				\
+#define elf32_xtc_hash_table(p)				\
   (elf_hash_table_id ((struct elf_link_hash_table *) ((p)->hash)) \
-  == XTC_ELF_DATA ? ((struct elf32_mb_link_hash_table *) ((p)->hash)) : NULL)
+  == XTC_ELF_DATA ? ((struct elf32_xtc_link_hash_table *) ((p)->hash)) : NULL)
 
 /* Create an entry in a xtc ELF linker hash table.  */
 
@@ -533,7 +678,7 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
   if (entry == NULL)
     {
       entry = bfd_hash_allocate (table,
-				 sizeof (struct elf32_mb_link_hash_entry));
+				 sizeof (struct elf32_xtc_link_hash_entry));
       if (entry == NULL)
 	return entry;
     }
@@ -542,9 +687,9 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
   entry = _bfd_elf_link_hash_newfunc (entry, table, string);
   if (entry != NULL)
     {
-      struct elf32_mb_link_hash_entry *eh;
+      struct elf32_xtc_link_hash_entry *eh;
 
-      eh = (struct elf32_mb_link_hash_entry *) entry;
+      eh = (struct elf32_xtc_link_hash_entry *) entry;
       eh->dyn_relocs = NULL;
     }
 
@@ -556,15 +701,15 @@ link_hash_newfunc (struct bfd_hash_entry *entry,
 static struct bfd_link_hash_table *
 xtc_elf_link_hash_table_create (bfd *abfd)
 {
-  struct elf32_mb_link_hash_table *ret;
-  bfd_size_type amt = sizeof (struct elf32_mb_link_hash_table);
+  struct elf32_xtc_link_hash_table *ret;
+  bfd_size_type amt = sizeof (struct elf32_xtc_link_hash_table);
 
-  ret = (struct elf32_mb_link_hash_table *) bfd_zmalloc (amt);
+  ret = (struct elf32_xtc_link_hash_table *) bfd_zmalloc (amt);
   if (ret == NULL)
     return NULL;
 
   if (!_bfd_elf_link_hash_table_init (&ret->elf, abfd, link_hash_newfunc,
-				      sizeof (struct elf32_mb_link_hash_entry),
+				      sizeof (struct elf32_xtc_link_hash_entry),
 				      XTC_ELF_DATA))
     {
       free (ret);
@@ -656,7 +801,6 @@ xtc_elf_relocate_section (bfd *output_bfd,
   asection *sreloc;
   //bfd_vma *local_got_offsets;
 
-  printf("kjshkdhsaldhajsh\n");
 
   if (!xtc_elf_howto_table[R_XTC_max-1])
     xtc_elf_howto_init ();
@@ -809,18 +953,15 @@ xtc_elf_relocate_section (bfd *output_bfd,
 
                         unsigned inst = bfd_get_16( input_bfd, contents + offset);
                         inst |= (relocation >> (8+12))&0xFFF;
-                        printf("INST0 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 2);
                         inst |= (relocation >> 8) & 0xFFF;
-                        printf("INST1 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset + 2);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 4);
 
                         inst |= (relocation & 0xFF)<<4;
-                        printf("INST2 emit %04x\n", inst);
 
                         bfd_put_16 (input_bfd, inst,
 				    contents + offset + 4);
@@ -909,7 +1050,7 @@ xtc_elf_relocate_section (bfd *output_bfd,
 		  }
                 else
                 {
-                    (*_bfd_error_handler) ("Relocating here\n");
+//                    (*_bfd_error_handler) ("Relocating here\n");
 		    relocation += addend;
                     if (r_type == R_XTC_32) {
                         bfd_put_32 (input_bfd, relocation, contents + offset);
@@ -918,28 +1059,23 @@ xtc_elf_relocate_section (bfd *output_bfd,
 		    else
 		      {
                           if (r_type == R_XTC_32_PCREL) {
-                              printf("Is a PCREL relocation\n");
                               relocation -= (input_section->output_section->vma
                                              + input_section->output_offset
                                              + offset + INST_WORD_SIZE*3);
                           }
 
-                        printf("Relocation is %ld\n", relocation);
 
                         unsigned inst = bfd_get_16( input_bfd, contents + offset);
                         inst |= (relocation >> (8+12))&0xFFF;
-                        printf("INST0 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 2);
                         inst |= (relocation >> 8) & 0xFFF;
-                        printf("INST1 emit %04x\n", inst);
                         bfd_put_16 (input_bfd, inst, contents + offset + 2);
 
                         inst = bfd_get_16( input_bfd, contents + offset + 4);
 
                         inst |= (relocation & 0xFF)<<4;
-                        printf("INST2 emit %04x\n", inst);
 
                         bfd_put_16 (input_bfd, inst,
 				    contents + offset + 4);
@@ -1020,6 +1156,7 @@ xtc_elf_relocate_section (bfd *output_bfd,
 
 
 #endif
+#if 0
 
 static int xtc_bytes_12_12_8(bfd_vma value)
 {
@@ -1123,11 +1260,8 @@ static void xtc_emit_imm_8(bfd *abfd, bfd_byte *address, bfd_vma value)
 static void xtc_emit_imm_12(bfd *abfd, bfd_byte *address, bfd_vma value)
 {
     unsigned long inst = bfd_get_16(abfd, address);
-    printf("LOAD 0x%04lx, ",inst);
     inst &= ~0x0FFF;
     inst |= (value)&0x0FFF;
-    printf("EMIT 12 %04lx\n", inst);
-    
     bfd_put_16 (abfd, inst, address);
 }
 
@@ -1164,7 +1298,7 @@ static void xtc_emit_imm_12128(bfd *abfd, bfd_byte *address, bfd_vma value, int 
         abort();
     }
 }
-
+#endif
 
 static bfd_boolean
 xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
@@ -1196,12 +1330,12 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
       //arelent arel;
       reloc_howto_type *howto;
       unsigned long r_symndx;
-      bfd_vma phys_addr;
+      bfd_vma phys_addr, reserved;
       Elf_Internal_Sym *sym;
       asection *sec;
       bfd_vma relocation=0;
       bfd_reloc_status_type r = bfd_reloc_undefined;
-      int pcrel, fullim;
+      int pcrel;
 
       r_symndx = ELF32_R_SYM (rel->r_info);
       r_type = ELF32_R_TYPE (rel->r_info);
@@ -1235,89 +1369,69 @@ xtc_elf_relocate_section (bfd *output_bfd ATTRIBUTE_UNUSED,
                                    local_sections, local_syms,
                                    rel, &name, &relocation);
       pcrel=0;
-      fullim=0;
+      //fullim=0;
       switch (r_type)
       {
-      case R_XTC_32_IMM_12_12_8_PCREL:
-      case R_XTC_32_IMM_12_8_PCREL:
-      case R_XTC_32_IMM_8_PCREL:
+      case R_XTC_32_I8_R:
+      case R_XTC_32_E8_R:
+      case R_XTC_32_E8_I8_R:
+      case R_XTC_32_E24_R:
+      case R_XTC_32_E24_I8_R:
+      case R_XTC_32_E24_E8_R:
           pcrel=1;
-      case R_XTC_32_IMM_12_12_12:
-      case R_XTC_32_IMM_12_12:
-      case R_XTC_32_IMM_12:
-      case R_XTC_32_IMM_12_12_8:
-      case R_XTC_32_IMM_12_8:
-      case R_XTC_32_IMM_8:
 
-          {
-              switch (r_type) {
-              case R_XTC_32_IMM_12_12_12:
-              case R_XTC_32_IMM_12_12:
-              case R_XTC_32_IMM_12:
-                  fullim=1;
-              default:
-                  break;
-              }
+      case R_XTC_32_I8:
+      case R_XTC_32_E8:
+      case R_XTC_32_E8_I8:
+      case R_XTC_32_E24:
+      case R_XTC_32_E24_I8:
+      case R_XTC_32_E24_E8:
 
-              int len;
-              int i;
-              int reserved;
-              if (pcrel)
-              {
-                  reserved = R_XTC_32_IMM_8_PCREL - r_type + 1 ;
-                  phys_addr = relocation + rel->r_addend;
-                  printf("Reloc phys 0x%lx addend %lu\n", relocation, rel->r_addend);
-                  phys_addr -= (input_section->output_section->vma
-                                + input_section->output_offset);
-                  printf("Input section VMA %ld, offset %ld\n",input_section->output_section->vma,
-                         input_section->output_offset);
-                  phys_addr -= rel->r_offset;
-                  printf("Reloc offset %ld\n", rel->r_offset);
-                  phys_addr += rel->r_addend;
-                  phys_addr -= (reserved*2);
-              } else
-              {
-                  if (fullim)
-                      reserved = R_XTC_32_IMM_12 - r_type + 1;
-                  else
-                      reserved = R_XTC_32_IMM_8 - r_type + 1;
-                  phys_addr = relocation + rel->r_addend;
-                  printf("Reloc offset ABSOLUTE %ld\n", rel->r_offset);
-              }
-              if (fullim)
-                  len = xtc_bytes_12_12_12(phys_addr);
-              else
-                  len = xtc_bytes_12_12_8(phys_addr);
+          if (pcrel) {
+              reserved = xtc_reloc_pcrel_offset(r_type);
+              phys_addr = relocation + rel->r_addend;
+              phys_addr -= (input_section->output_section->vma
+                            + input_section->output_offset);
 
-              printf("Reserved: %d, len: %d, target address is delta %ld\n", reserved,len,phys_addr);
-              
-              for (i=0; i<reserved-len; i++)
-              {
-                  /* if we write 0, then execution will crash if we get this wrong
-                   */
-                  printf("Emit NOP\n");
-                  bfd_put_16 (input_bfd, 0x0000,
-                             (bfd_byte*) contents + rel->r_offset+i);
-              }
-              if (fullim) {
-                  printf("Emmiting FULL 12+12+12 Immediate len %d: %ld\n", len,phys_addr);
-                  xtc_emit_imm_121212(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
-                                      len);
-              }
-              else {
-                  xtc_emit_imm_12128(input_bfd, (bfd_byte*) contents + rel->r_offset+i+(reserved-len), phys_addr,
-                                     len);
-              }
-              r_type = R_XTC_NONE;
-              r = bfd_reloc_ok;
-        }
-          break;
+              phys_addr -= rel->r_offset;
+              phys_addr += rel->r_addend;
+          } else {
+              reserved = 0;
+              phys_addr = relocation + rel->r_addend;
+          }
+#ifdef DEBUG_RELAX
+          printf("Relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+#endif
+          if (xtc_emit_relocation(r_type, phys_addr-reserved, (bfd_byte*) contents + rel->r_offset)!=0) {
+              printf("Error relocating symbol '%s', address 0x%lx, at offset 0x%lx\n", name, phys_addr, rel->r_offset);
+              printf("Section: '%s'", input_section->name);
+
+              return FALSE;
+          }
+
+
+          r_type = R_XTC_NONE;
+          r = bfd_reloc_ok;
+
+      break;
 
         case R_XTC_NONE:
           r = bfd_reloc_ok;
           break;
+      case R_XTC_32:
+          /* Waht... */
+#if 0
+          bfd_put_32( input_bfd,
+                     contents + rel->r_offset,
+                     relocation + rel->r_addend);
+#endif
+          r = bfd_reloc_ok;
+          break;
 
       default:
+          fprintf(stderr,"Cannot handle relocation type %d\n", r_type);
+          return FALSE;
+
       break;
         }
         if (r_type!=R_XTC_NONE)
@@ -1397,16 +1511,15 @@ xtc_elf_check_relocs (bfd * abfd,
     struct elf_link_hash_entry ** sym_hashes_end;
     const Elf_Internal_Rela *     rel;
     const Elf_Internal_Rela *     rel_end;
-    struct elf32_mb_link_hash_table *htab;
+    struct elf32_xtc_link_hash_table *htab;
     asection *sreloc = NULL;
 
-    printf("CHECK RELOCS\n");
 
 
     if (info->relocatable)
         return TRUE;
 
-    htab = elf32_mb_hash_table (info);
+    htab = elf32_xtc_hash_table (info);
     if (htab == NULL)
         return FALSE;
 
@@ -1543,8 +1656,12 @@ xtc_elf_check_relocs (bfd * abfd,
                         && (h->root.type == bfd_link_hash_defweak
                             || !h->def_regular)))
                 {
-                    struct elf32_mb_dyn_relocs *p;
-                    struct elf32_mb_dyn_relocs **head;
+                    /*(*_bfd_error_handler)("Cannot handle relocation for symbol (no shared support) in section %s",
+                                          bfd_section_name (abfd, sec)
+                                         );
+                    abort();*/
+                    struct elf32_xtc_dyn_relocs *p;
+                    struct elf32_xtc_dyn_relocs **head;
 
                     /* When creating a shared object, we must copy these
                      relocs into the output file.  We create a reloc
@@ -1592,11 +1709,11 @@ xtc_elf_check_relocs (bfd * abfd,
                         }
                         elf_section_data (sec)->sreloc = sreloc;
                     }
-
+#if 1
                     /* If this is a global symbol, we count the number of
                      relocations we need for this symbol.  */
                     if (h != NULL)
-                        head = &((struct elf32_mb_link_hash_entry *) h)->dyn_relocs;
+                        head = &((struct elf32_xtc_link_hash_entry *) h)->dyn_relocs;
                     else
                     {
                         /* Track dynamic relocs needed for local syms too.
@@ -1617,14 +1734,14 @@ xtc_elf_check_relocs (bfd * abfd,
                             return FALSE;
 
                         vpp = &elf_section_data (s)->local_dynrel;
-                        head = (struct elf32_mb_dyn_relocs **) vpp;
+                        head = (struct elf32_xtc_dyn_relocs **) vpp;
                     }
 
                     p = *head;
                     if (p == NULL || p->sec != sec)
                     {
                         bfd_size_type amt = sizeof *p;
-                        p = ((struct elf32_mb_dyn_relocs *)
+                        p = ((struct elf32_xtc_dyn_relocs *)
                              bfd_alloc (htab->elf.dynobj, amt));
                         if (p == NULL)
                             return FALSE;
@@ -1634,12 +1751,15 @@ xtc_elf_check_relocs (bfd * abfd,
                         p->count = 0;
                         p->pc_count = 0;
                     }
-
                     p->count += 1;
                     if (r_type == R_XTC_32_PCREL)
                         p->pc_count += 1;
+#endif
                 }
             }
+            break;
+        default:
+            //  abort();
             break;
         }
     }
@@ -1662,7 +1782,6 @@ calc_fixup (bfd_vma addr, asection *sec)
   /* Look for addr in relax table, total fixup value.  */
   for (i = 0; i < sec->relax_count; i++)
   {
-      printf("Check calc_fixup address %08lx against relax entry at %08lx\n", addr, sec->relax[i].addr);
       if (addr <= sec->relax[i].addr)
         break;
       fixup -= sec->relax[i].size;
@@ -1728,13 +1847,11 @@ xtc_elf_relax_delete_bytes (bfd *abfd, asection *sec,
       if (isym->st_shndx == sec_shndx
 	  && isym->st_value > addr
           && isym->st_value <= toaddr) {
-
+#if 0
           char *name = (bfd_elf_string_from_elf_section
                         (abfd, symtab_hdr->sh_link, isym->st_name));
 	      
-
-          printf("Adjust %s %d, before %lx after %lx\n", name, -count, isym->st_value,
-                isym->st_value-count);
+#endif
           isym->st_value -= count;
       }
     }
@@ -1758,6 +1875,374 @@ xtc_elf_relax_delete_bytes (bfd *abfd, asection *sec,
     }
 }
 
+static bfd_boolean xtc_reloc_pcrel(int rel)
+{
+    return (rel == (int) R_XTC_32_E8_R)
+        || (rel == (int) R_XTC_32_I8_R)
+        || (rel == (int) R_XTC_32_E8_I8_R)
+        || (rel == (int) R_XTC_32_E24_R)
+        || (rel == (int) R_XTC_32_E24_I8_R)
+        || (rel == (int) R_XTC_32_E24_E8_R);
+}
+
+static int xtc_reloc_pcrel_offset(int rel)
+{
+    int offset=0;
+    switch (rel) {
+    case R_XTC_32_E8_R:
+        offset = 2; break;
+    case R_XTC_32_I8_R:
+        offset = 2; break;
+    case R_XTC_32_E8_I8_R:
+        offset = 4; break;
+    case R_XTC_32_E24_R:
+        offset = 4; break;
+    case R_XTC_32_E24_I8_R:
+        offset = 6; break;
+    case R_XTC_32_E24_E8_R:
+        offset = 6; break;
+    default:
+        abort();
+    }
+    return offset;
+}
+
+static bfd_boolean xtc_fits_imm(long imm, int bitsize)
+{
+    if (bitsize==0) {
+        return imm==0;
+    }
+
+    return imm >= -(1LL << (bitsize - 1))
+        && imm < (1LL << (bitsize - 1));
+
+}
+
+static inline long xtc_adjusted_rel(long value, long adjust)
+{
+    if (value<0) {
+        value+=adjust;
+    } 
+    return value;
+}
+
+static void xtc_relax_e24_i8_to_e8_i8(unsigned char *location, long *value)
+{
+    // Move I8 backwards. It's a 4-5, move to 2-3. The
+    // upper 2 bytes will be removed later on.
+#ifdef DEBUG_RELAX
+    printf("E24I8->E8I8: %02x%02x %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3],
+           location[4],
+           location[5]);
+#endif
+    unsigned char savecond = location[2];
+
+    location[2] = location[4] |0x80; // Signal extended
+    location[3] = location[5];
+
+    // Move extension forward. modify for IMM
+    location[4] = (savecond&0xf) | 0x40;
+    location[5] = 0;
+#ifdef DEBUG_RELAX
+    printf("%02x%02x %02x%02x\n",
+           location[2],
+           location[3],
+           location[4],
+           location[5]);
+#endif
+    if (value) {
+        *value = xtc_adjusted_rel(*value,2);
+    }
+
+}
+
+static void xtc_relax_e24_to_e8( unsigned char *location ATTRIBUTE_UNUSED , long *value ATTRIBUTE_UNUSED)
+{
+    // xtc_relax_e24_i8_to_e8_i8(location);
+    abort();
+}
+
+static void xtc_relax_e8_i8_to_i8(unsigned  char *location, long *value)
+{
+    // Move i8 forward
+#ifdef DEBUG_RELAX
+    printf("E8I8->I8: %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3]);
+#endif
+    location[2] = location[0] & 0x7f; // Remove extension
+    location[3] = location[1];
+#ifdef DEBUG_RELAX
+    printf("%02x%02x\n",
+           location[2],
+           location[3]);
+#endif
+    if (value) {
+        *value = xtc_adjusted_rel(*value,2);
+    }
+}
+static void xtc_relax_e8_to_none(unsigned  char *location, long *value ATTRIBUTE_UNUSED)
+{
+#ifdef DEBUG_RELAX
+    printf("E8-> -- %02x%02x \n",
+           location[0],
+           location[1]);
+#endif
+    *location++=0xde;
+    *location++=0xad;
+}
+
+static unsigned long xtc_get16(const bfd_byte*src)
+{
+    return src[1] + (((unsigned long)src[0])<<8);
+}
+
+static unsigned long xtc_get32(const bfd_byte*src)
+{
+    unsigned long v = xtc_get16(src)<<16;
+    v |= xtc_get16(src+2);
+    return v;
+}
+
+static void xtc_put16(unsigned long value, bfd_byte*dest)
+{
+    dest[0] = value >> 8;
+    dest[1] = value;
+}
+
+static bfd_byte *xtc_emit_e24(bfd_byte *dest, long value)
+{
+    //unsigned long inst = 0x80006000;
+    unsigned long inst = xtc_get32(dest);
+    // Clean up inst first
+    inst &= ~0x0FFF00FF;
+    //printf("Emit E24, val %08lx - inst is %08lx\n", value, inst);
+    // Lower 15-bits of value go into the opcode itself.
+    inst |= (value & 0x7fff)<<16;
+    value>>=15;
+
+    // Next 8-bits are placed in the other
+    inst |= (value&0xff);
+    value>>=8;
+    inst |= ((value&1)<<12);
+
+    *dest++=inst>>24;
+    *dest++=inst>>16;
+    *dest++=inst>>8;
+    *dest++=inst;
+    return dest;
+}
+
+static int xtc_emit_relocation(int rel, long value, bfd_byte *dest)
+{
+    switch (rel) {
+    case R_XTC_32_E24_E8_R:
+    case R_XTC_32_E24_E8:
+
+        if (!xtc_fits_imm(value,32)) {
+            printf("Value too large for 32-bit\n");
+            return -1;
+        }
+
+
+        dest = xtc_emit_e24(dest,value>>8);
+
+        xtc_put16( (xtc_get16(dest+2) & 0xFF00) | ((value)&0xff), dest+2 );
+
+        break;
+
+    case R_XTC_32_E24_I8_R:
+    case R_XTC_32_E24_I8:
+        // First, emit E24
+        //BFD_ASSERT( xtc_fits_imm(value,32) );
+
+        dest = xtc_emit_e24(dest,value>>8);
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        break;
+
+    case R_XTC_32_E24_R:
+    case R_XTC_32_E24:
+        //        abort();
+        /* Assert that it fits */
+        if (! xtc_fits_imm(value,24)) {
+            printf("Value too large for 24-bit\n");
+
+            return -1;
+        }
+
+        dest = xtc_emit_e24(dest,value);
+
+        break;
+
+    case R_XTC_32_E8_R:
+    case R_XTC_32_E8:
+        dest+=2;
+        // Apply extension
+        if (!xtc_fits_imm(value,8)) {
+            printf("Value too large for 8-bit\n");
+            return -1;
+        }
+
+        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+
+        //abort();
+        break;
+
+    case R_XTC_32_E8_I8_R:
+    case R_XTC_32_E8_I8:
+        if (!xtc_fits_imm(value,16) ) {
+            printf("Value too large for 16-bit\n");
+            return -1;
+        }
+
+        //printf("Insn: %04lx , val %ld == ", xtc_get16(dest), value);
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        //printf("%04lx\n", xtc_get16(dest));
+        value>>=8;
+        dest+=2;
+        // Apply extension
+        xtc_put16( (xtc_get16(dest) & 0xFF00) | ((value)&0xff), dest);
+        //printf("Final: %04lx\n", xtc_get16(dest));
+        //abort();
+        break;
+
+    case R_XTC_32_I8_R:
+    case R_XTC_32_I8:
+        if (!xtc_fits_imm(value,8)) {
+            printf("Value too large for 8-bit\n");
+            return -1;
+        }
+
+        //printf("Insn: %04lx ", xtc_get16(dest));
+        xtc_put16( (xtc_get16(dest) & 0xF00F) | ((value<<4)&0xff0), dest);
+        //printf("Emit for instruction 0x%04lx, immed is %ld\n",xtc_get16(dest),value);
+        break;
+    }
+    return 0;
+}
+
+static bfd_boolean xtc_can_remove_extension(unsigned char *loc)
+{
+    long insn = xtc_get16(loc+2);
+    return (insn & 0x2f00)==0; // Either CC or DREG
+}
+
+static void xtc_relax_e24_e8_to_e8(unsigned char *location ATTRIBUTE_UNUSED, long *value)
+{
+#ifdef DEBUG_RELAX
+    printf("E24E8->E8: %02x%02x %02x%02x %02x%02x %02x%02x to ",
+           location[0],
+           location[1],
+           location[2],
+           location[3],
+           location[4],
+           location[5],
+           location[6],
+           location[7]
+          );
+    printf("%02x%02x%02x%02x\n",
+           location[4],
+           location[5],
+           location[6],
+           location[7]);
+#endif
+    if (value) {
+        *value = xtc_adjusted_rel(*value,4);
+    }
+
+}
+
+static int xtc_relax_relocation(int *rel, long value,  unsigned char *location)
+{
+#define NEW_RELOC_IF(bits, newrel, removedbytes, adjust, algo) \
+    if (xtc_fits_imm( xtc_adjusted_rel(value,adjust),bits)) { \
+     (*rel)=(newrel); \
+     retry=TRUE; \
+     algo(location+bytes, xtc_reloc_pcrel(*rel) ? &value : NULL); \
+     bytes+=removedbytes; \
+     break; \
+    }
+
+    //else { printf("Imm %ld does not fit %d bits\n", value,bits); }
+    int bytes = 0;
+    bfd_boolean retry;
+    int irel = *rel;
+
+#ifdef DEBUG_RELAX
+    printf("Relaxing value of %ld, current relocation is %d\n", value,*rel);
+#endif
+
+    do {
+        retry = FALSE;
+        //printf("Loop\n");
+#ifdef DEBUG_RELAX
+        printf("Loop: value of %ld, current relocation is %d\n", value,*rel);
+#endif
+        int ispcrel = xtc_reloc_pcrel(*rel);
+
+        switch (*rel)
+        {
+        case R_XTC_32_E24_E8_R:
+        case R_XTC_32_E24_E8:
+            /* This reloc uses an extra extension because it has some condition code.
+             We can only remove the extension immed. */
+
+            
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 4, ispcrel?4:0, xtc_relax_e24_e8_to_e8);
+            //abort();
+            break;
+
+        case R_XTC_32_E24_I8_R:
+        case R_XTC_32_E24_I8:
+            NEW_RELOC_IF(16, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_I8_R : R_XTC_32_E8_I8, 2, ispcrel?2:0, xtc_relax_e24_i8_to_e8_i8);
+            break;
+
+        case R_XTC_32_E24_R:
+        case R_XTC_32_E24:
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_E8_R : R_XTC_32_E8, 2, ispcrel?2:0, xtc_relax_e24_to_e8);
+            break;
+
+        case R_XTC_32_E8_R:
+        case R_XTC_32_E8:
+            if (!xtc_can_remove_extension(location+bytes)) {
+                break;
+            }
+            NEW_RELOC_IF(0, R_XTC_NONE, 2, ispcrel?2:0, xtc_relax_e8_to_none);
+            break;
+
+        case R_XTC_32_E8_I8_R:
+        case R_XTC_32_E8_I8:
+            if (!xtc_can_remove_extension(location+bytes)) {
+                //printf("Cannot remove extension\n");
+                break;
+            }
+            //break; // Disable for now
+
+            NEW_RELOC_IF(8, xtc_reloc_pcrel(*rel)? R_XTC_32_I8_R : R_XTC_32_I8, 2, ispcrel?2:0, xtc_relax_e8_i8_to_i8);
+            break;
+
+            /* We cannot relax this any further */
+            return -1;
+        }
+    } while (retry);
+
+    /* Apply relocation value */
+    if ( xtc_emit_relocation(*rel,value, location+bytes) < 0) {
+
+        printf("Error relaxing value of %ld, current relocation is %d (input reloc %d)\n", value,*rel, irel);
+
+        BFD_ASSERT(0);
+    }
+    return bytes;
+}
+
+
 
 static bfd_boolean
 xtc_elf_relax_section (bfd *abfd,
@@ -1778,7 +2263,7 @@ xtc_elf_relax_section (bfd *abfd,
     //asection *o;
     //struct elf_link_hash_entry *sym_hash;
     Elf_Internal_Sym *isymbuf;//, *isymend;
-    Elf_Internal_Sym *isym;
+    Elf_Internal_Sym *isym = NULL;
     int symcount;
     //int offset;
     //bfd_vma src, dest;
@@ -1790,6 +2275,7 @@ xtc_elf_relax_section (bfd *abfd,
     /* Only do this for a text section.  */
     if (link_info->relocatable
         || (sec->flags & SEC_RELOC) == 0
+        || (sec->flags & SEC_CODE) == 0
         || (sec->reloc_count == 0))
         return TRUE;
 
@@ -1823,21 +2309,25 @@ xtc_elf_relax_section (bfd *abfd,
 
     irelend = internal_relocs + sec->reloc_count;
     rel_count = 0;
+#ifdef DEBUG_RELAX
+
+    printf("Doing relaxation pass for section '%s'\n", sec->name);
+#endif
+
     for (irel = internal_relocs; irel < irelend; irel++, rel_count++)
     {
         bfd_vma symval;
 
-        printf("relax RELOC: %ld %ld\n", irel->r_info, ELF32_R_TYPE (irel->r_info));
-
-        if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8_PCREL)
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8_PCREL )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_8 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_8 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12_12 )
-            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_IMM_12_12 )
+#if 0
+        if ((ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E8_I8)
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_E8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_I8 )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E8_I8_R )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_I8_R )
+            && (ELF32_R_TYPE (irel->r_info) != (int) R_XTC_32_E24_E8_R )
            )
             continue; /* Can't delete this reloc.  */
-
+#endif
         /* Get the section contents.  */
         if (contents == NULL)
         {
@@ -1860,7 +2350,6 @@ xtc_elf_relax_section (bfd *abfd,
         /* Get the value of the symbol referred to by the reloc.  */
         if (ELF32_R_SYM (irel->r_info) < symtab_hdr->sh_info)
         {
-            printf("Local symbol\n");
             /* A local symbol.  */
             asection *sym_sec;
 
@@ -1874,13 +2363,41 @@ xtc_elf_relax_section (bfd *abfd,
             else
                 sym_sec = bfd_section_from_elf_index (abfd, isym->st_shndx);
 
+            symval = isym->st_value;
+
+            if (ELF_ST_TYPE (isym->st_info) == STT_SECTION)
+                symval += irel->r_addend;
+
+            if ((sym_sec->flags & SEC_MERGE)
+                && sym_sec->sec_info_type == SEC_INFO_TYPE_MERGE)
+                symval = _bfd_merged_section_offset (abfd, &sym_sec,
+                                                     elf_section_data (sym_sec)->sec_info,
+                                                     symval);
+
+
+#if 0
             symval = _bfd_elf_rela_local_sym (abfd, isym, &sym_sec, irel);
+#else
+            symval += sym_sec->output_section->vma + sym_sec->output_offset;
+#endif
+#ifdef DEBUG_RELAX
+            printf("Relaxing local symbol '%s' section '%s' at VMA 0x%08x\n"
+                   "Value: 0x%08x (%d), section offset %d\n",
+                   bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                    isym->st_name),
+                   sym_sec->output_section->name,
+                   (int)sym_sec->output_section->vma,
+                   (int)isym->st_value,
+                   (int)isym->st_value,
+                   (int)sym_sec->output_offset
+                  );
+#endif
         }
         else
         {
             unsigned long indx;
             struct elf_link_hash_entry *h;
-
+            isym = isymbuf + ELF32_R_SYM (irel->r_info);
             indx = ELF32_R_SYM (irel->r_info) - symtab_hdr->sh_info;
             h = elf_sym_hashes (abfd)[indx];
             BFD_ASSERT (h != NULL);
@@ -1891,20 +2408,23 @@ xtc_elf_relax_section (bfd *abfd,
                  symbol.  Just ignore it--it will be caught by the
                  regular reloc processing.  */
                 continue;
+#ifdef DEBUG_RELAX
+            printf("Relaxing global symbol '%s'\n",
+                   bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                    isym->st_name)
+                  );
+#endif
 
             symval = (h->root.u.def.value
                       + h->root.u.def.section->output_section->vma
                       + h->root.u.def.section->output_offset);
         }
-        int isPcrel = 0;
 
-        if ( (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_12_8_PCREL)
-            || (ELF32_R_TYPE (irel->r_info) == (int) R_XTC_32_IMM_12_8_PCREL)
-           )
+        if (xtc_reloc_pcrel( ELF32_R_TYPE( irel->r_info )))
         {
-            isPcrel = 1;
+            int offset = xtc_reloc_pcrel_offset(ELF32_R_TYPE( irel->r_info ));
             symval = symval + irel->r_addend
-                - (irel->r_offset
+                - (irel->r_offset + offset +
                    + sec->output_section->vma
                    + sec->output_offset);
         }
@@ -1914,111 +2434,35 @@ xtc_elf_relax_section (bfd *abfd,
 
         bfd_vma value = symval;
 
-        printf("About to check relax: value is %ld (0x%08lx) at address %lx\n", symval, symval,
-              irel->r_offset);
 
-        int bytesNeeded;
         int newReloc = ELF32_R_TYPE(irel->r_info);
         int deleteBytes = 0;
+        //printf("Reloc at 0x%lx (value: %ld)\n",irel->r_offset,value);
+#if 0
+        xtc_get_relocation_value (input_bfd, info, input_section,
+                                  local_sections, local_syms,
+                                  rel, &name, &relocation);
 
-        switch (ELF32_R_TYPE (irel->r_info))
-        {
+#endif
+        deleteBytes = xtc_relax_relocation(&newReloc, value,
+                                           elf_section_data (sec)->this_hdr.contents +
+                                           irel->r_offset);
 
-        case R_XTC_32_IMM_12_12_8_PCREL:
-        case R_XTC_32_IMM_12_12_8:
-            bytesNeeded = xtc_bytes_12_12_8(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                break;
-            case 2:
-                newReloc = isPcrel ? R_XTC_32_IMM_12_8_PCREL : R_XTC_32_IMM_12_8;
-                //xtc_emit_imm_12_8(abfd, contents + INST_WORD_SIZE, value);
-                deleteBytes = 1;
-                break;
-            case 1:
-                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
-                //xtc_emit_imm_8(abfd, contents + INST_WORD_SIZE*2, value);
-                deleteBytes = 2;
-            }
-            //newsize = bytesNeeded;
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
-
-            break;
-
-        case R_XTC_32_IMM_12_12_12:
-            bytesNeeded = xtc_bytes_12_12_12(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                break;
-            case 2:
-                newReloc = R_XTC_32_IMM_12_12;
-                deleteBytes = 1;
-                break;
-            case 1:
-                newReloc = R_XTC_32_IMM_12;
-                deleteBytes = 2;
-            }
-
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
-
-            break;
-
-        case R_XTC_32_IMM_12_12:
-            bytesNeeded = xtc_bytes_12_12_12(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                abort();
-                break;
-            case 2:
-                break;
-            case 1:
-                newReloc = R_XTC_32_IMM_12;
-                deleteBytes = 1;
-            }
-
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
-
-            break;
-
-        case R_XTC_32_IMM_12_8_PCREL:
-        case R_XTC_32_IMM_12_8:
-
-            bytesNeeded = xtc_bytes_12_12_8(value);
-
-            switch (bytesNeeded) {
-            case 3:
-                abort();
-                break;
-            case 2:
-                break;
-            case 1:
-                newReloc = isPcrel ? R_XTC_32_IMM_8_PCREL : R_XTC_32_IMM_8;
-                deleteBytes = 1;
-            }
-            printf("deleteBytes %d, newReloc %d\n", deleteBytes, newReloc);
-            break;
-
-        case R_XTC_32_IMM_8_PCREL:
-        case R_XTC_32_IMM_8:
-            // Cannot relax any further
-            break;
-
-        default:
-            {
-                char *name=NULL;
-                reloc_howto_type *howto = bfd_reloc_type_lookup(abfd, ELF32_R_TYPE(irel->r_info));
-                if (howto) {
-                    name = howto->name;
-                }
-                printf("Cannot handle reloc type %ld (%s)\n", ELF32_R_TYPE(irel->r_info),name);
-            }
-            abort();
+#ifdef DEBUG_RELAX
+        if (isym) {
+        printf("Relaxed global symbol '%s': old reloc %ld, new reloc %d, value %08lx (%ld)\n",
+               bfd_elf_string_from_elf_section (abfd, symtab_hdr->sh_link,
+                                                isym->st_name),
+               ELF32_R_TYPE(irel->r_info),
+               newReloc,
+               value,
+               value
+              );
         }
+#endif
 
         if (deleteBytes) {
+
             elf_section_data (sec)->relocs = internal_relocs;
             free_relocs = NULL;
 
@@ -2030,7 +2474,13 @@ xtc_elf_relax_section (bfd *abfd,
 
             irel->r_info = ELF32_R_INFO (ELF32_R_SYM (irel->r_info), newReloc );
             
-            xtc_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes * 2);
+            xtc_elf_relax_delete_bytes (abfd, sec, irel->r_offset, deleteBytes);
+
+            // Emit relocation
+            /*
+            xtc_emit_relocation(newReloc, value,
+                                elf_section_data (sec)->this_hdr.contents + irel->r_offset);
+            */
             *again = TRUE;
 
         }
@@ -2078,6 +2528,500 @@ error_return:
 
 
 
+static bfd_boolean
+xtc_elf_create_dynamic_sections (bfd *dynobj ATTRIBUTE_UNUSED,
+                                 struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+static bfd_boolean
+xtc_elf_adjust_dynamic_symbol (struct bfd_link_info *info ATTRIBUTE_UNUSED,
+                               struct elf_link_hash_entry *h ATTRIBUTE_UNUSED)
+{
+  return FALSE;
+}
+
+static bfd_boolean
+allocate_dynrelocs (struct elf_link_hash_entry *h, void * dat)
+{
+  struct bfd_link_info *info;
+  struct elf32_xtc_link_hash_table *htab;
+  struct elf32_xtc_link_hash_entry *eh;
+  struct elf32_xtc_dyn_relocs *p;
+
+  if (h->root.type == bfd_link_hash_indirect)
+    return TRUE;
+
+  info = (struct bfd_link_info *) dat;
+  htab = elf32_xtc_hash_table (info);
+  if (htab == NULL)
+    return FALSE;
+
+  if (htab->elf.dynamic_sections_created
+      && h->plt.refcount > 0)
+    {
+      /* Make sure this symbol is output as a dynamic symbol.
+	 Undefined weak syms won't yet be marked as dynamic.  */
+      if (h->dynindx == -1
+          && !h->forced_local)
+        {
+          if (! bfd_elf_link_record_dynamic_symbol (info, h))
+            return FALSE;
+        }
+
+      if (WILL_CALL_FINISH_DYNAMIC_SYMBOL (1, info->shared, h))
+        {
+          asection *s = htab->splt;
+
+          /* The first entry in .plt is reserved.  */
+          if (s->size == 0)
+            s->size = PLT_ENTRY_SIZE;
+
+          h->plt.offset = s->size;
+
+          /* If this symbol is not defined in a regular file, and we are
+             not generating a shared library, then set the symbol to this
+             location in the .plt.  This is required to make function
+             pointers compare as equal between the normal executable and
+             the shared library.  */
+          if (! info->shared
+              && !h->def_regular)
+            {
+              h->root.u.def.section = s;
+              h->root.u.def.value = h->plt.offset;
+            }
+
+          /* Make room for this entry.  */
+          s->size += PLT_ENTRY_SIZE;
+
+          /* We also need to make an entry in the .got.plt section, which
+             will be placed in the .got section by the linker script.  */
+	  htab->sgotplt->size += 4;
+
+          /* We also need to make an entry in the .rel.plt section.  */
+          htab->srelplt->size += sizeof (Elf32_External_Rela);
+        }
+      else
+        {
+          h->plt.offset = (bfd_vma) -1;
+          h->needs_plt = 0;
+        }
+    }
+  else
+    {
+      h->plt.offset = (bfd_vma) -1;
+      h->needs_plt = 0;
+    }
+
+  if (h->got.refcount > 0)
+    {
+      asection *s;
+
+      /* Make sure this symbol is output as a dynamic symbol.
+         Undefined weak syms won't yet be marked as dynamic.  */
+      if (h->dynindx == -1
+          && !h->forced_local)
+        {
+          if (! bfd_elf_link_record_dynamic_symbol (info, h))
+            return FALSE;
+        }
+
+      s = htab->sgot;
+      h->got.offset = s->size;
+      s->size += 4;
+      htab->srelgot->size += sizeof (Elf32_External_Rela);
+    }
+  else
+    h->got.offset = (bfd_vma) -1;
+
+  eh = (struct elf32_xtc_link_hash_entry *) h;
+  if (eh->dyn_relocs == NULL)
+    return TRUE;
+
+  /* In the shared -Bsymbolic case, discard space allocated for
+     dynamic pc-relative relocs against symbols which turn out to be
+     defined in regular objects.  For the normal shared case, discard
+     space for pc-relative relocs that have become local due to symbol
+     visibility changes.  */
+
+  if (info->shared)
+    {
+      if (h->def_regular
+	  && (h->forced_local
+	      || info->symbolic))
+	{
+	  struct elf32_xtc_dyn_relocs **pp;
+
+	  for (pp = &eh->dyn_relocs; (p = *pp) != NULL; )
+	    {
+	      p->count -= p->pc_count;
+	      p->pc_count = 0;
+	      if (p->count == 0)
+		*pp = p->next;
+	      else
+		pp = &p->next;
+	    }
+	}
+    }
+  else
+    {
+      /* For the non-shared case, discard space for relocs against
+	 symbols which turn out to need copy relocs or are not
+	 dynamic.  */
+
+      if (!h->non_got_ref
+	  && ((h->def_dynamic
+	       && !h->def_regular)
+	      || (htab->elf.dynamic_sections_created
+		  && (h->root.type == bfd_link_hash_undefweak
+		      || h->root.type == bfd_link_hash_undefined))))
+	{
+	  /* Make sure this symbol is output as a dynamic symbol.
+	     Undefined weak syms won't yet be marked as dynamic.  */
+	  if (h->dynindx == -1
+	      && !h->forced_local)
+	    {
+	      if (! bfd_elf_link_record_dynamic_symbol (info, h))
+		return FALSE;
+	    }
+
+	  /* If that succeeded, we know we'll be keeping all the
+	     relocs.  */
+	  if (h->dynindx != -1)
+	    goto keep;
+	}
+
+      eh->dyn_relocs = NULL;
+
+    keep: ;
+    }
+
+  /* Finally, allocate space.  */
+  for (p = eh->dyn_relocs; p != NULL; p = p->next)
+    {
+      asection *sreloc = elf_section_data (p->sec)->sreloc;
+      sreloc->size += p->count * sizeof (Elf32_External_Rela);
+    }
+
+  return TRUE;
+}
+
+
+/* Set the sizes of the dynamic sections.  */
+
+static bfd_boolean
+xtc_elf_size_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+                               struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+  struct elf32_xtc_link_hash_table *htab;
+  bfd *dynobj;
+  asection *s;
+  bfd *ibfd;
+
+  htab = elf32_xtc_hash_table (info);
+  if (htab == NULL)
+    return FALSE;
+
+  dynobj = htab->elf.dynobj;
+  BFD_ASSERT (dynobj != NULL);
+
+  /* Set up .got offsets for local syms, and space for local dynamic
+     relocs.  */
+  for (ibfd = info->input_bfds; ibfd != NULL; ibfd = ibfd->link_next)
+    {
+      bfd_signed_vma *local_got;
+      bfd_signed_vma *end_local_got;
+      bfd_size_type locsymcount;
+      Elf_Internal_Shdr *symtab_hdr;
+      asection *srel;
+
+      if (bfd_get_flavour (ibfd) != bfd_target_elf_flavour)
+        continue;
+
+      for (s = ibfd->sections; s != NULL; s = s->next)
+	{
+	  struct elf32_xtc_dyn_relocs *p;
+
+	  for (p = ((struct elf32_xtc_dyn_relocs *)
+		    elf_section_data (s)->local_dynrel);
+	       p != NULL;
+	       p = p->next)
+	    {
+	      if (!bfd_is_abs_section (p->sec)
+		  && bfd_is_abs_section (p->sec->output_section))
+		{
+		  /* Input section has been discarded, either because
+		     it is a copy of a linkonce section or due to
+		     linker script /DISCARD/, so we'll be discarding
+		     the relocs too.  */
+		}
+	      else if (p->count != 0)
+		{
+		  srel = elf_section_data (p->sec)->sreloc;
+		  srel->size += p->count * sizeof (Elf32_External_Rela);
+		  if ((p->sec->output_section->flags & SEC_READONLY) != 0)
+		    info->flags |= DF_TEXTREL;
+		}
+	    }
+	}
+
+      local_got = elf_local_got_refcounts (ibfd);
+      if (!local_got)
+        continue;
+
+      symtab_hdr = &elf_tdata (ibfd)->symtab_hdr;
+      locsymcount = symtab_hdr->sh_info;
+      end_local_got = local_got + locsymcount;
+      s = htab->sgot;
+      srel = htab->srelgot;
+
+      for (; local_got < end_local_got; ++local_got)
+        {
+          if (*local_got > 0)
+            {
+              *local_got = s->size;
+              s->size += 4;
+              if (info->shared)
+                srel->size += sizeof (Elf32_External_Rela);
+            }
+          else
+            *local_got = (bfd_vma) -1;
+        }
+    }
+
+  /* Allocate global sym .plt and .got entries, and space for global
+     sym dynamic relocs.  */
+  elf_link_hash_traverse (elf_hash_table (info), allocate_dynrelocs, info);
+
+  if (elf_hash_table (info)->dynamic_sections_created)
+    {
+      /* Make space for the trailing nop in .plt.  */
+      if (htab->splt->size > 0)
+        htab->splt->size += 4;
+    }
+
+  /* The check_relocs and adjust_dynamic_symbol entry points have
+     determined the sizes of the various dynamic sections.  Allocate
+     memory for them.  */
+  for (s = dynobj->sections; s != NULL; s = s->next)
+    {
+      const char *name;
+      bfd_boolean strip = FALSE;
+
+      if ((s->flags & SEC_LINKER_CREATED) == 0)
+        continue;
+
+      /* It's OK to base decisions on the section name, because none
+         of the dynobj section names depend upon the input files.  */
+      name = bfd_get_section_name (dynobj, s);
+
+      if (strncmp (name, ".rela", 5) == 0)
+        {
+          if (s->size == 0)
+            {
+              /* If we don't need this section, strip it from the
+        	 output file.  This is to handle .rela.bss and
+        	 .rela.plt.  We must create it in
+        	 create_dynamic_sections, because it must be created
+        	 before the linker maps input sections to output
+        	 sections.  The linker does that before
+        	 adjust_dynamic_symbol is called, and it is that
+        	 function which decides whether anything needs to go
+        	 into these sections.  */
+              strip = TRUE;
+            }
+          else
+            {
+              /* We use the reloc_count field as a counter if we need
+        	 to copy relocs into the output file.  */
+              s->reloc_count = 0;
+            }
+        }
+      else if (s != htab->splt && s != htab->sgot && s != htab->sgotplt)
+        {
+          /* It's not one of our sections, so don't allocate space.  */
+          continue;
+        }
+
+      if (strip)
+        {
+          s->flags |= SEC_EXCLUDE;
+          continue;
+        }
+
+      /* Allocate memory for the section contents.  */
+      /* FIXME: This should be a call to bfd_alloc not bfd_zalloc.
+         Unused entries should be reclaimed before the section's contents
+         are written out, but at the moment this does not happen.  Thus in
+         order to prevent writing out garbage, we initialise the section's
+         contents to zero.  */
+      s->contents = (bfd_byte *) bfd_zalloc (dynobj, s->size);
+      if (s->contents == NULL && s->size != 0)
+        return FALSE;
+    }
+
+  if (elf_hash_table (info)->dynamic_sections_created)
+    {
+      /* Add some entries to the .dynamic section.  We fill in the
+	 values later, in microblaze_elf_finish_dynamic_sections, but we
+	 must add the entries now so that we get the correct size for
+	 the .dynamic section.  The DT_DEBUG entry is filled in by the
+	 dynamic linker and used by the debugger.  */
+#define add_dynamic_entry(TAG, VAL)			\
+      _bfd_elf_add_dynamic_entry (info, TAG, VAL)
+
+      if (info->executable)
+        {
+          if (!add_dynamic_entry (DT_DEBUG, 0))
+            return FALSE;
+        }
+
+      if (!add_dynamic_entry (DT_RELA, 0)
+          || !add_dynamic_entry (DT_RELASZ, 0)
+          || !add_dynamic_entry (DT_RELAENT, sizeof (Elf32_External_Rela)))
+	return FALSE;
+
+      if (htab->splt->size != 0)
+        {
+          if (!add_dynamic_entry (DT_PLTGOT, 0)
+              || !add_dynamic_entry (DT_PLTRELSZ, 0)
+              || !add_dynamic_entry (DT_PLTREL, DT_RELA)
+              || !add_dynamic_entry (DT_JMPREL, 0)
+              || !add_dynamic_entry (DT_BIND_NOW, 1))
+            return FALSE;
+        }
+
+      if (info->flags & DF_TEXTREL)
+        {
+          if (!add_dynamic_entry (DT_TEXTREL, 0))
+            return FALSE;
+        }
+    }
+#undef add_dynamic_entry
+  return TRUE;
+}
+
+/* Finish up dynamic symbol handling.  We set the contents of various
+   dynamic sections here.  */
+
+static bfd_boolean
+xtc_elf_finish_dynamic_symbol (bfd *output_bfd ATTRIBUTE_UNUSED,
+                               struct bfd_link_info *info ATTRIBUTE_UNUSED,
+                               struct elf_link_hash_entry *h ATTRIBUTE_UNUSED,
+                               Elf_Internal_Sym *sym ATTRIBUTE_UNUSED)
+{
+
+
+    return FALSE;
+
+}
+
+/* Finish up the dynamic sections.  */
+
+static bfd_boolean
+xtc_elf_finish_dynamic_sections (bfd *output_bfd ATTRIBUTE_UNUSED,
+                                 struct bfd_link_info *info ATTRIBUTE_UNUSED)
+{
+
+    bfd *dynobj;
+    asection *sdyn;
+    //asection *sgot;
+    struct elf32_xtc_link_hash_table *htab;
+
+    htab = elf32_xtc_hash_table (info);
+    if (htab == NULL)
+        return FALSE;
+
+    dynobj = htab->elf.dynobj;
+
+    sdyn = bfd_get_linker_section (dynobj, ".dynamic");
+
+    if (htab->elf.dynamic_sections_created)
+    {
+        asection *splt;
+        Elf32_External_Dyn *dyncon, *dynconend;
+
+        splt = bfd_get_linker_section (dynobj, ".plt");
+        BFD_ASSERT (splt != NULL && sdyn != NULL);
+
+        dyncon = (Elf32_External_Dyn *) sdyn->contents;
+        dynconend = (Elf32_External_Dyn *) (sdyn->contents + sdyn->size);
+        for (; dyncon < dynconend; dyncon++)
+        {
+            Elf_Internal_Dyn dyn;
+            const char *name;
+            bfd_boolean size;
+
+            bfd_elf32_swap_dyn_in (dynobj, dyncon, &dyn);
+
+            switch (dyn.d_tag)
+            {
+                //case DT_PLTGOT:   name = ".got.plt"; size = FALSE; break;
+                // case DT_PLTRELSZ: name = ".rela.plt"; size = TRUE; break;
+                // case DT_JMPREL:   name = ".rela.plt"; size = FALSE; break;
+            case DT_RELA:     name = ".rela.dyn"; size = FALSE; break;
+            case DT_RELASZ:   name = ".rela.dyn"; size = TRUE; break;
+            default:	  name = NULL; size = FALSE; break;
+            }
+
+            if (name != NULL)
+            {
+                asection *s;
+
+                s = bfd_get_section_by_name (output_bfd, name);
+                if (s == NULL)
+                    dyn.d_un.d_val = 0;
+                else
+                {
+                    if (! size)
+                        dyn.d_un.d_ptr = s->vma;
+                    else
+                        dyn.d_un.d_val = s->size;
+                }
+                bfd_elf32_swap_dyn_out (output_bfd, &dyn, dyncon);
+            }
+        }
+
+        /* Clear the first entry in the procedure linkage table,
+         and put a nop in the last four bytes.  */
+        if (splt->size > 0)
+        {
+            memset (splt->contents, 0, PLT_ENTRY_SIZE);
+            bfd_put_32 (output_bfd, (bfd_vma) 0x80000000 /* nop.  */,
+                        splt->contents + splt->size - 4);
+        }
+
+        elf_section_data (splt->output_section)->this_hdr.sh_entsize = 4;
+    }
+#if 0
+    /* Set the first entry in the global offset table to the address of
+     the dynamic section.  */
+    sgot = bfd_get_linker_section (dynobj, ".got.plt");
+    if (sgot && sgot->size > 0)
+    {
+        if (sdyn == NULL)
+            bfd_put_32 (output_bfd, (bfd_vma) 0, sgot->contents);
+        else
+            bfd_put_32 (output_bfd,
+                        sdyn->output_section->vma + sdyn->output_offset,
+                        sgot->contents);
+        elf_section_data (sgot->output_section)->this_hdr.sh_entsize = 4;
+    }
+
+    if (htab->sgot && htab->sgot->size > 0)
+        elf_section_data (htab->sgot->output_section)->this_hdr.sh_entsize = 4;
+#endif
+
+    return TRUE;
+}
+
+
+
+
+
+
+
 
 
 
@@ -2116,17 +3060,17 @@ error_return:
 //#define elf_backend_copy_indirect_symbol        xtc_elf_copy_indirect_symbol
 #define bfd_elf32_bfd_link_hash_table_create    xtc_elf_link_hash_table_create
 #define elf_backend_can_gc_sections		1
-#define elf_backend_can_refcount    		1
-#define elf_backend_want_got_plt    		1
-#define elf_backend_plt_readonly    		1
-#define elf_backend_got_header_size 		12
+//#define elf_backend_can_refcount    		1
+//#define elf_backend_want_got_plt                0
+//#define elf_backend_plt_readonly    		1
+//#define elf_backend_got_header_size 		12
 #define elf_backend_rela_normal     		1
 
-//#define elf_backend_adjust_dynamic_symbol       xtc_elf_adjust_dynamic_symbol
-//#define elf_backend_create_dynamic_sections     xtc_elf_create_dynamic_sections
-//#define elf_backend_finish_dynamic_sections     xtc_elf_finish_dynamic_sections
-//#define elf_backend_finish_dynamic_symbol       xtc_elf_finish_dynamic_symbol
-//#define elf_backend_size_dynamic_sections       xtc_elf_size_dynamic_sections
+#define elf_backend_adjust_dynamic_symbol       xtc_elf_adjust_dynamic_symbol
+#define elf_backend_create_dynamic_sections     xtc_elf_create_dynamic_sections
+#define elf_backend_finish_dynamic_sections     xtc_elf_finish_dynamic_sections
+#define elf_backend_finish_dynamic_symbol       xtc_elf_finish_dynamic_symbol
+#define elf_backend_size_dynamic_sections       xtc_elf_size_dynamic_sections
 //#define elf_backend_add_symbol_hook		xtc_elf_add_symbol_hook
 
 #include "elf32-target.h"

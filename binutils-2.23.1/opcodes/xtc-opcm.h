@@ -29,66 +29,77 @@ enum xtc_instr
     add,
     addc,
     sub,
+    subb,
     and,
     or,
     copy,
+    cmp,
+    xor,
+    shl,
+    shr,
+    srl,
+    sra,
+    mul,
+
     not,
+    cadd,
+    csub,
+    sextb,
+    sexts,
+
     bri,
-    brie,
-    brine,
-    brig,
-    brige,
-    bril,
-    brile,
+
     imm,
     limr,
+
     stw,
-    stwpreinc,
-    stwpostinc,
-    stwpredec,
-    stwpostdec,
-    sth,
-    sthpreinc,
-    sthpostinc,
+    sts,
     stb,
-    stbpreinc,
+    stspr,
+    stwpostinc,
+    stspostinc,
     stbpostinc,
-    stwi,
-    sthi,
-    stbi,
+    stsprpostinc,
 
     ldw,
-    ldwpreinc,
-    ldwpostinc,
-    ldwpredec,
-    ldwpostdec,
-    ldh,
-    ldhpreinc,
-    ldhpostinc,
+    lds,
     ldb,
-    ldbpreinc,
+    ldspr,
+    ldwpostinc,
+    ldspostinc,
     ldbpostinc,
+    ldsprpostinc,
+
+#if 0 /* Old instructions not supported any more */
     ldwi,
     ldhi,
     ldbi,
+    ldwpreinc,
+    ldwpredec,
+    ldwpostdec,
+    ldhpreinc,
+    ldhpostinc,
+    ldbpreinc,
+#endif
 
     addi,
+    addri,
     cmpi,
     call,
     callr,
     brr,
     lsr,
     ssr,
-    ret,
+    jmp,
+    jmpe,
+    copr,
+    copw,
+    rspr,
+    wspr,
+    rusr,
+    wusr,
 
     invalid_inst
-};
-
-enum xtc_instr_type
-{
-  arithmetic_inst, logical_inst, mult_inst, div_inst, branch_inst,
-  return_inst, immediate_inst, special_inst, memory_load_inst,
-  memory_store_inst, barrel_shift_inst, anyware_inst
 };
 
 #define INST_WORD_SIZE 2
@@ -96,15 +107,17 @@ enum xtc_instr_type
 #define MIN_REGNUM 0
 #define MAX_REGNUM 31
 
-#define REG_PC  32 /* PC.  */
-#define REG_Y  33 /* Y  */
-#define REG_BR  34 /* BR  */
+#define REG_Y     16 /* Y  */
+#define REG_PSR   17
+#define REG_SPSR  18
+#define REG_TR    19
+#define REG_TPC    20
+#define REG_SR0    21
 
 /* Alternate names for gen purpose regs.  */
 #define REG_SP  15 /* stack pointer.  */
 
 /* Assembler Register - Used in Delay Slot Optimization.  */
-#define REG_AS    18
 #define REG_ZERO  0
  
 #define RA_LOW  0 /* Low bit for RA.  */

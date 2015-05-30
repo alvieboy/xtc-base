@@ -1,6 +1,8 @@
 library ieee;
 use ieee.std_logic_1164.all;
 use ieee.numeric_std.all;
+library work;
+use work.wishbonepkg.all;
 
 entity xtc_top_ppro is
   port (
@@ -68,6 +70,7 @@ architecture behave of xtc_top_ppro is
     clkout: out std_logic;
     clkout1: out std_logic;
     clkout2: out std_logic;
+    clkout2x: out std_logic;
     rstout: out std_logic
   );
   end component;
@@ -80,51 +83,60 @@ architecture behave of xtc_top_ppro is
 
   component xtc_top_bram is
   port (
-    wb_clk_i:       in std_logic;
-    wb_rst_i:       in std_logic;
-
+    wb_syscon:      in wb_syscon_type;
     -- IO wishbone interface
-
-    wb_ack_i:       in std_logic;
-    wb_dat_i:       in std_logic_vector(31 downto 0);
-    wb_dat_o:       out std_logic_vector(31 downto 0);
-    wb_adr_o:       out std_logic_vector(31 downto 0);
-    wb_cyc_o:       out std_logic;
-    wb_stb_o:       out std_logic;
-    wb_sel_o:       out std_logic_vector(3 downto 0);
-    wb_we_o:        out std_logic
-
+    iowbo:           out wb_mosi_type;
+    iowbi:           in wb_miso_type
   );
   end component;
 
   signal wb_read:    std_logic_vector(31 downto 0);
   signal wb_write:   std_logic_vector(31 downto 0);
   signal wb_address: std_logic_vector(31 downto 0);
+  signal wb_tag_i:   std_logic_vector(31 downto 0);
+  signal wb_tag_o:   std_logic_vector(31 downto 0);
   signal wb_stb:     std_logic;
   signal wb_cyc:     std_logic;
   signal wb_sel:     std_logic_vector(3 downto 0);
   signal wb_we:      std_logic;
   signal wb_ack:     std_logic;
+  signal wb_int:     std_logic;
   signal wb_stall:     std_logic;
+  signal wb_clk_i_2x: std_ulogic;
 
 begin
 
   cpu: xtc_top_bram
   port map (
-    wb_clk_i        => wb_clk_i,
-    wb_rst_i        => wb_rst_i,
+    wb_syscon.clk        => wb_clk_i,
+    wb_syscon.rst        => wb_rst_i,
 
     -- Master wishbone interface
-
-    wb_ack_i        => wb_ack,
-    wb_dat_i        => wb_read,
-    wb_dat_o        => wb_write,
-    wb_adr_o        => wb_address,
-    wb_cyc_o        => wb_cyc,
-    wb_stb_o        => wb_stb,
-    wb_sel_o        => wb_sel,
-    wb_we_o         => wb_we
+        
+    iowbi.ack        => wb_ack,
+    iowbi.dat        => wb_read,
+    iowbi.tag        => wb_tag_i,
+    iowbi.int        => wb_int,
+    iowbi.stall      => '0',
+    iowbo.dat        => wb_write,
+    iowbo.adr        => wb_address,
+    iowbo.cyc        => wb_cyc,
+    iowbo.tag        => wb_tag_o,
+    iowbo.stb        => wb_stb,
+    iowbo.sel        => wb_sel,
+    iowbo.we         => wb_we
   );
+
+
+  -- Simple tag generator
+  process(wb_clk_i)
+  begin
+    if rising_edge(wb_clk_i) then
+       if wb_cyc='1' and wb_stb='1' and wb_ack='0' then
+        wb_tag_o <= wb_tag_i;
+       end if;
+    end if;
+  end process;
 
   myuart: uart
     port map (
@@ -137,7 +149,7 @@ begin
       wb_cyc_i    => wb_cyc,
       wb_stb_i    => wb_stb,
       wb_ack_o    => wb_ack,
-      wb_inta_o   => open,
+      wb_inta_o   => wb_int,
   
       tx          => txd,
       rx          => rxd
@@ -163,6 +175,7 @@ begin
     clkin   => clk,
     rstin   => '0'  ,
     clkout  => sysclk,
+    clkout2x  => wb_clk_i_2x,
     rstout  => clkgen_rst
   );
 

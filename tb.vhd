@@ -12,183 +12,48 @@ end entity tb;
 
 architecture sim of tb is
 
-  constant period: time := 9.615 ns;
+  constant period: time := 10 ns;--9.615 ns;
   signal w_clk: std_logic := '0';
+  signal w_clk_2x: std_logic := '1';
   signal w_rst: std_logic := '0';
-
-  signal wb_read:    std_logic_vector(31 downto 0);
-  signal wb_write:   std_logic_vector(31 downto 0);
-  signal wb_address: std_logic_vector(31 downto 0);
-  signal wb_stb:     std_logic;
-  signal wb_cyc:     std_logic;
-  signal wb_sel:     std_logic_vector(3 downto 0);
-  signal wb_we:      std_logic;
-  signal wb_ack:     std_logic;
-  signal wb_stall:     std_logic;
-
-  signal rom_wb_ack:       std_logic;
-  signal rom_wb_read:      std_logic_vector(31 downto 0);
-  signal rom_wb_adr:       std_logic_vector(31 downto 0);
-  signal rom_wb_cyc:       std_logic;
-  signal rom_wb_stb:       std_logic;
-  signal rom_wb_cti:       std_logic_vector(2 downto 0);
-  signal rom_wb_stall:     std_logic;
-
-  component wbarb2_1 is
-  generic (
-    ADDRESS_HIGH: integer := 31;
-    ADDRESS_LOW: integer := 0
-  );
-  port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-
-    -- Master 0 signals
-
-    m0_wb_dat_o: out std_logic_vector(31 downto 0);
-    m0_wb_dat_i: in std_logic_vector(31 downto 0);
-    m0_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m0_wb_sel_i: in std_logic_vector(3 downto 0);
-    m0_wb_cti_i: in std_logic_vector(2 downto 0);
-    m0_wb_we_i:  in std_logic;
-    m0_wb_cyc_i: in std_logic;
-    m0_wb_stb_i: in std_logic;
-    m0_wb_stall_o: out std_logic;
-    m0_wb_ack_o: out std_logic;
-
-    -- Master 1 signals
-
-    m1_wb_dat_o: out std_logic_vector(31 downto 0);
-    m1_wb_dat_i: in std_logic_vector(31 downto 0);
-    m1_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m1_wb_sel_i: in std_logic_vector(3 downto 0);
-    m1_wb_cti_i: in std_logic_vector(2 downto 0);
-    m1_wb_we_i:  in std_logic;
-    m1_wb_cyc_i: in std_logic;
-    m1_wb_stb_i: in std_logic;
-    m1_wb_ack_o: out std_logic;
-    m1_wb_stall_o: out std_logic;
-
-    -- Slave signals
-
-    s0_wb_dat_i: in std_logic_vector(31 downto 0);
-    s0_wb_dat_o: out std_logic_vector(31 downto 0);
-    s0_wb_adr_o: out std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    s0_wb_sel_o: out std_logic_vector(3 downto 0);
-    s0_wb_cti_o: out std_logic_vector(2 downto 0);
-    s0_wb_we_o:  out std_logic;
-    s0_wb_cyc_o: out std_logic;
-    s0_wb_stb_o: out std_logic;
-    s0_wb_ack_i: in std_logic;
-    s0_wb_stall_i: in std_logic
-  );
-  end component;
-
-  component wb_singleport_ram is
-  generic (
-    bits: natural := 8
-  );
-  port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 0);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic
-  );
-  end component;
-
-  component wb_master_np_to_slave_p is
-  generic (
-    ADDRESS_HIGH: integer := 31;
-    ADDRESS_LOW: integer := 0
-  );
-  port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-
-    -- Master signals
-
-    m_wb_dat_o: out std_logic_vector(31 downto 0);
-    m_wb_dat_i: in std_logic_vector(31 downto 0);
-    m_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m_wb_sel_i: in std_logic_vector(3 downto 0);
-    m_wb_cti_i: in std_logic_vector(2 downto 0);
-    m_wb_we_i:  in std_logic;
-    m_wb_cyc_i: in std_logic;
-    m_wb_stb_i: in std_logic;
-    m_wb_ack_o: out std_logic;
-
-    -- Slave signals
-
-    s_wb_dat_i: in std_logic_vector(31 downto 0);
-    s_wb_dat_o: out std_logic_vector(31 downto 0);
-    s_wb_adr_o: out std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    s_wb_sel_o: out std_logic_vector(3 downto 0);
-    s_wb_cti_o: out std_logic_vector(2 downto 0);
-    s_wb_we_o:  out std_logic;
-    s_wb_cyc_o: out std_logic;
-    s_wb_stb_o: out std_logic;
-    s_wb_ack_i: in std_logic;
-    s_wb_stall_i: in std_logic
-  );
-  end component;
-
-  component romram is
-  generic (
-    BITS: integer := 32
-  );
-  port (
-    ram_wb_clk_i:       in std_logic;
-    ram_wb_rst_i:       in std_logic;
-    ram_wb_ack_o:       out std_logic;
-    ram_wb_dat_i:       in std_logic_vector(31 downto 0);
-    ram_wb_dat_o:       out std_logic_vector(31 downto 0);
-    ram_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
-    ram_wb_sel_i:       in std_logic_vector(3 downto 0);
-    ram_wb_cyc_i:       in std_logic;
-    ram_wb_stb_i:       in std_logic;
-    ram_wb_we_i:        in std_logic;
-    ram_wb_stall_o:     out std_logic;
-
-    rom_wb_clk_i:       in std_logic;
-    rom_wb_rst_i:       in std_logic;
-    rom_wb_ack_o:       out std_logic;
-    rom_wb_dat_o:       out std_logic_vector(31 downto 0);
-    rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
-    rom_wb_cyc_i:       in std_logic;
-    rom_wb_stb_i:       in std_logic;
-    rom_wb_stall_o:     out std_logic
-  );
-  end component;
 
   component uart is
   generic (
     bits: integer := 11
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
-    wb_dat_o: out std_logic_vector(31 downto 0);
-    wb_dat_i: in std_logic_vector(31 downto 0);
-    wb_adr_i: in std_logic_vector(31 downto 2);
-    wb_we_i:  in std_logic;
-    wb_cyc_i: in std_logic;
-    wb_stb_i: in std_logic;
-    wb_ack_o: out std_logic;
-    wb_inta_o:out std_logic;
-
-    enabled:  out std_logic;
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
     tx:       out std_logic;
     rx:       in std_logic
   );
   end component;
 
+  component spi is
+  generic (
+    INTERNAL_SPI: boolean := false
+  );
+  port (
+    syscon:     in wb_syscon_type;
+    wbi:        in wb_mosi_type;
+    wbo:        out wb_miso_type;
+    mosi:     out std_logic;
+    miso:     in std_logic;
+    sck:      out std_logic;
+    cs:       out std_logic;
+    enabled:  out std_logic
+  );
+  end component spi;
+
   signal txd, rxd: std_logic;
+
+  signal wbi: wb_mosi_type;
+  signal wbo: wb_miso_type;
+  signal syscon: wb_syscon_type;
+  signal swbi: slot_wbi;
+  signal swbo: slot_wbo;
+  signal sids: slot_ids;
 
 begin
 
@@ -196,40 +61,61 @@ begin
 
   w_clk <= not w_clk after period/2;
 
+  syscon.clk<=w_clk;
+  syscon.rst<=w_rst;
 
   cpu: xtc_top_bram
   port map (
-    wb_clk_i        => w_clk,
-    wb_rst_i        => w_rst,
-
+    wb_syscon       => syscon,
     -- Master wishbone interface
-
-    wb_ack_i        => wb_ack,
-    wb_dat_i        => wb_read,
-    wb_dat_o        => wb_write,
-    wb_adr_o        => wb_address,
-    wb_cyc_o        => wb_cyc,
-    wb_stb_o        => wb_stb,
-    wb_sel_o        => wb_sel,
-    wb_we_o         => wb_we
+    iowbi           => wbo,
+    iowbo           => wbi
   );
+
+  ioctrl: xtc_ioctrl
+    port map (
+      syscon      => syscon,
+      wbi         => wbi,
+      wbo         => wbo,
+      swbi        => swbi,
+      swbo        => swbo,
+      sids        => sids
+  );
+
+  nodev0: nodev port map ( syscon => syscon, wbi => swbo(0), wbo => swbi(0) );
 
   myuart: uart
     port map (
-      wb_clk_i    => w_clk,
-      wb_rst_i    => w_rst,
-      wb_dat_o    => wb_read,
-      wb_dat_i    => wb_write,
-      wb_adr_i    => wb_address(31 downto 2),
-      wb_we_i     => wb_we,
-      wb_cyc_i    => wb_cyc,
-      wb_stb_i    => wb_stb,
-      wb_ack_o    => wb_ack,
-      wb_inta_o   => open,
-  
-      tx          => txd,
-      rx          => rxd
+      syscon    => syscon,
+      wbi         => swbo(1),
+      wbo         => swbi(1),
+      tx        => txd,
+      rx        => rxd
   );
+
+  flashspi: spi
+    generic map (
+      INTERNAL_SPI => true
+    )
+    port map (
+      syscon    => syscon,
+      wbi       => swbo(2),
+      wbo       => swbi(2),
+      mosi      => open,
+      miso      => '1',
+      sck       => open,
+      cs        => open
+  );
+
+
+  emptyslots: for N in 3 to 15 generate
+    eslot: nodev
+      port map (
+        syscon    => syscon,
+        wbi       => swbo(N),
+        wbo       => swbi(N)
+     );
+  end generate;
 
 
   -- Reset procedure

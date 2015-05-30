@@ -3,10 +3,11 @@
 --
 -- Version 0.1 - Ready to simulate
 --
--- Author: Mike Field (hamster@snap.net.nz)
+-- Authors: Mike Field (hamster@snap.net.nz)
+--          Alvaro Lopes (alvieboy@alvie.com)
 --
 -- Feel free to use it however you would like, but
--- just drop me an email to say thanks.
+-- just drop us an email to say thanks.
 -------------------------------------------------------
 library ieee;
 use ieee.std_logic_1164.all;
@@ -17,7 +18,7 @@ use unisim.vcomponents.all;
 
 entity sdram_controller is
   generic (
-    HIGH_BIT: integer := 24;
+    HIGH_BIT: integer := 22;
     MHZ: integer := 96;
     REFRESH_CYCLES: integer := 4096;
     ADDRESS_BITS: integer := 12
@@ -48,7 +49,9 @@ entity sdram_controller is
    data_out      : OUT     STD_LOGIC_VECTOR (31 downto 0);
    data_out_valid : OUT     STD_LOGIC;
    data_in      : IN     STD_LOGIC_VECTOR (31 downto 0);
-   data_mask    : IN     STD_LOGIC_VECTOR (3 downto 0)
+   data_mask    : IN     STD_LOGIC_VECTOR (3 downto 0);
+   tag_in       : in std_logic_vector(31 downto 0);
+   tag_out       : out std_logic_vector(31 downto 0)
    );
 end entity;
    
@@ -56,22 +59,27 @@ end entity;
 architecture rtl of sdram_controller is
 
    type reg is record
-      address       : std_logic_vector(ADDRESS_BITS-1 downto 0);
+      address       : std_logic_vector(11 downto 0);
       bank          : std_logic_vector( 1 downto 0);
       init_counter  : std_logic_vector(14 downto 0);
       rf_counter    : integer;
       rf_pending    : std_logic;
       rd_pending    : std_logic;
       wr_pending    : std_logic;
-      act_row       : std_logic_vector(ADDRESS_BITS-1 downto 0);
-      act_ba        : std_logic_vector(1 downto 0);
+      act_row       : std_logic_vector(11 downto 0);
       data_out_low  : std_logic_vector(15 downto 0);
-      req_addr_q    : std_logic_vector(HIGH_BIT downto 2);
+      req_addr_q    : std_logic_vector(22 downto 2);
       req_data_write: std_logic_vector(31 downto 0);
       req_mask      : std_logic_vector(3 downto 0);
       data_out_valid: std_logic;
       dq_masks      : std_logic_vector(1 downto 0);
       tristate      : std_logic;
+      tag_in        : std_logic_vector(31 downto 0);
+      tag_out       : std_logic_vector(31 downto 0);
+      tagq          : std_logic_vector(31 downto 0);
+      tagqq         : std_logic_vector(31 downto 0);
+      data_write    : std_logic_vector(15 downto 0);
+
    end record;
 
    signal r : reg;
@@ -79,8 +87,8 @@ architecture rtl of sdram_controller is
 
    signal rstate       : std_logic_vector(8 downto 0);
    signal nstate       : std_logic_vector(8 downto 0);
-   signal rdata_write  : std_logic_vector(15 downto 0);
-   signal ndata_write  : std_logic_vector(15 downto 0);
+   --signal data_write  : std_logic_vector(15 downto 0);
+   --signal ndata_write  : std_logic_vector(15 downto 0);
 
    
    -- Vectors for each SDRAM 'command'
@@ -192,15 +200,25 @@ architecture rtl of sdram_controller is
    constant s_drdr2_id: std_logic_vector(4 downto 0) := "11111";
    constant s_drdr2 : std_logic_vector(8 downto 0) := "11111" & cmd_nop;
 
-   signal addr_row : std_logic_vector(ADDRESS_BITS-1 downto 0);
-   signal addr_bank: std_logic_vector(1 downto 0);
+    constant CL: integer range 2 to 3 := 2;
+
+  -- DEBUG only
+    type statetype is (IDLE,RF0,RF1,RF2,RF3,RF4,RF5,
+    RA0,RA1,RA2,DR0,DR1,WR0,WR1,WR2,WR3,
+    RD0,RD1,RD2,RD3,RD4,RD5,RD6,RD7,RD8,RD9,DRDR0,DRDR1,DRDR2);
+
+    signal dbgstate: statetype;
+  -- END DEBUG only
+
+
+   signal addr_row : std_logic_vector(11 downto 0); -- 12
+   signal addr_bank: std_logic_vector(1 downto 0);  -- 2
+   signal addr_col : std_logic_vector(7 downto 0);  -- 8  = 22 bits.
 
    constant COLUMN_HIGH: integer := HIGH_BIT - addr_row'LENGTH - addr_bank'LENGTH - 1; -- last 1 means 16 bit width
 
 
-  signal addr_col : std_logic_vector(7 downto 0);
   signal captured : std_logic_vector(15 downto 0);
-  signal busy: std_logic;
 
   constant tOPD: time := 2.1 ns;
   constant tHZ: time := 8 ns;
@@ -237,7 +255,7 @@ architecture rtl of sdram_controller is
   signal i_DRAM_DQM: std_logic_vector(1 downto 0);
   attribute IOB of i_DRAM_DQM: signal is "true";
 
-  attribute IOB of rdata_write: signal is "true";
+  --attribute IOB of r.data_write: signal is "true";
   attribute IOB of captured: signal is "true";
 
   signal i_DRAM_CLK: std_logic;
@@ -247,8 +265,16 @@ architecture rtl of sdram_controller is
   attribute fsm_encoding of rstate: signal is "user";
 
 begin
-
-    debug_cmd <= rstate(3 downto 0);
+  -- Each of the x16s 16,777,216-bit banks is organized as
+  -- 4,096 rows by 256 columns by 16 bits.
+  -- 12 bits rows, 8 bit columns, 2 bit banks, two words. 22 bits + 1
+  --
+  --                                22211111111110000000000
+  --                                21098765432109876543210
+  --                                -----------------------
+  --                                rrrrrrrrrrrrbbcccccccix
+  --
+   debug_cmd <= rstate(3 downto 0);
 
    -- Addressing is in 32 bit words - twice that of the DRAM width,
    -- so each burst of four access two system words.
@@ -256,12 +282,14 @@ begin
    --addr_bank <= address(10 downto 9);
    process(r.req_addr_q)
    begin
-    addr_bank <= r.req_addr_q(HIGH_BIT downto (HIGH_BIT-addr_bank'LENGTH)+1);
+    addr_bank <= --r.req_addr_q(HIGH_BIT downto (HIGH_BIT-addr_bank'LENGTH)+1);
              -- (24-2) downto (24-2 - 2 - 13 - 1)
              --  22 downto 6
-    addr_row  <= --r.req_addr_q(HIGH_BIT-addr_bank'LENGTH  downto COLUMN_HIGH+2);
-                 r.req_addr_q(ADDRESS_BITS-1+9 downto 9);
-    addr_col  <= (others => '0');
+                 r.req_addr_q(10 downto 9);
+    addr_row  <= ----r.req_addr_q(HIGH_BIT-addr_bank'LENGTH  downto COLUMN_HIGH+2);
+                 --r.req_addr_q(ADDRESS_BITS-1+9 downto 9);
+                r.req_addr_q(22 downto 11);
+    --addr_col  <= (others => '0');
 
     addr_col  <= --r.req_addr_q(COLUMN_HIGH+1 downto  2) & "0";
                  r.req_addr_q(8 downto 2) & "0";
@@ -313,31 +341,49 @@ begin
    DATA_OUT       <= r.data_out_low & captured;--r.data_out_low & captured;
    data_out_valid <= r.data_out_valid;
 
-   DRAM_DQ    <= (others => 'Z') after tHZ when r.tristate='1' else rdata_write;
+   DRAM_DQ    <= (others => 'Z') after tHZ when r.tristate='1' else r.data_write;
 
    pending <= '1' when r.wr_pending='1' or r.rd_pending='1' else '0';
 
-   process (r, rstate, address, req_read, rdata_write, req_write, addr_row, addr_bank, addr_col, data_in, captured)
+   tag_out <= r.tag_out;
+
+   process (r, rstate, address, req_read, req_write,
+        addr_row, addr_bank, addr_col, data_in, captured, tag_in, data_mask)
+
+    procedure shifttags is
+    begin
+       -- Shift tags.
+      n.tagq     <= r.tag_in;
+      n.tagqq    <=r.tagq;
+      if CL=2 then
+        n.tag_out  <= r.tagq;
+      else
+        n.tag_out  <= r.tagqq;
+      end if;
+    end procedure;
+
    begin
       -- copy the existing values
       n <= r;
       nstate <= rstate;
-      ndata_write <= rdata_write;
 
       if req_read = '1' then
-         n.rd_pending <= '1';
-         if r.rd_pending='0' then
-           n.req_addr_q <= address;
+         if r.rd_pending='0' and r.wr_pending='0' then
+           n.rd_pending <= '1';
+           n.req_addr_q <= address(22 downto 2);
+           n.req_data_write <= (others => 'X');
+           n.req_mask <= (others => 'X');
+           n.tag_in <= tag_in;
          end if;
       end if;
       
       if req_write = '1' then
-         n.wr_pending <= '1';
-         if r.wr_pending='0' then
-           n.req_addr_q <= address;
-           -- Queue data here
+         if r.wr_pending='0' and r.rd_pending='0' then
+           n.wr_pending <= '1';
+           n.req_addr_q <= address(22 downto 2);
            n.req_data_write <= data_in;
            n.req_mask <= data_mask;
+           n.tag_in <= tag_in;
          end if;
       end if;
       
@@ -368,9 +414,10 @@ begin
       case rstate(8 downto 4) is
          when s_init_nop_id => --s_init_nop(8 downto 4) =>
             nstate     <= s_init_nop;
-            n.address <= (others => '0');
+            dbgstate<= IDLE;
+            n.address <= (others => 'X');
             n.bank    <= (others => '0');
-            n.act_ba  <= (others => '0');
+            --n.act_ba  <= (others => '0');
             n.rf_counter   <= 0;
             -- n.data_out_valid <= '1'; -- alvie- not here
             
@@ -390,8 +437,8 @@ begin
             if r.init_counter = 3 then
                nstate     <= s_init_mrs;
                            -- Mode register is as follows:
-                           -- resvd   wr_b   OpMd   CAS=3   Seq   bust=1
-                n.address   <= "00" & "0" & "00" & "011" & "0" & "000";
+                           -- resvd   wr_b   OpMd   CAS=2   Seq   bust=1
+               n.address   <= "00" & "0" & "00" & "010" & "0" & "000";
                            -- resvd
                n.bank      <= "00";
             end if;
@@ -406,20 +453,22 @@ begin
          ------------------------------
          when s_idle_id =>
             nstate <= s_idle;
-
+            dbgstate<= IDLE;
             -- do we have to activate a row?
             if r.rd_pending = '1' or r.wr_pending = '1' then
                nstate        <= s_ra0;
-               n.address     <= addr_row;
-               n.act_row    <= addr_row;
-               n.bank       <= addr_bank;
             end if;
+
+            n.address     <= addr_row;
+            n.act_row    <=  addr_row;
+            n.bank       <=  addr_bank;
 
             -- refreshes take priority over everything
             if r.rf_pending = '1' then
                nstate        <= s_rf0;
-               n.rf_pending <= '0';
             end if;
+
+            n.rf_pending <= '0';
          ------------------------------
          -- Row activation
          -- s_ra2 is also the "idle with active row" state and provides
@@ -427,18 +476,21 @@ begin
          ------------------------------
          when s_ra0_id =>
             nstate        <= s_ra1;
+            dbgstate<= RA0;
          when s_ra1_id =>
+            dbgstate<= RA1;
             nstate        <= s_ra2;
 
 
          when s_ra2_id=>
+            dbgstate<= RA2;
             -- we can stay in this state until we have something to do
             nstate       <= s_ra2;
             n.tristate<='0';
-
+            n.address <= (others => 'X');
             if r.rf_pending = '1' then
-              nstate     <= s_dr0;
-                 n.address(10) <= '1';
+                nstate     <= s_dr0;
+                n.address(10) <= '1';
             else
 
             -- If there is a read pending, deactivate the row
@@ -453,10 +505,14 @@ begin
                n.address <= (others => '0');
                n.address(addr_col'HIGH downto 0) <= addr_col;
                n.bank    <= addr_bank;
-               n.act_ba    <= addr_bank;
+               --n.act_ba    <= addr_bank;
                n.dq_masks <= "00";
                n.rd_pending <= '0';
-               --n.tristate<='1';
+               n.data_write <= (others => 'X');
+
+               -- Shift tags.
+               shifttags;
+
             end if;
             
             -- unless we have a write on the same row? writes take priroty over reads
@@ -464,12 +520,14 @@ begin
                nstate     <= s_wr0;
                n.address <= (others => '0');
                n.address(addr_col'HIGH downto 0) <= addr_col;
-               ndata_write <= r.req_data_write(31 downto 16);
+               n.data_write <= r.req_data_write(31 downto 16);
                n.bank    <= addr_bank;
-               n.act_ba    <= addr_bank;
+               --n.act_ba    <= addr_bank;
                n.dq_masks<= not r.req_mask(3 downto 2);
                n.wr_pending <= '0';
-               --n.tristate <= '0';
+
+               -- Shift tags.
+               shifttags;
             end if;
             
             
@@ -485,25 +543,41 @@ begin
          -- Deactivate the current row and return to idle state
          ------------------------------------------------------
          when s_dr0_id =>
+            dbgstate<= DR0;
+            n.address <= (others => 'X');
             nstate <= s_dr1;
          when s_dr1_id =>
+            dbgstate<= DR1;
+            n.address <= (others => 'X');
             nstate <= s_idle;
 
          ------------------------------
          -- The Refresh section
          ------------------------------
          when s_rf0_id =>
+            dbgstate<= RF0;
+            n.address <= (others => 'X');
             nstate <= s_rf1;
          when s_rf1_id =>
+            dbgstate<= RF1;
+            n.address <= (others => 'X');
             nstate <= s_rf2;
          when s_rf2_id =>
+            dbgstate<= RF2;
+            n.address <= (others => 'X');
             nstate <= s_rf3;
          when s_rf3_id =>
             nstate <= s_rf4;
+            n.address <= (others => 'X');
+            dbgstate<= RF3;
          when s_rf4_id =>
             nstate <= s_rf5;
+            n.address <= (others => 'X');
+            dbgstate<= RF4;
          when s_rf5_id =>
             nstate <= s_idle;
+            dbgstate<= RF5;
+            n.address <= (others => 'X');
          ------------------------------
          -- The Write section
          ------------------------------
@@ -511,56 +585,67 @@ begin
             nstate    <= s_wr3;
             n.bank    <= addr_bank;
             n.address(0) <= '1';
-            ndata_write <= r.req_data_write(15 downto 0);--data_in(31 downto 16);
+            n.data_write <= r.req_data_write(15 downto 0);--data_in(31 downto 16);
             --DRAM_DQ <= rdata_write;
-            n.dq_masks<= not r.req_mask(1 downto 0);
+            n.dq_masks <= not r.req_mask(1 downto 0);
             n.tristate <= '0';
+            shifttags;
+            dbgstate<= WR0;
 
          when s_wr1_id => null;
+            dbgstate<= WR1;
          when s_wr2_id =>
+            dbgstate<= WR2;
                nstate       <= s_dr0;
                n.address(10) <= '1';
 
 
          when s_wr3_id =>
+            dbgstate<= WR3;
             -- Default to the idle+row active state
             nstate     <= s_ra2;
             --DRAM_DQ <= rdata_write;
             n.data_out_valid<='1'; -- alvie- ack write
+            shifttags;
+            --n.tag_out <= r.tagq;
             n.tristate <= '0';
             n.dq_masks<= "11";
             
             -- If there is a read or write then deactivate the row
-            --if r.rd_pending = '1' or r.wr_pending = '1' then
-            --   nstate         <= s_dr0;
-            --   n.address(10) <= '1';
-            --end if;
+            if r.rd_pending = '1' or r.wr_pending = '1' then
+               nstate         <= s_wr2;
+               --n.address(10) <= '1';
+            end if;
+
+            n.address <= (others => 'X');
 
             -- But if there is a read pending in the same row, do that
-            --if r.rd_pending = '1' and r.act_row = addr_row and r.act_ba = addr_bank then
-            --   nstate     <= s_rd0;
-            --   n.address <= (others => '0');
-            --   n.address(addr_col'HIGH downto 0) <= addr_col;
-            --   n.bank    <= addr_bank;
-            --   --n.act_ba    <= addr_bank;
-            --   n.dq_masks <= "00";
-            --   n.rd_pending <= '0';
-            --end if;
+            if r.rd_pending = '1' and r.act_row = addr_row and r.bank = addr_bank then
+               nstate     <= s_rd0;
+               n.address <= (others => '0');
+               n.address(addr_col'HIGH downto 0) <= addr_col;
+               n.bank    <= addr_bank;
+               n.dq_masks <= "00";
+               n.rd_pending <= '0';
+            end if;
 
             -- unless there is a write pending in the same row, do that
-            --if r.wr_pending = '1' and r.act_row = addr_row and r.act_ba = addr_bank then
-            --   nstate     <= s_wr0;
-            --   n.address <= (others => '0');
-            --   n.address(addr_col'HIGH downto 0) <= addr_col;
-            --   n.bank    <= addr_bank;
-               --n.act_ba    <= addr_bank;
-            --   n.dq_masks<= "00";
-            --   n.wr_pending <= '0';
-            --end if;
+            if r.wr_pending = '1' and r.act_row = addr_row and r.bank = addr_bank then
+               nstate     <= s_wr0;
+               n.address <= (others => '0');
+               n.address(addr_col'HIGH downto 0) <= addr_col;
+               n.bank    <= addr_bank;
+               n.data_write <= r.req_data_write(31 downto 16);
+               n.dq_masks<= not r.req_mask(3 downto 2);
+               n.wr_pending <= '0';
+            end if;
+            shifttags;
 
             -- But always try and refresh if one is pending!
             if r.rf_pending = '1' then
                nstate       <= s_wr2; --dr0;
+               n.wr_pending <= r.wr_pending;
+               n.rd_pending <= r.rd_pending;
                --n.address(10) <= '1';
             end if;
          
@@ -568,62 +653,95 @@ begin
          -- The Read section
          ------------------------------
          when s_rd0_id =>       -- 10001
+          dbgstate<= RD0;
             nstate <= s_rd1;
             n.tristate<='1';
             n.dq_masks <= "00";
             n.address(0)<='1';
 
          when s_rd1_id =>      -- 10010
-            nstate <= s_rd2;
+            dbgstate<= RD1;
+            if CL=3 then
+              nstate <= s_rd2;
+            else
+              nstate <= s_rd6;
+            end if;
             n.dq_masks <= "00";
             n.tristate<='1';
-            if r.rd_pending = '1' and r.act_row = addr_row and r.act_ba=addr_bank then
+
+            n.address <= (others => 'X');
+
+            if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
 
               nstate <= s_rd3;  -- Another request came, and we can pipeline -
               n.address <= (others => '0');
               n.address(addr_col'HIGH downto 0) <= addr_col;
               n.bank    <= addr_bank;
-              n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
+              n.data_write <= (others => 'X');
+              --n.tagq <= r.tag_in;
+              --n.tagqq<=r.tagq;
+              --n.tag_out <= r.tag_in;
 
             end if;
 
+            -- Shift tags.
+            shifttags;
+
+            -- Update output tag immediatly
+            --n.tag_out <= r.tagq;
+
          when s_rd2_id =>       -- 10011
+            dbgstate<= RD2;
             nstate <= s_rd7;
             n.dq_masks <= "00";
             n.tristate<='1';
 
 
          when s_rd3_id =>       -- 10100
-
+            dbgstate<= RD3;
             nstate <= s_rd4;
             n.dq_masks <= "00";
             n.address(0) <= '1';
             n.tristate<='1';
+            if CL=2 then
+              n.data_out_low <= captured;
+              n.data_out_valid <= '1';
+            end if;
 
 
             -- Data is still not ready...
 
          when s_rd4_id =>     -- 10101
+            dbgstate<= RD4;
             nstate <= s_rd5;
             n.dq_masks <= "00";
-            --n.address(0)<='1';
             n.tristate<='1';
+            n.address <= (others => 'X');
 
-            if r.rd_pending = '1' and r.act_row = addr_row and r.act_ba=addr_bank then
+            if r.rd_pending = '1' and r.act_row = addr_row and r.bank=addr_bank then
               nstate <= s_rd5;  -- Another request came, and we can pipeline -
               
               n.address <= (others => '0');
               n.address(addr_col'HIGH downto 0) <= addr_col;
               n.bank    <= addr_bank;
-              n.act_ba  <= addr_bank;
               n.dq_masks<= "00";
               n.rd_pending <= '0';
+              n.data_write <= (others => 'X');
+              --n.tagq <= r.tag_in;
+              --n.tagqq<=r.tagq;
+              --n.tag_out <= r.tag_in;
 
             else
-              nstate <= s_rd6; -- NOTE: not correct
+              if CL=3 then
+                nstate <= s_rd6; -- NOTE: not correct
+              else
+                nstate <= s_rd6;
+              end if;
             end if;
+            -- Shift tags.
+            shifttags;
 
             --if r.rf_pending = '1' then
             --   nstate <= s_drdr0;
@@ -631,12 +749,16 @@ begin
             --   n.rd_pending <= r.rd_pending; -- Keep request
             --end if;
 
+            if CL=3 then
+              n.data_out_low <= captured;
+              n.data_out_valid <= '1';
+            end if;
 
-            n.data_out_low <= captured;
-            n.data_out_valid <= '1';
+            --n.tag_out <= r.tagqq;
 
 
          when s_rd5_id =>
+            dbgstate<=RD5;
                -- If a refresh is pending then always deactivate the row
             --if r.rf_pending = '1' then
             --   nstate <= s_drdr0;
@@ -648,35 +770,69 @@ begin
             n.dq_masks <= "00";
             n.tristate<='1';
 
+            if CL=2 then
+              n.data_out_low <= captured;
+              n.data_out_valid <= '1';
+            end if;
+
          when s_rd6_id =>
+            dbgstate<= RD6;
             nstate <= s_rd7;
             n.dq_masks<= "00";
             n.tristate<='1';
+            n.address <= (others => 'X');
+
+            if CL=2 then
+              n.data_out_low <= captured;
+              n.data_out_valid <= '1';
+              nstate <= s_ra2;
+              --shifttags;
+            end if;
+
 
          when s_rd7_id =>
+            dbgstate<= RD7;
             nstate <= s_ra2;
-            n.data_out_low <= captured;
-            n.data_out_valid <= '1';
+            if CL=3 then
+              n.data_out_low <= captured;
+              n.data_out_valid <= '1';
+            end if;
+            n.address <= (others => 'X');
+
+            shifttags;
+            --n.tag_out <= r.tagq;
+            --n.tag_out <= r.tag_in;
+
             n.tristate<='1';
 
-         when s_rd8_id => null;
+         when s_rd8_id => dbgstate<=RD8;
 
-         when s_rd9_id => null;
+         when s_rd9_id => dbgstate<= RD9;
 
          -- The Deactivate row during read section
          ------------------------------
          when s_drdr0_id =>
+            dbgstate<= DRDR0;
+            n.address <= (others => 'X');
             nstate <= s_drdr1;
          when s_drdr1_id =>
+            dbgstate<= DRDR1;
+            n.address <= (others => 'X');
             nstate <= s_drdr2;
             n.data_out_low <= captured;
-            n.data_out_valid <= '1';   
+            n.data_out_valid <= '1';
+            shifttags;
+            --n.tag_out <= r.tag_in;
+
          when s_drdr2_id =>
+            dbgstate<= DRDR2;
             nstate <= s_idle;
 
             if r.rf_pending = '1' then
                nstate <= s_rf0;
             end if;
+
+            n.address <= (others => 'X');
             
             if r.rd_pending = '1' or r.wr_pending = '1' then
                nstate       <= s_ra0;
@@ -711,10 +867,12 @@ begin
           r.data_out_valid <= '0';
           r.dq_masks <= "11";
           r.tristate<='1';
+          r.tag_in <= (others =>'0');
+          r.tag_out <= (others =>'0');
         else
          r <= n;
          rstate <= nstate;
-         rdata_write <= ndata_write;
+         --rdata_write <= ndata_write;
          end if;
       end if;
    end process;

@@ -1256,17 +1256,17 @@ write_relocs (bfd *abfd, asection *sec, void *xxx ATTRIBUTE_UNUSED)
 #endif
 
       if (fixp->fx_done)
-	continue;
+        continue;
 
       fx_size = fixp->fx_size;
       slack = TC_FX_SIZE_SLACK (fixp);
       if (slack > 0)
 	fx_size = fx_size > slack ? fx_size - slack : 0;
       loc = fixp->fx_where + fx_size;
-
-      printf("write_relocs: slack %d, loc %ld, fr_fix %ld\n",
-             slack ,loc, fixp->fx_frag->fr_fix);
-
+#if 0
+      as_warn_where(fixp->fx_file, fixp->fx_line,"write_relocs: slack %d, loc %ld, fr_fix %ld, size %d, where %ld\n",
+             slack ,loc, fixp->fx_frag->fr_fix, fx_size, fixp->fx_where);
+#endif
       if (slack >= 0 && loc > fixp->fx_frag->fr_fix)
 	as_bad_where (fixp->fx_file, fixp->fx_line,
 		      _("internal error: fixup not contained within frag"));

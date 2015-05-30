@@ -2,6 +2,8 @@ library IEEE;
 use IEEE.STD_LOGIC_1164.ALL;
 use ieee.numeric_std.all;
 use ieee.std_logic_unsigned.all;
+library work;
+use work.wishbonepkg.all;
 
 entity wbarb2_1 is
   generic (
@@ -9,47 +11,19 @@ entity wbarb2_1 is
     ADDRESS_LOW: integer := 0
   );
   port (
-    wb_clk_i: in std_logic;
-	 	wb_rst_i: in std_logic;
+    wb_syscon:    in wb_syscon_type;
 
     -- Master 0 signals
-
-    m0_wb_dat_o: out std_logic_vector(31 downto 0);
-    m0_wb_dat_i: in std_logic_vector(31 downto 0);
-    m0_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m0_wb_sel_i: in std_logic_vector(3 downto 0);
-    m0_wb_cti_i: in std_logic_vector(2 downto 0);
-    m0_wb_we_i:  in std_logic;
-    m0_wb_cyc_i: in std_logic;
-    m0_wb_stb_i: in std_logic;
-    m0_wb_stall_o: out std_logic;
-    m0_wb_ack_o: out std_logic;
+    m0_wbi:       in wb_mosi_type;
+    m0_wbo:       out wb_miso_type;
 
     -- Master 1 signals
-
-    m1_wb_dat_o: out std_logic_vector(31 downto 0);
-    m1_wb_dat_i: in std_logic_vector(31 downto 0);
-    m1_wb_adr_i: in std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    m1_wb_sel_i: in std_logic_vector(3 downto 0);
-    m1_wb_cti_i: in std_logic_vector(2 downto 0);
-    m1_wb_we_i:  in std_logic;
-    m1_wb_cyc_i: in std_logic;
-    m1_wb_stb_i: in std_logic;
-    m1_wb_ack_o: out std_logic;
-    m1_wb_stall_o: out std_logic;
+    m1_wbi:       in wb_mosi_type;
+    m1_wbo:       out wb_miso_type;
 
     -- Slave signals
-
-    s0_wb_dat_i: in std_logic_vector(31 downto 0);
-    s0_wb_dat_o: out std_logic_vector(31 downto 0);
-    s0_wb_adr_o: out std_logic_vector(ADDRESS_HIGH downto ADDRESS_LOW);
-    s0_wb_sel_o: out std_logic_vector(3 downto 0);
-    s0_wb_cti_o: out std_logic_vector(2 downto 0);
-    s0_wb_we_o:  out std_logic;
-    s0_wb_cyc_o: out std_logic;
-    s0_wb_stb_o: out std_logic;
-    s0_wb_ack_i: in std_logic;
-    s0_wb_stall_i: in std_logic
+    s0_wbi:       in wb_miso_type;
+    s0_wbo:       out wb_mosi_type
   );
 end entity wbarb2_1;
 
@@ -61,10 +35,10 @@ signal current_master: std_logic;
 signal next_master: std_logic;
 begin
 
-process(wb_clk_i)
+process(wb_syscon.clk)
 begin
-  if rising_edge(wb_clk_i) then
-    if wb_rst_i='1' then
+  if rising_edge(wb_syscon.clk) then
+    if wb_syscon.rst='1' then
       current_master <= '0';
     else
       current_master <= next_master;
@@ -73,20 +47,20 @@ begin
 end process;
 
 
-process(current_master, m0_wb_cyc_i, m1_wb_cyc_i)
+process(current_master, m0_wbi.cyc, m1_wbi.cyc)
 begin
   next_master <= current_master;
 
   case current_master is
     when '0' =>
-      if m0_wb_cyc_i='0' then
-        if m1_wb_cyc_i='1' then
+      if m0_wbi.cyc='0' then
+        if m1_wbi.cyc='1' then
           next_master <= '1';
         end if;
       end if;
     when '1' =>
-      if m1_wb_cyc_i='0' then
-        if m0_wb_cyc_i='1' then
+      if m1_wbi.cyc='0' then
+        if m0_wbi.cyc='1' then
           next_master <= '0';
         end if;
       end if;
@@ -96,27 +70,25 @@ end process;
 
 -- Muxers for slave
 
-process(current_master,
-        m0_wb_dat_i, m0_wb_adr_i, m0_wb_sel_i, m0_wb_cti_i, m0_wb_we_i, m0_wb_cyc_i, m0_wb_stb_i,
-        m1_wb_dat_i, m1_wb_adr_i, m1_wb_sel_i, m1_wb_cti_i, m1_wb_we_i, m1_wb_cyc_i, m1_wb_stb_i)
+process(current_master, m0_wbi, m1_wbi)
 begin
   case current_master is
     when '0' =>
-      s0_wb_dat_o <= m0_wb_dat_i;
-      s0_wb_adr_o <= m0_wb_adr_i;
-      s0_wb_sel_o <= m0_wb_sel_i;
-      s0_wb_cti_o <= m0_wb_cti_i;
-      s0_wb_we_o  <= m0_wb_we_i;
-      s0_wb_cyc_o <= m0_wb_cyc_i;
-      s0_wb_stb_o <= m0_wb_stb_i;
+      s0_wbo.dat <= m0_wbi.dat;
+      s0_wbo.adr <= m0_wbi.adr;
+      s0_wbo.sel <= m0_wbi.sel;
+      s0_wbo.we  <= m0_wbi.we;
+      s0_wbo.cyc <= m0_wbi.cyc;
+      s0_wbo.stb <= m0_wbi.stb;
+      s0_wbo.tag <= m0_wbi.tag;
     when '1' =>
-      s0_wb_dat_o <= m1_wb_dat_i;
-      s0_wb_adr_o <= m1_wb_adr_i;
-      s0_wb_sel_o <= m1_wb_sel_i;
-      s0_wb_cti_o <= m1_wb_cti_i;
-      s0_wb_we_o  <= m1_wb_we_i;
-      s0_wb_cyc_o <= m1_wb_cyc_i;
-      s0_wb_stb_o <= m1_wb_stb_i;
+      s0_wbo.dat <= m1_wbi.dat;
+      s0_wbo.adr <= m1_wbi.adr;
+      s0_wbo.sel <= m1_wbi.sel;
+      s0_wbo.we  <= m1_wbi.we;
+      s0_wbo.cyc <= m1_wbi.cyc;
+      s0_wbo.stb <= m1_wbi.stb;
+      s0_wbo.tag <= m1_wbi.tag;
     when others =>
       null;
   end case;
@@ -124,15 +96,19 @@ end process;
 
 -- Muxers/sel for masters
 
-m0_wb_dat_o <= s0_wb_dat_i;
-m1_wb_dat_o <= s0_wb_dat_i;
-
+m0_wbo.dat <= s0_wbi.dat;
+m1_wbo.dat <= s0_wbi.dat;
+m0_wbo.tag <= s0_wbi.tag;
+m1_wbo.tag <= s0_wbi.tag;
 -- Ack
 
-m0_wb_ack_o <= s0_wb_ack_i when current_master='0' else '0';
-m1_wb_ack_o <= s0_wb_ack_i when current_master='1' else '0';
+m0_wbo.ack <= s0_wbi.ack when current_master='0' else '0';
+m1_wbo.ack <= s0_wbi.ack when current_master='1' else '0';
 
-m0_wb_stall_o <= s0_wb_stall_i when current_master='0' else '1';
-m1_wb_stall_o <= s0_wb_stall_i when current_master='1' else '1';
+m0_wbo.err <= s0_wbi.err when current_master='0' else '0';
+m1_wbo.err <= s0_wbi.err when current_master='1' else '0';
+
+m0_wbo.stall <= s0_wbi.stall when current_master='0' else '1';
+m1_wbo.stall <= s0_wbi.stall when current_master='1' else '1';
 
 end behave;

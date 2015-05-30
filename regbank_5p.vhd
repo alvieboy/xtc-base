@@ -31,7 +31,11 @@ entity regbank_5p is
     rbw_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rbw_wr:   in std_logic_vector(31 downto 0);
     rbw_we:   in std_logic;
-    rbw_en:   in std_logic
+    rbw_en:   in std_logic;
+
+    -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
   );
 end entity regbank_5p;
 
@@ -51,7 +55,11 @@ architecture behave of regbank_5p is
     rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
-    rb2_en:   in std_logic
+    rb2_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
   end component;
 
@@ -70,7 +78,9 @@ begin
     rb2_addr  => rbw_addr,
     rb2_wr    => rbw_wr,
     rb2_we    => rbw_we,
-    rb2_en    => rbw_en
+    rb2_en    => rbw_en,
+    dbg_addr  => dbg_addr,
+    dbg_do  => dbg_do
   );
 
   rbb: regbank_2p

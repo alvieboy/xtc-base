@@ -5829,39 +5829,75 @@ ENUM
 ENUMDOC
   This is a 32-bit reloc that stores a pc-relative address
 ENUM
-  BFD_RELOC_XTC_IMM_12_12_8
+  BFD_RELOC_XTC_I8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12_8
+  BFD_RELOC_XTC_E8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_8
+  BFD_RELOC_XTC_E8_NR
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12_12_8_PCREL
+  BFD_RELOC_XTC_E8_I8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12_8_PCREL
+  BFD_RELOC_XTC_E24
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_8_PCREL
+  BFD_RELOC_XTC_E24_I8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12_12_12
+  BFD_RELOC_XTC_E24_E8
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12_12
+  BFD_RELOC_XTC_E24_E8_NR
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 ENUM
-  BFD_RELOC_XTC_IMM_12
+  BFD_RELOC_XTC_E24_E8_I8
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_I8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E8_NR_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E8_I8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_I8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_E8_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_E8_NR_PCREL
+ENUMDOC
+  This is a 32-bit reloc that stores an address with IMM
+ENUM
+  BFD_RELOC_XTC_E24_E8_I8_PCREL
 ENUMDOC
   This is a 32-bit reloc that stores an address with IMM
 

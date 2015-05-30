@@ -140,7 +140,10 @@ begin
       dataready <= '0';
       baudreset <= '0';
       start<='0';
+      datao <= rxd;
     else
+      datao <= rxd;
+
       baudreset <= '0';
       start<='0';
       if read='1' then
@@ -178,7 +181,6 @@ begin
           -- Do fast recovery here.
           if rxf='1' then
             dataready<='1';
-            datao <= rxd;
             state <= rx_idle;
           end if;
 

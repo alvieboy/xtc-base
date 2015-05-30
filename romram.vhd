@@ -14,6 +14,8 @@ entity romram is
     ram_wb_ack_o:       out std_logic;
     ram_wb_dat_i:       in std_logic_vector(31 downto 0);
     ram_wb_dat_o:       out std_logic_vector(31 downto 0);
+    ram_wb_tag_o:       out std_logic_vector(31 downto 0);
+    ram_wb_tag_i:       in std_logic_vector(31 downto 0);
     ram_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     ram_wb_cyc_i:       in std_logic;
     ram_wb_stb_i:       in std_logic;
@@ -25,6 +27,8 @@ entity romram is
     rom_wb_rst_i:       in std_logic;
     rom_wb_ack_o:       out std_logic;
     rom_wb_dat_o:       out std_logic_vector(31 downto 0);
+    rom_wb_tag_i:       in std_logic_vector(31 downto 0);
+    rom_wb_tag_o:       out std_logic_vector(31 downto 0);
     rom_wb_adr_i:       in std_logic_vector(BITS-1 downto 2);
     rom_wb_cyc_i:       in std_logic;
     rom_wb_stb_i:       in std_logic;
@@ -56,8 +60,9 @@ end component;
   signal rom_enable: std_logic;
   signal ram_enable: std_logic;
   signal romack, ramack: std_logic;
-
   constant nothing: std_logic_vector(31 downto 0) := (others => '0');
+  signal rom_data: std_logic_vector(31 downto 0);
+
 begin
 
   rom_enable <= rom_wb_stb_i and rom_wb_cyc_i;
@@ -81,6 +86,9 @@ begin
       else
         --if rom_enable='1' then
           romack <= rom_enable;
+          if rom_enable='1' then
+          rom_wb_tag_o <= rom_wb_tag_i;
+          end if;
         --end if;
       end if;
     end if;
@@ -97,6 +105,7 @@ begin
         romack <= '0';
       else
         romack <= '1';
+        rom_wb_tag_o <= rom_wb_tag_i;
       end if;
     end if;
   end process;
@@ -112,20 +121,26 @@ begin
         ramack <= '0';
       else
         ramack <= ram_enable;
+        if ram_enable='1' then
+          ram_wb_tag_o <= ram_wb_tag_i;
+        end if;
       end if;
     end if;
   end process;
 
+
+  rom_wb_dat_o <= rom_data;
+
 ram: internalram
   port map (
     CLKA  => rom_wb_clk_i,
-    CLKB  => rom_wb_clk_i,
+    CLKB  => ram_wb_clk_i,
     WEA   => '0',
     ENA   => rom_enable,
     MASKA => "1111",
     ADDRA => rom_wb_adr_i(BITS-1 downto 2),
     DIA   => nothing,
-    DOA   => rom_wb_dat_o,
+    DOA   => rom_data,
 
     WEB   => ram_wb_we_i,
     ENB   => ram_enable,

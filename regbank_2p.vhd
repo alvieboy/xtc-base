@@ -7,7 +7,8 @@ use work.xtccomppkg.all;
 
 entity regbank_2p is
   generic (
-    ADDRESS_BITS: integer := 4
+    ADDRESS_BITS: integer := 4;
+    ZEROSIZE: integer := 4
   );
   port (
     clk:      in std_logic;
@@ -19,7 +20,11 @@ entity regbank_2p is
     rb2_addr: in std_logic_vector(ADDRESS_BITS-1 downto 0);
     rb2_wr:   in std_logic_vector(31 downto 0);
     rb2_we:   in std_logic;
-    rb2_en:   in std_logic
+    rb2_en:   in std_logic;
+        -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
+
   );
 end entity regbank_2p;
 
@@ -30,7 +35,7 @@ architecture behave of regbank_2p is
   signal rb1_we: std_logic;
   signal ssra, ssrb: std_logic;
   constant srval: std_logic_vector(31 downto 0)  := (others => '0');
-  constant addrzero: std_logic_vector(ADDRESS_BITS-1 downto 0):= (others => '0');
+  constant addrzero: std_logic_vector(ZEROSIZE-1 downto 0):= (others => '0');
 begin
   -- Register bank.
 
@@ -45,10 +50,10 @@ begin
     end if;
   end process;
 
-  ssra<='1' when rb1_addr=addrzero else '0';
-  ssrb<='1' when rb2_addr=addrzero else '0';
+  ssra<='1' when rb1_addr(ZEROSIZE-1 downto 0)=addrzero else '0';
+  ssrb<='1' when rb2_addr(ZEROSIZE-1 downto 0)=addrzero else '0';
 
-  rb: generic_dp_ram_r
+  rb: entity work.generic_dp_ram_r
   generic map (
     address_bits  => ADDRESS_BITS,
     srval_1 => srval,
@@ -68,7 +73,9 @@ begin
     web     => rb2_we,
     addrb   => rb2_addr,
     dib     => rb2_wr,
-    dob     => open
+    dob     => open,
+    dbg_addr => dbg_addr,
+    dbg_do   => dbg_do
   );
 
 end behave;

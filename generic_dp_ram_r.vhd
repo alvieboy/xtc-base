@@ -56,7 +56,10 @@ entity generic_dp_ram_r is
     web:              in std_logic;
     addrb:            in std_logic_vector(address_bits-1 downto 0);
     dib:              in std_logic_vector(32-1 downto 0);
-    dob:              out std_logic_vector(32-1 downto 0)
+    dob:              out std_logic_vector(32-1 downto 0);
+    -- RTL Debug access
+    dbg_addr:         in std_logic_vector(address_bits-1 downto 0) := (others => '0');
+    dbg_do:           out std_logic_vector(32-1 downto 0)
   );
 
 end entity generic_dp_ram_r;
@@ -67,9 +70,14 @@ architecture behave of generic_dp_ram_r is
   subtype RAM_WORD is STD_LOGIC_VECTOR (32-1 downto 0);
 
   type RAM_TABLE is array (0 to (2**address_bits) - 1) of RAM_WORD;
-  shared variable RAM: RAM_TABLE;
+  shared variable RAM: RAM_TABLE := (others => (others => '0'));
 
 begin
+
+  -- synthesis translate_off
+    dbg_do <= RAM(conv_integer(dbg_addr));
+  -- synthesis translate_on
+
 
   process (clka)
   begin
