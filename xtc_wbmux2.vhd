@@ -134,10 +134,10 @@ process (wb_syscon.clk)
 begin
   if rising_edge(wb_syscon.clk) then
     if is_x(s0_wbi.err) then
-      report "Slave0 'err' is X" severity failure;
+      --report "Slave0 'err' is X" severity failure;
     end if;
     if is_x(s1_wbi.err) then
-      report "Slave1 'err' is X" severity failure;
+      --report "Slave1 'err' is X" severity failure;
     end if;
   end if;
 end process;
