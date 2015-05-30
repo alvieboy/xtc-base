@@ -80,14 +80,13 @@ begin
       variable wdata: std_logic_vector(31 downto 0);
       variable mdata: std_logic_vector(31 downto 0);
       variable queue_request:   boolean;
-      variable mrsel: std_logic_vector(2 downto 0);
+      variable mrsel: std_logic_vector(4 downto 0);
     begin
 
       mw:=mr;
 
       wdata     := (others => DontCareValue);
       wmask     := (others => DontCareValue);
-      mdata     := (others => '0');
 
       mw.fault  := '0';
 
@@ -95,22 +94,22 @@ begin
         when M_BYTE | M_BYTE_POSTINC =>
 
           case eui.data_address(1 downto 0) is
-            when "11" => wdata(7 downto 0)   := eui.data_write(7 downto 0); wmask:="0001"; mrsel:="000";
-            when "10" => wdata(15 downto 8)  := eui.data_write(7 downto 0); wmask:="0010"; mrsel:="001";
-            when "01" => wdata(23 downto 16) := eui.data_write(7 downto 0); wmask:="0100"; mrsel:="010";
-            when "00" => wdata(31 downto 24) := eui.data_write(7 downto 0); wmask:="1000"; mrsel:="011";
+            when "11" => wdata(7 downto 0)   := eui.data_write(7 downto 0); wmask:="0001"; mrsel:="11X00";
+            when "10" => wdata(15 downto 8)  := eui.data_write(7 downto 0); wmask:="0010"; mrsel:="11X01";
+            when "01" => wdata(23 downto 16) := eui.data_write(7 downto 0); wmask:="0100"; mrsel:="11X10";
+            when "00" => wdata(31 downto 24) := eui.data_write(7 downto 0); wmask:="1000"; mrsel:="11X11";
             when others => null;
           end case;
 
         when M_HWORD | M_HWORD_POSTINC =>
           case eui.data_address(1) is
-            when '1' => wdata(15 downto 0)  := eui.data_write(15 downto 0); wmask:="0011"; mrsel:="100";
-            when '0' => wdata(31 downto 16) := eui.data_write(15 downto 0); wmask:="1100"; mrsel:="101";
+            when '1' => wdata(15 downto 0)  := eui.data_write(15 downto 0); wmask:="0011"; mrsel:="10000";
+            when '0' => wdata(31 downto 16) := eui.data_write(15 downto 0); wmask:="1100"; mrsel:="10110";
             when others => null;
           end case;
 
         when others =>
-          wdata := eui.data_write; wmask:="1111"; mrsel := "111";
+          wdata := eui.data_write; wmask:="1111"; mrsel := "00000";
       end case;
 
      -- queue_request := false;
@@ -125,16 +124,25 @@ begin
         busy<='1';
       end if;
 
+      -- Simplify tag.
 
-      case wb_tag_i(7 downto 5) is
-        when "000" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
-        when "001" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
-        when "010" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
-        when "011" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
-        when "100" => mdata(15 downto 0) := wb_dat_i(15 downto 0);
-        when "101" => mdata(15 downto 0) := wb_dat_i(31 downto 16);
-        when "110" => mdata := (others => 'X');
-        when others => mdata := wb_dat_i;
+      case wb_tag_i(6 downto 5) is
+        when "00" => mdata(7 downto 0) := wb_dat_i(7 downto 0);
+        when "01" => mdata(7 downto 0) := wb_dat_i(15 downto 8);
+        when "10" => mdata(7 downto 0) := wb_dat_i(23 downto 16);
+        when "11" => mdata(7 downto 0) := wb_dat_i(31 downto 24);
+        when others =>
+      end case;
+
+      case wb_tag_i(8 downto 7) is
+        when "00" =>  mdata(15 downto 8) := wb_dat_i(15 downto 8);
+        when "01" =>  mdata(15 downto 8) := wb_dat_i(31 downto 24);
+        when others => mdata(15 downto 8) := (others => '0');-- Zero
+      end case;
+
+      case wb_tag_i(9) is
+        when '0' => mdata(31 downto 16) := wb_dat_i(31 downto 16);
+        when others => mdata(31 downto 16) := (others => '0');
       end case;
 
       if mr.wb_cyc='1' and wb_stall_i='0' then
@@ -148,8 +156,8 @@ begin
         mw.wb_tago := (others => 'X');
         mw.wb_tago(3 downto 0) := eui.mwreg(3 downto 0);
         mw.wb_tago(4) := not eui.data_writeenable;
-        mw.wb_tago(7 downto 5) := mrsel;
-        mw.wb_tago(8) := eui.mwreg(4);
+        mw.wb_tago(9 downto 5) := mrsel;
+        mw.wb_tago(10) := eui.mwreg(4);
         mw.macc    := eui.macc;
         mw.wb_sel  := wmask;
         mw.wb_stb  := eui.data_access;
@@ -174,7 +182,7 @@ begin
 
       muo.mdata <= mdata;
 
-      muo.mreg <= wb_tag_i(8) & wb_tag_i(3 downto 0);
+      muo.mreg <= wb_tag_i(10) & wb_tag_i(3 downto 0);
 
       muo.mregwe <= wb_ack_i and wb_tag_i(4);
 
