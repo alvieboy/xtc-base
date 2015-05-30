@@ -23,8 +23,9 @@ architecture behave of xtc_ioctrl is
 
   signal selector: std_logic_vector(15 downto 0);
   signal selnum: integer range 0 to 15;
-  signal ackint: std_logic;
+  signal ackint: std_logic := '0';
   signal trans_valid: std_logic := '1';
+  signal tagi: std_logic_vector(31 downto 0);
 
 begin
 
@@ -42,6 +43,7 @@ begin
     wbo.dat <= swbi(selnum).dat;
     ackint  <= swbi(selnum).ack;
     wbo.err <= swbi(selnum).err;
+    wbo.tag <= tagi;
 
   end generate;
 
@@ -50,9 +52,17 @@ begin
     process(syscon.clk)
     begin
       if rising_edge(syscon.clk) then
+        if syscon.rst='1' then
+          wbo.dat <= (others => 'X');
+          ackint <= '0';
+          wbo.err <= '0';
+          wbo.tag <= (others => 'X');
+        else
           wbo.dat <= swbi(selnum).dat;
           ackint <= swbi(selnum).ack;
           wbo.err <= swbi(selnum).err;
+          wbo.tag <= tagi;
+        end if;
       end if;
     end process;
   end generate;
@@ -67,7 +77,7 @@ begin
       --if syscon.rst='1' then
       --  wbo.tag <=  (others => '0');
       --else
-        wbo.tag <= wbi.tag;
+        tagi <= wbi.tag;
       --end if;
     end if;
   end process;
