@@ -162,33 +162,18 @@ begin
 
         dw.rd1 := rd1;
         dw.rd2 := rd2;
-        --dw.rd3 := rd3;
-        --dw.rd4 := rd4;
         dw.sra1 := ra1;
         dw.sra2 := ra2;
         dw.sprwe := sprwe;
 
         dw.pc   := pc;
-        if dec.extended then
-          dw.fpc  := pc + 6;
-          dw.npc  := pc + 4;
-        else
-          dw.fpc  := pc + 4;
-          dw.npc  := pc + 2;
-        end if;
-        --dw.imm8  := imm8;
+        dw.npc := fui.npc;
+        dw.fpc := fui.npc + 2;
 
         if dr.imflag='0' then
           dw.imreg := (others => '0');
           dw.tpc := pc;
-        else
-
         end if;
-
-        --dw.delay_slot := false;
-        --if (is_jump) then
-        --  dw.delay_slot := true;
-        --end if;
 
         case dec.loadimm is
 
@@ -237,20 +222,12 @@ begin
         dw.memory_access := memory_access;
         dw.memory_write := memory_write;
         dw.modify_flags := modify_flags;
-        --dw.flags_source := flags_source;
-
         dw.blocks := blocks1 or blocks2;
-        --dw.blocks2 := blocks2;
-
         dw.dreg        := dreg0;
-        --dw.dreg1       := dreg1;
         dw.reg_source  := reg_source0;
-        --dw.reg_source1 := reg_source1;
         dw.regwe       := regwe;
-        --dw.regwe1      := regwe1;
         dw.priv         := dec.priv;
         dw.jump         := jump;
-        --dw.jump_clause  := jump_clause;
         dw.except_return:= except_return;
         dw.use_carry := dec.use_carry;
         -- Preserve condition from E24 extension (imm)
