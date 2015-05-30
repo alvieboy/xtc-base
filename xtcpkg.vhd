@@ -22,10 +22,10 @@ package xtcpkg is
   constant DEBUG_OPCODES: boolean := false;
   constant DEBUG_MEMORY: boolean := false;
   constant ENABLE_SHIFTER: boolean := true;
-  constant IO_REGISTER_INPUTS: boolean := false;
+  constant IO_REGISTER_INPUTS: boolean := true;
 
   constant TRACECLOCK: boolean := false;
-  constant RESETADDRESS: unsigned(31 downto 0) := x"80000000";
+  constant RESETADDRESS: unsigned(31 downto 0) := x"40000000";
 
   -- Enable low-memory protection.
   constant LOWPROTECTENABLE: boolean := false;
@@ -124,8 +124,8 @@ package xtcpkg is
 
   type reg_source_type is (
     reg_source_alu,
-    reg_source_memory,
-    reg_source_imm,
+    --reg_source_memory,
+    --reg_source_imm,
     reg_source_spr,
     reg_source_pcnext,
     reg_source_cop
@@ -219,6 +219,7 @@ package xtcpkg is
     bothvalid:std_logic;
     inverted: std_logic;
     internalfault: std_logic;
+    npc:      word_type;
   end record;
 
 
