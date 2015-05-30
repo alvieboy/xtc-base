@@ -352,10 +352,14 @@ begin
 
     procedure shifttags is
     begin
-                   -- Shift tags.
-               n.tagq     <= r.tag_in;
-               n.tagqq    <=r.tagq;
-               n.tag_out  <= r.tagqq;
+       -- Shift tags.
+      n.tagq     <= r.tag_in;
+      n.tagqq    <=r.tagq;
+      if CL=2 then
+        n.tag_out  <= r.tagq;
+      else
+        n.tag_out  <= r.tagqq;
+      end if;
     end procedure;
 
    begin
@@ -782,7 +786,7 @@ begin
               n.data_out_low <= captured;
               n.data_out_valid <= '1';
               nstate <= s_ra2;
-              shifttags;
+              --shifttags;
             end if;
 
 
