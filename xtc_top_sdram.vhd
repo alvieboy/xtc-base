@@ -94,8 +94,8 @@ architecture behave of xtc_top_sdram is
   );
   end component;
 
-  signal wbo,romwbo,ramwbo,piowbo,sdram_wbo,cpu_sdram_wbo: wb_mosi_type;
-  signal wbi,romwbi,ramwbi,piowbi,sdram_wbi,cpu_sdram_wbi: wb_miso_type;
+  signal wbo,romwbo,bootwbo,sdramorbootwbo,ramwbo,piowbo,sdram_wbo,cpu_sdram_wbo: wb_mosi_type;
+  signal wbi,romwbi,bootwbi,sdramorbootwbi,ramwbi,piowbi,sdram_wbi,cpu_sdram_wbi: wb_miso_type;
   signal edbg: memory_debug_type;
 
 begin
@@ -118,7 +118,7 @@ begin
     edbg            => edbg
   );
 
-  muxer: entity work.xtc_wbmux2
+  data_mux_io: entity work.xtc_wbmux2
   generic map (
     select_line   => 31,
     address_high  => 31,
@@ -127,19 +127,19 @@ begin
   port map (
     wb_syscon     => wb_syscon,
     -- Master 
-    m_wbi         => wbo,
-    m_wbo         => wbi,
+    m_wbi         => ramwbo,
+    m_wbo         => ramwbi,
 
     -- Slave 0 signals
-    s0_wbi        => cpu_sdram_wbi,
-    s0_wbo        => cpu_sdram_wbo,
+    s0_wbi        => wbi,
+    s0_wbo        => wbo,
 
     -- Slave 0 signals
     s1_wbi        => piowbi,
     s1_wbo        => piowbo
   );
 
-  dbaarb: entity work.wbarb2_1
+  dma_arb: entity work.wbarb2_1
   port map (
     wb_syscon     => wb_syscon,
     -- Master 0 signals
@@ -155,21 +155,50 @@ begin
   );
 
 
-  ramwbi.int <= iowbi.int;
+  --ramwbi.int <= iowbi.int;
 
-  maccarb: entity work.wbarb2_1
+  i_d_arb: entity work.wbarb2_1
   port map (
     wb_syscon     => wb_syscon,
     -- Master 0 signals
-    m0_wbi        => ramwbo,
-    m0_wbo        => ramwbi,
+    m0_wbi        => wbo,
+    m0_wbo        => wbi,
     -- Master 1 signals
     m1_wbi        => romwbo,
     m1_wbo        => romwbi,
 
     -- Slave signals
-    s0_wbi        => wbi,
-    s0_wbo        => wbo
+    s0_wbi        => sdramorbootwbi,
+    s0_wbo        => sdramorbootwbo
+  );
+
+  boot_sdram_mux: entity work.xtc_wbmux2
+  generic map (
+    select_line   => 30,
+    address_high  => 31,
+    address_low   => 2
+  )
+  port map (
+    wb_syscon     => wb_syscon,
+    -- Master 
+    m_wbi         => sdramorbootwbo,
+    m_wbo         => sdramorbootwbi,
+
+    -- Slave 0 signals
+    s0_wbi        => cpu_sdram_wbi,
+    s0_wbo        => cpu_sdram_wbo,
+
+    -- Slave 0 signals
+    s1_wbi        => bootwbi,
+    s1_wbo        => bootwbo
+  );
+
+
+  bootrom: entity work.bootrom
+    port map (
+      syscon      => wb_syscon,
+      wbi         => bootwbo,
+      wbo         => bootwbi
   );
 
 
