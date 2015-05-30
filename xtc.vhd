@@ -240,7 +240,7 @@ begin
 
   end generate;
 
-  romwbo.we<='0';
+  --romwbo.we<='0';
 
   nocache: if not INSTRUCTION_CACHE generate
 
