@@ -7,9 +7,6 @@ library work;
 use work.wishbonepkg.all;
 use work.xtcpkg.all;
 
-library unisim;
-use unisim.vcomponents.all;
-
 entity sdram_ctrl is
   generic (
     HIGH_BIT: integer := 24
