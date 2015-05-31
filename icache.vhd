@@ -333,7 +333,7 @@ begin
         cache_mem_enable  <= enable and strobe;
 
         if mwbi.ack='1' then
-          w.iwfready := '1';
+          w.iwfready := enable;
           w.offcnt_write := r.offcnt_write - 1;
           -- This will go to 0, but we check before and switch state
           if r.offcnt_write=offcnt_zero then
