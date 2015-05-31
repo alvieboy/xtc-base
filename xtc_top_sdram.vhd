@@ -4,7 +4,6 @@ use ieee.numeric_std.all;
 
 library work;
 use work.xtcpkg.all;
-use work.xtccomppkg.all;
 use work.wishbonepkg.all;
 
 entity xtc_top_sdram is

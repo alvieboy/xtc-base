@@ -6,7 +6,6 @@ use std.textio.all;
 
 library work;
 use work.xtcpkg.all;
-use work.xtccomppkg.all;
 use work.txt_util.all;
 
 entity tracer is

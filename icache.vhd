@@ -5,7 +5,6 @@ use ieee.numeric_std.all;
 
 library work;
 use work.xtcpkg.all;
-use work.xtccomppkg.all;
 use work.wishbonepkg.all;
 -- synthesis translate_off
 use work.txt_util.all;
