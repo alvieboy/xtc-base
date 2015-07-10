@@ -50,10 +50,7 @@ architecture behave of execute is
 
   signal alu_a_a, alu_a_b: std_logic_vector(31 downto 0);
   signal alu_a_r, alu_a_y: unsigned(31 downto 0);
-  --signal alu_b_a, alu_b_b: std_logic_vector(31 downto 0);
-  --signal alu_b_r: unsigned(31 downto 0);
   signal alu1_ci, alu1_co, alu1_busy, alu1_ovf, alu1_sign, alu1_zero: std_logic;
-  --signal alu2_ci, alu2_co, alu2_busy, alu2_ovf, alu2_sign, alu2_zero: std_logic;
   signal er: execute_regs_type;
   signal dbg_do_interrupt: boolean;
 
@@ -126,6 +123,12 @@ begin
     alias psr_sign:   std_logic   is  er.psr(31);
     alias psr_ovf:    std_logic   is  er.psr(28);
     alias psr_zero:   std_logic   is  er.psr(29);
+
+    alias psr_svc:   std_logic is er.psr(0);
+    alias psr_ien:   std_logic is er.psr(1);
+    alias psr_dbg:   std_logic is er.psr(2);
+--    alias psr_fad:    std_logic_vector(3 downto 0) is er.psr(7 downto 4);
+
     variable trap:  boolean;
 
     variable do_fault: boolean;
