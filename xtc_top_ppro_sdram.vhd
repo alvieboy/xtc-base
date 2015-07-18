@@ -4,7 +4,6 @@ use ieee.numeric_std.all;
 library work;
 use work.wishbonepkg.all;
 use work.xtcpkg.all;
-use work.xtccomppkg.all;
 
 entity xtc_top_ppro_sdram is
   port (
