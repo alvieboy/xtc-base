@@ -63,6 +63,8 @@ s0_wbo.stb <= req0;--m_wbi.stb and not internal_stall;
 s0_wbo.we  <= m_wbi.we;
 s0_wbo.sel <= m_wbi.sel;
 s0_wbo.tag <= m_wbi.tag;
+s0_wbo.cti <= m_wbi.cti;
+s0_wbo.bte <= m_wbi.bte;
 
 s1_wbo.dat <= m_wbi.dat;
 s1_wbo.adr <= m_wbi.adr;
@@ -70,6 +72,8 @@ s1_wbo.stb <= req1;--m_wbi.stb and not internal_stall;
 s1_wbo.we  <= m_wbi.we;
 s1_wbo.sel <= m_wbi.sel;
 s1_wbo.tag <= m_wbi.tag;
+s1_wbo.cti <= m_wbi.cti;
+s1_wbo.bte <= m_wbi.bte;
 
 cnt0: reqcnt port map (
   clk =>  wb_syscon.clk,
@@ -100,8 +104,8 @@ begin
     s0_wbo.cyc<='0';
     s1_wbo.cyc<='0';
   else
-    s0_wbo.cyc<=(select_zero and m_wbi.stb) or t0;
-    s1_wbo.cyc<=(( not select_zero ) and m_wbi.stb) or t1;
+    s0_wbo.cyc<=(select_zero and m_wbi.cyc) or t0;
+    s1_wbo.cyc<=(( not select_zero ) and m_wbi.cyc) or t1;
   end if;
 end process;
 

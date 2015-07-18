@@ -40,6 +40,8 @@ s0_wbo.stb <= m_wbi.stb;
 s0_wbo.we  <= m_wbi.we;
 s0_wbo.sel <= m_wbi.sel;
 s0_wbo.tag <= m_wbi.tag;
+s0_wbo.cti <= m_wbi.cti;
+s0_wbo.bte <= m_wbi.bte;
 
 s1_wbo.dat <= m_wbi.dat;
 s1_wbo.adr <= m_wbi.adr;
@@ -47,6 +49,8 @@ s1_wbo.stb <= m_wbi.stb;
 s1_wbo.we  <= m_wbi.we;
 s1_wbo.sel <= m_wbi.sel;
 s1_wbo.tag <= m_wbi.tag;
+s1_wbo.cti <= m_wbi.cti;
+s1_wbo.bte <= m_wbi.bte;
 
 process(m_wbi.cyc,select_zero)
 begin

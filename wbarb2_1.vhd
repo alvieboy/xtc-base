@@ -81,6 +81,8 @@ begin
       s0_wbo.cyc <= m0_wbi.cyc;
       s0_wbo.stb <= m0_wbi.stb;
       s0_wbo.tag <= m0_wbi.tag;
+      s0_wbo.cti <= m0_wbi.cti;
+      s0_wbo.bte <= m0_wbi.bte;
     when '1' =>
       s0_wbo.dat <= m1_wbi.dat;
       s0_wbo.adr <= m1_wbi.adr;
@@ -89,6 +91,8 @@ begin
       s0_wbo.cyc <= m1_wbi.cyc;
       s0_wbo.stb <= m1_wbi.stb;
       s0_wbo.tag <= m1_wbi.tag;
+      s0_wbo.cti <= m1_wbi.cti;
+      s0_wbo.bte <= m1_wbi.bte;
     when others =>
       null;
   end case;
