@@ -472,7 +472,7 @@ begin
 
   dcachegen: if DATA_CACHE generate
      dcache_accesstype <= ACCESS_NOCACHE when mwbo.adr(31)='1' else
-      ACCESS_WB_WA;
+        ACCESS_WT;
 
      dcacheinst: entity work.dcache
        generic map (

@@ -12,7 +12,7 @@ package xtcpkg is
 
 
   constant INSTRUCTION_CACHE: boolean := true;
-  constant DATA_CACHE: boolean := false;
+  constant DATA_CACHE: boolean := true;
   constant MMU_ENABLED: boolean := false;
   constant MULT_ENABLED: boolean := true;
 
