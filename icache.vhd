@@ -527,6 +527,8 @@ begin
   mwbo.stb  <= r.stb;
   mwbo.we   <= '0';
   mwbo.dat  <= (others => 'X');
+  mwbo.bte  <= BTE_BURST_16BEATWRAP;
+  mwbo.cti  <= CTI_CYCLE_INCRADDR; -- BUg: we need to signal eof
 
   mwbo.adr(31 downto CACHE_MAX_BITS) <= r.wbaddr(31 downto CACHE_MAX_BITS);
   mwbo.adr(CACHE_MAX_BITS-1 downto CACHE_LINE_SIZE_BITS) <= r.line_save;
